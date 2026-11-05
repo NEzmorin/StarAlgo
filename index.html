@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemir.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css">
     
-    <!-- Brython for Python + Turtle graphics -->
+    <!-- Brython for Python + Turtle graphics in browser -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/brython/3.11.1/brython.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/brython/3.11.1/brython_stdlib.js"></script>
 
@@ -36,11 +36,22 @@
             --font-undertale: 'UndertaleFont', monospace;
         }
 
-        ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-track { background: var(--bg-color); border-left: 1px solid rgba(212, 178, 54, 0.15); }
-        ::-webkit-scrollbar-thumb { background: var(--gold-main); border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: var(--gold-bright); }
-
+        /* Кастомные полоски прокрутки */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--bg-color);
+            border-left: 1px solid rgba(212, 178, 54, 0.15);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--gold-main);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--gold-bright);
+        }
         * {
             scrollbar-width: thin;
             scrollbar-color: var(--gold-main) var(--bg-color);
@@ -68,6 +79,7 @@
             letter-spacing: 1px;
         }
 
+        /* CRT Сканлайны */
         body::after {
             content: "";
             position: fixed;
@@ -78,9 +90,12 @@
             z-index: 100;
         }
 
+        /* Фиксированная верхняя панель (строго 3 колонки: логотип слева, часы по центру, кнопки справа) */
         header {
             position: fixed;
-            top: 0; left: 0; right: 0;
+            top: 0;
+            left: 0;
+            right: 0;
             background: rgba(12, 11, 8, 0.96);
             backdrop-filter: blur(6px);
             border-bottom: 2px solid rgba(212, 178, 54, 0.3);
@@ -93,149 +108,1370 @@
             box-shadow: 0 4px 20px rgba(0,0,0,0.8);
         }
 
-        .logo-container { justify-self: start; display: flex; flex-direction: column; gap: 4px; }
-        .logo { font-family: var(--font-roblox); font-size: 3rem; line-height: 0.8; color: var(--gold-main); text-shadow: 0 0 8px rgba(212, 178, 54, 0.6); letter-spacing: 3px; }
-        .breadcrumb { display: inline-block; background: #18150a; border: 1px solid var(--gold-main); color: var(--gold-main); padding: 2px 8px; font-size: 1rem; border-radius: 4px; width: fit-content; }
+        .logo-container {
+            justify-self: start;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
 
-        .timer-display { justify-self: center; font-family: var(--font-roblox); font-size: 3rem; line-height: 0.8; color: var(--gold-main); text-shadow: 0 0 10px rgba(212, 178, 54, 0.6); }
+        .logo {
+            font-family: var(--font-roblox);
+            font-size: 3rem;
+            line-height: 0.8;
+            color: var(--gold-main);
+            text-shadow: 0 0 8px rgba(212, 178, 54, 0.6);
+            letter-spacing: 3px;
+        }
 
-        .header-right { justify-self: end; display: flex; flex-direction: row; align-items: center; gap: 15px; }
-        nav { display: flex; gap: 15px; flex-wrap: wrap; justify-content: flex-end; }
-        .nav-item { color: var(--gold-main); text-decoration: none; font-size: 1.3rem; cursor: pointer; transition: color 0.2s, text-shadow 0.2s; background: none; border: none; font-family: var(--font-undertale); padding: 0; }
-        .nav-item:hover, .nav-item.active { color: var(--gold-bright); text-shadow: 0 0 8px rgba(245, 214, 92, 0.8); }
+        .breadcrumb {
+            display: inline-block;
+            background: #18150a;
+            border: 1px solid var(--gold-main);
+            color: var(--gold-main);
+            padding: 2px 8px;
+            font-size: 1rem;
+            border-radius: 4px;
+            width: fit-content;
+            font-family: var(--font-undertale);
+        }
 
-        .auth-btn { background: transparent; border: 1px solid var(--gold-main); color: var(--gold-main); padding: 6px 14px; font-family: var(--font-undertale); font-size: 1.1rem; cursor: pointer; border-radius: 4px; transition: all 0.2s; white-space: nowrap; }
-        .auth-btn:hover { background: rgba(212, 178, 54, 0.15); color: var(--gold-bright); border-color: var(--gold-bright); box-shadow: 0 0 8px rgba(212, 178, 54, 0.4); }
+        /* Часы строго по центру */
+        .timer-display {
+            justify-self: center;
+            margin-right: 0;
+            font-family: var(--font-roblox);
+            font-size: 3rem;
+            line-height: 0.8;
+            color: var(--gold-main);
+            text-shadow: 0 0 10px rgba(212, 178, 54, 0.6);
+        }
 
-        .user-header-profile { display: none; align-items: center; gap: 10px; cursor: pointer; }
-        .user-header-text { text-align: right; line-height: 1.1; }
-        .user-header-text .name { font-size: 1.5rem; color: var(--gold-main); }
-        .user-header-text .role { font-size: 1rem; color: var(--gold-main); opacity: 0.8; }
-        .logout-btn { background: transparent; border: 1px solid var(--gold-main); color: var(--gold-main); font-family: var(--font-undertale); font-size: 0.8rem; padding: 2px 4px; cursor: pointer; border-radius: 3px; margin-top: 2px; }
+        .header-right {
+            justify-self: end;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            gap: 15px;
+        }
 
-        .star-avatar-small { width: 40px; height: 40px; border: 2px solid var(--gold-main); border-radius: 50%; background: #0a0906; overflow: hidden; display: flex; align-items: center; justify-content: center; }
-        .star-avatar-large { width: 90px; height: 90px; border: 2px solid var(--gold-main); border-radius: 50%; background: #0a0906; margin-right: 15px; overflow: hidden; display: flex; align-items: center; justify-content: center; cursor: pointer; }
-        .star-shape { width: 70%; height: 70%; fill: none; stroke: var(--gold-main); stroke-width: 1.5; margin: auto; }
-        .star-avatar-small img, .star-avatar-large img, .profile-page-avatar img, .search-result-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        nav {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
 
-        main { display: grid; grid-template-columns: 1fr; gap: 30px; align-items: start; }
-        main.layout-sidebar-content { grid-template-columns: 340px 1fr; }
-        main.layout-sidebar-content-admin { grid-template-columns: 320px 1fr 340px; }
-        main.layout-content-admin { grid-template-columns: 1fr 340px; }
+        .nav-item {
+            color: var(--gold-main);
+            text-decoration: none;
+            font-size: 1.3rem;
+            cursor: pointer;
+            transition: color 0.2s, text-shadow 0.2s;
+            background: none;
+            border: none;
+            font-family: var(--font-undertale);
+            padding: 0;
+        }
 
-        .profile-card { display: none; background: var(--card-bg); border: 2px solid var(--gold-main); border-radius: 16px; padding: 20px; box-shadow: inset 0 0 15px rgba(212, 178, 54, 0.15), 0 0 10px rgba(0, 0, 0, 0.8); }
-        .card-header { display: flex; align-items: center; margin-bottom: 20px; }
-        .card-user-info .name { font-size: 1.8rem; line-height: 1; color: var(--gold-main); word-break: break-all; }
-        .card-user-info .role { font-size: 1.2rem; color: var(--gold-main); opacity: 0.85; }
+        .nav-item:hover, .nav-item.active {
+            color: var(--gold-bright);
+            text-shadow: 0 0 8px rgba(245, 214, 92, 0.8);
+        }
 
-        .stats-list { display: flex; flex-direction: column; gap: 10px; font-size: 1.2rem; }
-        .stats-row { display: flex; align-items: center; gap: 8px; }
-        .stats-row.highlight { margin-top: 10px; font-size: 1.25rem; }
+        .auth-btn {
+            background: transparent;
+            border: 1px solid var(--gold-main);
+            color: var(--gold-main);
+            padding: 6px 14px;
+            font-family: var(--font-undertale);
+            font-size: 1.1rem;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.2s;
+            text-shadow: 0 0 4px rgba(212, 178, 54, 0.4);
+            box-shadow: inset 0 0 6px rgba(212, 178, 54, 0.1);
+            white-space: nowrap;
+        }
 
-        .content-section { width: 100%; }
-        .tab-page { display: none; }
-        .tab-page.active { display: block; }
-        .page-title { font-size: 2.6rem; color: var(--gold-main); margin-bottom: 15px; font-weight: normal; line-height: 1; }
-        .page-text { font-size: 1.35rem; line-height: 1.4; color: var(--gold-main); max-width: 800px; margin-bottom: 25px; white-space: pre-line; }
+        .auth-btn:hover {
+            background: rgba(212, 178, 54, 0.15);
+            color: var(--gold-bright);
+            border-color: var(--gold-bright);
+            box-shadow: 0 0 8px rgba(212, 178, 54, 0.4);
+        }
 
-        .info-box-styled { background: var(--card-bg); border: 2px solid var(--gold-main); border-radius: 14px; padding: 18px; max-width: 800px; margin-bottom: 25px; }
-        .info-box-styled h3 { font-size: 1.5rem; color: var(--gold-bright); margin-bottom: 10px; }
-        .info-box-styled p { font-size: 1.15rem; line-height: 1.4; margin-bottom: 8px; }
-        .info-box-styled code { color: var(--gold-bright); background: rgba(0,0,0,0.5); padding: 2px 6px; border-radius: 4px; }
+        .user-header-profile {
+            display: none;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+        }
 
-        .search-container { display: flex; flex-direction: column; gap: 12px; background: var(--card-bg); border: 2px solid var(--gold-main); padding: 18px; border-radius: 14px; max-width: 600px; margin-top: 20px; }
-        .search-title { font-size: 1.6rem; color: var(--gold-bright); }
-        .search-input-row { display: flex; gap: 10px; }
-        .search-input { flex: 1; background: #080705; border: 1px solid var(--gold-main); color: var(--gold-bright); padding: 8px 12px; font-family: var(--font-undertale); font-size: 1.2rem; border-radius: 6px; outline: none; }
-        .search-results-list { display: flex; flex-direction: column; gap: 8px; max-height: 220px; overflow-y: auto; }
-        .search-result-card { display: flex; align-items: center; gap: 10px; background: rgba(212, 178, 54, 0.05); border: 1px solid rgba(212, 178, 54, 0.3); padding: 8px; border-radius: 6px; cursor: pointer; transition: background 0.2s; }
-        .search-result-card:hover { background: rgba(212, 178, 54, 0.15); }
-        .search-result-avatar { width: 35px; height: 35px; border: 1px solid var(--gold-main); border-radius: 50%; background: #080705; overflow: hidden; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-        .search-result-info .uname { font-size: 1.2rem; color: var(--gold-bright); }
-        .search-result-info .urole { font-size: 0.9rem; opacity: 0.8; }
+        .user-header-text {
+            text-align: right;
+            line-height: 1.1;
+        }
 
-        .constellations-header { display: flex; align-items: center; gap: 20px; margin-bottom: 25px; flex-wrap: wrap; }
-        .filter-group { display: flex; background: var(--card-bg); border: 1px solid var(--gold-main); border-radius: 6px; overflow: hidden; }
-        .filter-btn { background: transparent; border: none; color: var(--gold-main); padding: 6px 14px; font-family: var(--font-undertale); font-size: 1.1rem; cursor: pointer; }
-        .filter-btn.active { background: var(--gold-main); color: var(--bg-color); }
+        .user-header-text .name {
+            font-size: 1.5rem;
+            color: var(--gold-main);
+        }
 
-        .zvezdny-feed-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 18px; margin-top: 20px; }
-        .feed-star-card { background: var(--card-bg); border: 2px solid var(--gold-main); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 8px; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; }
-        .feed-star-card:hover { transform: translateY(-3px); box-shadow: 0 0 15px rgba(212, 178, 54, 0.4); }
-        .star-cover-preview { width: 100%; height: 130px; background: #000; border-radius: 8px; object-fit: cover; border: 1px solid var(--gold-main); }
-        .feed-star-title { font-size: 1.5rem; color: var(--gold-bright); }
-        .feed-star-author { font-size: 1rem; opacity: 0.8; }
+        .user-header-text .role {
+            font-size: 1rem;
+            color: var(--gold-main);
+            opacity: 0.8;
+        }
 
-        .proto-layout { display: grid; grid-template-columns: 220px 1fr; gap: 25px; align-items: start; }
-        .proto-sidebar { display: flex; flex-direction: column; gap: 12px; }
-        .proto-sidebar-title { font-size: 1.1rem; color: var(--gold-main); opacity: 0.7; margin-bottom: 5px; }
-        .proto-nav-list { display: flex; flex-direction: column; gap: 6px; }
-        .proto-nav-item { background: transparent; border: none; color: var(--gold-main); font-family: var(--font-undertale); font-size: 1.3rem; text-align: left; cursor: pointer; padding: 4px 0; }
-        .proto-nav-item:hover, .proto-nav-item.active { color: var(--gold-bright); text-shadow: 0 0 6px rgba(245, 214, 92, 0.6); }
+        .bell-icon-btn {
+            background: transparent;
+            border: 1px solid var(--gold-main);
+            color: var(--gold-main);
+            font-size: 1.1rem;
+            padding: 5px 10px;
+            border-radius: 20px;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.2s;
+            font-family: var(--font-undertale);
+        }
+        .bell-icon-btn:hover {
+            background: rgba(212, 178, 54, 0.2);
+            color: var(--gold-bright);
+        }
+        .bell-icon-btn.has-unread {
+            background: var(--gold-main) !important;
+            color: var(--bg-color) !important;
+            font-weight: bold;
+            box-shadow: 0 0 10px var(--gold-bright);
+        }
 
-        .proto-content-area { display: flex; flex-direction: column; gap: 18px; }
-        .proto-top-bar { display: flex; justify-content: space-between; align-items: center; }
-        .proto-create-btn { background: transparent; border: 1px solid var(--gold-main); color: var(--gold-main); padding: 7px 16px; font-family: var(--font-undertale); font-size: 1.2rem; border-radius: 8px; cursor: pointer; }
-        .proto-create-btn:hover { background: rgba(212, 178, 54, 0.15); color: var(--gold-bright); border-color: var(--gold-bright); }
+        .logout-btn {
+            background: transparent;
+            border: 1px solid var(--gold-main);
+            color: var(--gold-main);
+            font-family: var(--font-undertale);
+            font-size: 0.8rem;
+            padding: 2px 4px;
+            cursor: pointer;
+            border-radius: 3px;
+            margin-top: 2px;
+        }
 
-        .proto-projects-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; margin-top: 10px; }
-        .project-item-card { background: var(--card-bg); border: 1px solid var(--gold-main); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 6px; cursor: pointer; }
-        .project-item-card:hover { transform: translateY(-2px); box-shadow: 0 0 12px rgba(212, 178, 54, 0.3); }
-        .project-item-title { font-size: 1.4rem; color: var(--gold-bright); }
-        .project-item-cat { font-size: 1rem; opacity: 0.7; }
+        .star-avatar-small {
+            width: 40px;
+            height: 40px;
+            border: 2px solid var(--gold-main);
+            border-radius: 50%;
+            background: #0a0906;
+            flex-shrink: 0;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            aspect-ratio: 1 / 1;
+        }
+        
+        .star-avatar-small img, .star-avatar-large img, .profile-page-avatar img, .user-mini-avatar img, .search-result-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
 
-        .star-editor-container { display: flex; flex-direction: column; gap: 22px; max-width: 1400px; }
-        .star-editor-top { display: flex; justify-content: space-between; align-items: center; }
-        .star-panorama-wrapper { position: relative; width: 100%; height: 240px; border-radius: 12px; border: 2px solid var(--gold-main); overflow: hidden; background: #000; }
-        .star-panorama-banner { width: 100%; height: 100%; object-fit: cover; }
+        .star-avatar-large {
+            width: 90px;
+            height: 90px;
+            border: 2px solid var(--gold-main);
+            border-radius: 50%;
+            background: #0a0906;
+            margin-right: 15px;
+            flex-shrink: 0;
+            cursor: pointer;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            aspect-ratio: 1 / 1;
+        }
 
-        .editor-split-layout { display: grid; grid-template-columns: 1fr 400px; gap: 20px; align-items: start; }
-        .editor-preview-box, .editor-sidebar-box { background: var(--card-bg); border: 2px solid var(--gold-main); border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 12px; }
-        .author-info-block { display: flex; align-items: center; gap: 12px; border-bottom: 1px dashed rgba(212, 178, 54, 0.4); padding-bottom: 12px; }
-        .author-info-name { font-size: 1.6rem; color: var(--gold-bright); }
-        .author-info-role { font-size: 1rem; opacity: 0.8; }
-        .star-detail-section { display: flex; flex-direction: column; gap: 4px; }
-        .detail-label { font-size: 1rem; opacity: 0.7; }
-        .detail-value { font-size: 1.3rem; color: var(--gold-bright); word-break: break-word; white-space: pre-wrap; }
-        .like-btn-box { display: flex; align-items: center; justify-content: space-between; background: rgba(212, 178, 54, 0.1); border: 1px solid var(--gold-main); padding: 8px 12px; border-radius: 8px; }
-        .like-action-btn { background: transparent; border: 1px solid var(--gold-bright); color: var(--gold-bright); padding: 5px 12px; font-family: var(--font-undertale); font-size: 1.1rem; border-radius: 6px; cursor: pointer; }
-        .like-action-btn:hover { background: var(--gold-main); color: var(--bg-color); }
+        .star-shape {
+            width: 70%;
+            height: 70%;
+            fill: none;
+            stroke: var(--gold-main);
+            stroke-width: 1.5;
+            margin: auto;
+        }
 
-        .profile-page-container { display: flex; flex-direction: column; gap: 25px; max-width: 1100px; }
-        .profile-page-header { display: flex; align-items: flex-start; gap: 25px; flex-wrap: wrap; }
-        .profile-page-avatar { width: 160px; height: 160px; border: 3px solid var(--gold-main); border-radius: 18px; background: #0a0906; overflow: hidden; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
-        .profile-page-info { display: flex; flex-direction: column; gap: 12px; flex-grow: 1; }
-        .profile-page-name-row { display: flex; align-items: center; gap: 15px; flex-wrap: wrap; }
-        .profile-page-name { font-size: 2.8rem; color: var(--gold-bright); line-height: 1; }
-        .follow-btn { background: transparent; border: 2px solid var(--gold-bright); color: var(--gold-bright); padding: 6px 15px; font-family: var(--font-undertale); font-size: 1.2rem; border-radius: 8px; cursor: pointer; }
-        .follow-btn.following { background: rgba(212, 178, 54, 0.2); border-color: var(--gold-main); }
-        .profile-page-stats { display: flex; gap: 30px; flex-wrap: wrap; }
-        .p-stat-item { display: flex; flex-direction: column; }
-        .p-stat-num { font-size: 2.2rem; color: var(--gold-bright); line-height: 1; }
-        .p-stat-label { font-size: 1.1rem; color: var(--gold-main); opacity: 0.8; }
-        .profile-bio-box { background: var(--card-bg); border: 2px solid var(--gold-main); border-radius: 14px; padding: 18px; }
-        .bio-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-        .bio-edit-btn { background: none; border: none; color: var(--gold-bright); font-family: var(--font-undertale); font-size: 1.1rem; cursor: pointer; text-decoration: underline; }
-        .bio-text { font-size: 1.3rem; line-height: 1.4; color: var(--gold-main); word-break: break-word; white-space: pre-wrap; }
-        .bio-textarea { width: 100%; background: #080705; border: 1px solid var(--gold-main); color: var(--gold-bright); padding: 8px; font-family: var(--font-undertale); font-size: 1.2rem; border-radius: 6px; resize: vertical; min-height: 80px; outline: none; display: none; }
+        /* Макет главной страницы */
+        main {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 30px;
+            align-items: start;
+        }
 
-        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.85); display: none; justify-content: center; align-items: center; z-index: 2500; }
+        main.layout-sidebar-content {
+            grid-template-columns: 340px 1fr;
+        }
+
+        main.layout-sidebar-content-admin {
+            grid-template-columns: 320px 1fr 340px;
+        }
+
+        main.layout-content-admin {
+            grid-template-columns: 1fr 340px;
+        }
+
+        @media (max-width: 1400px) {
+            main.layout-sidebar-content-admin, main.layout-content-admin {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .profile-card {
+            display: none;
+            background: var(--card-bg);
+            border: 2px solid var(--gold-main);
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: inset 0 0 15px rgba(212, 178, 54, 0.15), 0 0 10px rgba(0, 0, 0, 0.8);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .card-user-info .name {
+            font-size: 1.8rem;
+            line-height: 1;
+            color: var(--gold-main);
+            word-break: break-all;
+        }
+
+        .card-user-info .role {
+            font-size: 1.2rem;
+            color: var(--gold-main);
+            opacity: 0.85;
+        }
+
+        .stats-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            font-size: 1.2rem;
+        }
+
+        .stats-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .stats-row.highlight {
+            margin-top: 10px;
+            font-size: 1.25rem;
+            line-height: 1.2;
+        }
+
+        .tester-panel {
+            display: none;
+            margin-top: 15px;
+            padding-top: 12px;
+            border-top: 1px dashed var(--gold-main);
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .tester-controls {
+            display: flex;
+            gap: 8px;
+        }
+
+        .tester-input {
+            width: 60px;
+            background: #080705;
+            border: 1px solid var(--gold-main);
+            color: var(--gold-bright);
+            padding: 4px 6px;
+            font-family: var(--font-undertale);
+            font-size: 1.1rem;
+            border-radius: 4px;
+            outline: none;
+        }
+
+        .content-section {
+            padding-top: 5px;
+            width: 100%;
+        }
+
+        .tab-page {
+            display: none;
+        }
+
+        .tab-page.active {
+            display: block;
+        }
+
+        .page-title {
+            font-size: 2.6rem;
+            color: var(--gold-main);
+            margin-bottom: 15px;
+            font-weight: normal;
+            line-height: 1;
+        }
+
+        .page-text {
+            font-size: 1.35rem;
+            line-height: 1.4;
+            color: var(--gold-main);
+            max-width: 800px;
+            margin-bottom: 25px;
+            white-space: pre-line;
+        }
+
+        /* Стильный информационный блок для правил загрузки AlgoVive */
+        .info-box-styled {
+            background: var(--card-bg);
+            border: 2px solid var(--gold-main);
+            border-radius: 14px;
+            padding: 18px;
+            max-width: 800px;
+            margin-bottom: 25px;
+            box-shadow: inset 0 0 12px rgba(212, 178, 54, 0.1);
+        }
+
+        .info-box-styled h3 {
+            font-size: 1.5rem;
+            color: var(--gold-bright);
+            margin-bottom: 10px;
+        }
+
+        .info-box-styled p {
+            font-size: 1.15rem;
+            line-height: 1.4;
+            margin-bottom: 8px;
+        }
+
+        .info-box-styled code {
+            color: var(--gold-bright);
+            background: rgba(0,0,0,0.5);
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        .search-container {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            background: var(--card-bg);
+            border: 2px solid var(--gold-main);
+            padding: 18px;
+            border-radius: 14px;
+            max-width: 600px;
+            margin-top: 20px;
+        }
+
+        .search-title {
+            font-size: 1.6rem;
+            color: var(--gold-bright);
+        }
+
+        .search-input-row {
+            display: flex;
+            gap: 10px;
+        }
+
+        .search-input {
+            flex: 1;
+            background: #080705;
+            border: 1px solid var(--gold-main);
+            color: var(--gold-bright);
+            padding: 8px 12px;
+            font-family: var(--font-undertale);
+            font-size: 1.2rem;
+            border-radius: 6px;
+            outline: none;
+        }
+
+        .search-results-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 220px;
+            overflow-y: auto;
+        }
+
+        .search-result-card {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(212, 178, 54, 0.05);
+            border: 1px solid rgba(212, 178, 54, 0.3);
+            padding: 8px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .search-result-card:hover {
+            background: rgba(212, 178, 54, 0.15);
+        }
+
+        .search-result-avatar {
+            width: 35px;
+            height: 35px;
+            border: 1px solid var(--gold-main);
+            border-radius: 50%;
+            background: #080705;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .search-result-info .uname {
+            font-size: 1.2rem;
+            color: var(--gold-bright);
+        }
+
+        .search-result-info .urole {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        .constellations-header {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+        }
+
+        .filter-group {
+            display: flex;
+            background: var(--card-bg);
+            border: 1px solid var(--gold-main);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .filter-btn {
+            background: transparent;
+            border: none;
+            color: var(--gold-main);
+            padding: 6px 14px;
+            font-family: var(--font-undertale);
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: background 0.2s, color 0.2s;
+        }
+
+        .filter-btn.active {
+            background: var(--gold-main);
+            color: var(--bg-color);
+        }
+
+        .constellation-display-box {
+            background: var(--card-bg);
+            border: 2px solid var(--gold-main);
+            border-radius: 16px;
+            min-height: 140px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 20px;
+            box-shadow: inset 0 0 15px rgba(212, 178, 54, 0.1);
+            margin-bottom: 25px;
+            gap: 12px;
+        }
+
+        .constellation-top-cards {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+            width: 100%;
+        }
+
+        .sub-filters-row1, .sub-filters-row2 {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+        }
+
+        .sub-filter-pill {
+            background: transparent;
+            border: 1px solid var(--gold-main);
+            color: var(--gold-main);
+            padding: 5px 14px;
+            font-family: var(--font-undertale);
+            font-size: 1.1rem;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .sub-filter-pill:hover, .sub-filter-pill.active {
+            background: rgba(212, 178, 54, 0.2);
+            color: var(--gold-bright);
+            box-shadow: 0 0 8px rgba(245, 214, 92, 0.4);
+        }
+
+        .zvezdny-feed-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 18px;
+            margin-top: 20px;
+        }
+
+        .feed-star-card {
+            background: var(--card-bg);
+            border: 2px solid var(--gold-main);
+            border-radius: 14px;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .feed-star-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 0 15px rgba(212, 178, 54, 0.4);
+        }
+
+        .dwarf-feed-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+            margin-top: 20px;
+            width: 100%;
+        }
+
+        .dwarf-banner-card {
+            background-color: var(--card-bg);
+            background-image: radial-gradient(circle at 50% 50%, rgba(245, 214, 92, 0.14) 2px, transparent 2px);
+            background-size: 24px 24px;
+            border: 2px solid var(--gold-main);
+            border-radius: 18px;
+            padding: 28px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: inset 0 0 25px rgba(212, 178, 54, 0.15), 0 4px 15px rgba(0,0,0,0.5);
+            width: 100%;
+        }
+
+        .dwarf-banner-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 25px rgba(212, 178, 54, 0.4);
+        }
+
+        .dwarf-cover-large {
+            width: 100%;
+            height: 320px;
+            border-radius: 12px;
+            border: 2px solid var(--gold-main);
+            object-fit: cover;
+            background: #000;
+        }
+
+        .star-cover-preview {
+            width: 100%;
+            height: 130px;
+            background: #000;
+            border-radius: 8px;
+            object-fit: cover;
+            border: 1px solid var(--gold-main);
+        }
+
+        .feed-star-title {
+            font-size: 1.5rem;
+            color: var(--gold-bright);
+        }
+
+        .feed-star-author {
+            font-size: 1rem;
+            opacity: 0.8;
+        }
+
+        .proto-layout {
+            display: grid;
+            grid-template-columns: 220px 1fr;
+            gap: 25px;
+            align-items: start;
+        }
+
+        .proto-sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .proto-sidebar-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 1.1rem;
+            color: var(--gold-main);
+            opacity: 0.7;
+            letter-spacing: 1px;
+            margin-bottom: 5px;
+        }
+
+        .proto-nav-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .proto-nav-item {
+            background: transparent;
+            border: none;
+            color: var(--gold-main);
+            font-family: var(--font-undertale);
+            font-size: 1.3rem;
+            text-align: left;
+            cursor: pointer;
+            padding: 4px 0;
+            transition: color 0.2s;
+        }
+
+        .proto-nav-item:hover, .proto-nav-item.active {
+            color: var(--gold-bright);
+            text-shadow: 0 0 6px rgba(245, 214, 92, 0.6);
+        }
+
+        .proto-content-area {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+
+        .proto-top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .proto-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .proto-sort-label {
+            font-size: 1.2rem;
+            opacity: 0.8;
+        }
+
+        .proto-btn-pill {
+            background: var(--card-bg);
+            border: 1px solid var(--gold-main);
+            color: var(--gold-main);
+            padding: 5px 12px;
+            font-family: var(--font-undertale);
+            font-size: 1.1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .proto-create-btn {
+            background: transparent;
+            border: 1px solid var(--gold-main);
+            color: var(--gold-main);
+            padding: 7px 16px;
+            font-family: var(--font-undertale);
+            font-size: 1.2rem;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: inset 0 0 6px rgba(212, 178, 54, 0.1);
+            transition: all 0.2s;
+        }
+
+        .proto-create-btn:hover {
+            background: rgba(212, 178, 54, 0.15);
+            color: var(--gold-bright);
+            border-color: var(--gold-bright);
+        }
+
+        .proto-tabs-row {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .proto-tab-pill {
+            background: var(--card-bg);
+            border: 1px solid var(--gold-main);
+            color: var(--gold-main);
+            padding: 5px 16px;
+            font-family: var(--font-undertale);
+            font-size: 1.2rem;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .proto-tab-pill.active {
+            background: rgba(212, 178, 54, 0.25);
+            color: var(--gold-bright);
+            box-shadow: 0 0 8px rgba(212, 178, 54, 0.4);
+        }
+
+        .proto-projects-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 10px;
+        }
+
+        .project-item-card {
+            background: var(--card-bg);
+            border: 1px solid var(--gold-main);
+            border-radius: 12px;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .project-item-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 12px rgba(212, 178, 54, 0.3);
+        }
+
+        .project-item-title {
+            font-size: 1.4rem;
+            color: var(--gold-bright);
+        }
+
+        .project-item-cat {
+            font-size: 1rem;
+            opacity: 0.7;
+        }
+
+        .star-editor-container {
+            display: flex;
+            flex-direction: column;
+            gap: 22px;
+            max-width: 1400px;
+        }
+
+        .star-editor-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .star-panorama-wrapper {
+            position: relative;
+            width: 100%;
+            height: 240px;
+            border-radius: 12px;
+            border: 2px solid var(--gold-main);
+            overflow: hidden;
+            background: #000;
+        }
+
+        .star-panorama-banner {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .panorama-zoom-btn {
+            position: absolute;
+            bottom: 12px;
+            right: 12px;
+            background: rgba(20, 18, 10, 0.85);
+            border: 1px solid var(--gold-main);
+            color: var(--gold-bright);
+            padding: 6px 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.1rem;
+            font-family: var(--font-undertale);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .editor-split-layout {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 20px;
+            align-items: start;
+        }
+
+        .editor-preview-box {
+            background: var(--card-bg);
+            border: 2px solid var(--gold-main);
+            border-radius: 14px;
+            padding: 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .editor-sidebar-box {
+            background: var(--card-bg);
+            border: 2px solid var(--gold-main);
+            border-radius: 14px;
+            padding: 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            box-shadow: inset 0 0 15px rgba(212, 178, 54, 0.1);
+        }
+
+        .author-info-block {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 1px dashed rgba(212, 178, 54, 0.4);
+            padding-bottom: 12px;
+        }
+
+        .author-info-text {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .author-info-name {
+            font-size: 1.6rem;
+            color: var(--gold-bright);
+        }
+
+        .author-info-role {
+            font-size: 1rem;
+            opacity: 0.8;
+        }
+
+        .star-detail-section {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .detail-label {
+            font-size: 1rem;
+            opacity: 0.7;
+            letter-spacing: 1px;
+        }
+
+        .detail-value {
+            font-size: 1.3rem;
+            color: var(--gold-bright);
+            line-height: 1.3;
+            word-break: break-word;
+            white-space: pre-wrap;
+        }
+
+        .counters-row {
+            display: flex;
+            gap: 15px;
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .like-btn-box {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(212, 178, 54, 0.1);
+            border: 1px solid var(--gold-main);
+            padding: 8px 12px;
+            border-radius: 8px;
+        }
+
+        .like-action-btn {
+            background: transparent;
+            border: 1px solid var(--gold-bright);
+            color: var(--gold-bright);
+            padding: 5px 12px;
+            font-family: var(--font-undertale);
+            font-size: 1.1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .like-action-btn:hover {
+            background: var(--gold-main);
+            color: var(--bg-color);
+        }
+
+        .comments-bottom-container {
+            background: var(--card-bg);
+            border: 2px solid var(--gold-main);
+            border-radius: 14px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 10px;
+        }
+
+        .comments-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-height: 320px;
+            overflow-y: auto;
+        }
+
+        .comment-item {
+            background: rgba(8, 7, 5, 0.9);
+            border: 1px solid rgba(212, 178, 54, 0.4);
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .comment-header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .comment-author {
+            color: var(--gold-bright);
+            font-size: 1.1rem;
+            cursor: pointer;
+        }
+
+        .comment-action-btn {
+            background: none;
+            border: none;
+            color: var(--gold-main);
+            cursor: pointer;
+            font-family: var(--font-undertale);
+            text-decoration: underline;
+        }
+
+        .comment-action-btn:hover {
+            color: var(--gold-bright);
+        }
+
+        .comment-input-row {
+            display: flex;
+            gap: 10px;
+            margin-top: 8px;
+        }
+
+        .comment-input {
+            flex: 1;
+            background: #080705;
+            border: 1px solid var(--gold-main);
+            color: var(--gold-bright);
+            padding: 8px 12px;
+            font-family: var(--font-undertale);
+            font-size: 1.2rem;
+            border-radius: 6px;
+            outline: none;
+        }
+
+        .notification-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(2px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2500;
+        }
+        .notification-overlay.open { display: flex; }
+
+        .notification-modal-box {
+            background: #14120a;
+            border: 2px solid var(--gold-main);
+            padding: 22px;
+            border-radius: 14px;
+            width: 480px;
+            max-width: 90vw;
+            max-height: 80vh;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .notification-item {
+            background: rgba(212, 178, 54, 0.08);
+            border: 1px solid rgba(212, 178, 54, 0.3);
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 1.1rem;
+        }
+
+        .console-box {
+            background: #080705;
+            border: 1px solid var(--gold-main);
+            color: #55ff55;
+            padding: 12px;
+            font-family: monospace;
+            font-size: 1.1rem;
+            height: 160px;
+            overflow-y: auto;
+            border-radius: 6px;
+            white-space: pre-wrap;
+        }
+
+        .profile-page-container {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+            max-width: 1100px;
+        }
+
+        .profile-page-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 25px;
+            flex-wrap: wrap;
+        }
+
+        .profile-page-avatar {
+            width: 160px;
+            height: 160px;
+            border: 3px solid var(--gold-main);
+            border-radius: 18px;
+            background: #0a0906;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .profile-page-info {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            flex-grow: 1;
+        }
+
+        .profile-page-name-row {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .profile-page-name {
+            font-size: 2.8rem;
+            color: var(--gold-bright);
+            line-height: 1;
+        }
+
+        .follow-btn {
+            background: transparent;
+            border: 2px solid var(--gold-bright);
+            color: var(--gold-bright);
+            padding: 6px 15px;
+            font-family: var(--font-undertale);
+            font-size: 1.2rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .follow-btn.following {
+            background: rgba(212, 178, 54, 0.2);
+            border-color: var(--gold-main);
+        }
+
+        .profile-page-stats {
+            display: flex;
+            gap: 30px;
+            flex-wrap: wrap;
+        }
+
+        .p-stat-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .p-stat-num {
+            font-size: 2.2rem;
+            color: var(--gold-bright);
+            line-height: 1;
+        }
+
+        .p-stat-label {
+            font-size: 1.1rem;
+            color: var(--gold-main);
+            opacity: 0.8;
+        }
+
+        .profile-bio-box {
+            background: var(--card-bg);
+            border: 2px solid var(--gold-main);
+            border-radius: 14px;
+            padding: 18px;
+        }
+
+        .bio-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .bio-title {
+            font-size: 1.2rem;
+            color: var(--gold-main);
+            letter-spacing: 2px;
+        }
+
+        .bio-edit-btn {
+            background: none;
+            border: none;
+            color: var(--gold-bright);
+            font-family: var(--font-undertale);
+            font-size: 1.1rem;
+            cursor: pointer;
+            text-decoration: underline;
+        }
+
+        .bio-text {
+            font-size: 1.3rem;
+            line-height: 1.4;
+            color: var(--gold-main);
+            word-break: break-word;
+            white-space: pre-wrap;
+        }
+
+        .bio-textarea {
+            width: 100%;
+            background: #080705;
+            border: 1px solid var(--gold-main);
+            color: var(--gold-bright);
+            padding: 8px;
+            font-family: var(--font-undertale);
+            font-size: 1.2rem;
+            border-radius: 6px;
+            resize: vertical;
+            min-height: 80px;
+            outline: none;
+            display: none;
+        }
+
+        .project-category-card-wide {
+            background: var(--card-bg);
+            border: 2px solid var(--gold-main);
+            border-radius: 14px;
+            padding: 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .profile-stars-horizontal-row {
+            display: flex;
+            gap: 12px;
+            overflow-x: auto;
+            padding-bottom: 8px;
+        }
+
+        .profile-horizontal-star-card {
+            min-width: 180px;
+            max-width: 200px;
+            background: rgba(8, 7, 5, 0.9);
+            border: 1px solid var(--gold-main);
+            border-radius: 10px;
+            padding: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .profile-horizontal-star-card img {
+            width: 100%;
+            height: 90px;
+            object-fit: cover;
+            border-radius: 6px;
+            border: 1px solid rgba(212, 178, 54, 0.4);
+        }
+
+        .cat-title {
+            font-size: 1.4rem;
+            color: var(--gold-bright);
+            border-bottom: 1px dashed rgba(212, 178, 54, 0.3);
+            padding-bottom: 5px;
+        }
+
+        .empty-placeholder {
+            font-size: 1.1rem;
+            opacity: 0.6;
+            font-style: italic;
+        }
+
+        .relations-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 18px;
+        }
+
+        .relation-box {
+            background: var(--card-bg);
+            border: 2px solid var(--gold-main);
+            border-radius: 14px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .relation-users-grid {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.85);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2500;
+        }
         .modal-overlay.open { display: flex; }
-        .modal-box { background: #14120a; border: 2px solid var(--gold-main); padding: 25px; border-radius: 14px; width: 420px; max-width: 90vw; display: flex; flex-direction: column; gap: 12px; }
-        .modal-title { font-size: 2.2rem; text-align: center; color: var(--gold-bright); }
-        .form-group { display: flex; flex-direction: column; gap: 4px; }
-        .form-input, .form-select, .form-textarea { background: #080705; border: 1px solid var(--gold-main); color: var(--gold-bright); padding: 8px 10px; font-family: var(--font-undertale); font-size: 1.3rem; border-radius: 4px; outline: none; }
-        .auth-error { color: #ff5555; font-size: 1rem; display: none; text-align: center; }
-        .modal-switch { text-align: center; font-size: 1.1rem; cursor: pointer; text-decoration: underline; margin-top: 4px; }
-        .modal-actions { display: flex; justify-content: space-between; gap: 10px; margin-top: 8px; }
+
+        .modal-box {
+            background: #14120a;
+            border: 2px solid var(--gold-main);
+            padding: 25px;
+            border-radius: 14px;
+            width: 420px;
+            max-width: 90vw;
+            box-shadow: 0 0 25px rgba(212, 178, 54, 0.4);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .modal-title {
+            font-size: 2.2rem;
+            text-align: center;
+            color: var(--gold-bright);
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .form-input, .form-select, .form-textarea {
+            background: #080705;
+            border: 1px solid var(--gold-main);
+            color: var(--gold-bright);
+            padding: 8px 10px;
+            font-family: var(--font-undertale);
+            font-size: 1.3rem;
+            border-radius: 4px;
+            outline: none;
+        }
+
+        .auth-error {
+            color: #ff5555;
+            font-size: 1rem;
+            display: none;
+            text-align: center;
+        }
+
+        .modal-switch {
+            text-align: center;
+            font-size: 1.1rem;
+            cursor: pointer;
+            text-decoration: underline;
+            margin-top: 4px;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            margin-top: 8px;
+        }
         .modal-actions .auth-btn { flex: 1; text-align: center; }
-        .empty-placeholder { font-size: 1.1rem; opacity: 0.6; font-style: italic; }
     </style>
 </head>
 <body onload="brython()">
 
+    <audio id="click-sound" src="click.mp3" preload="auto"></audio>
     <input type="file" id="avatar-file-input" accept="image/*" style="display: none;" onchange="handleAvatarUpload(event)">
-    <input type="file" id="cover-file-input" accept="image/*" style="display:none;" onchange="handleCoverUpload(event)">
+    <input type="file" id="dwarf-cover-input" accept="image/*" style="display: none;" onchange="handleDwarfCoverUpload(event)">
+
+    <!-- Окно уведомлений -->
+    <div class="notification-overlay" id="notification-modal" onclick="closeNotificationsModal(event)">
+        <div class="notification-modal-box" onclick="event.stopPropagation()">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed var(--gold-main); padding-bottom: 8px;">
+                <div class="modal-title" style="font-size: 1.6rem;">Уведомления</div>
+                <button class="auth-btn" onclick="document.getElementById('notification-modal').classList.remove('open')" style="padding: 2px 6px;">✕</button>
+            </div>
+            <div id="notifications-list-container" style="display: flex; flex-direction: column; gap: 8px;">
+                <div class="empty-placeholder">Уведомлений пока нет...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модалка создания Жёлтого Карлика -->
+    <div class="modal-overlay" id="dwarf-create-modal">
+        <div class="modal-box" style="width: 520px;">
+            <div class="modal-title" style="font-size: 1.8rem;">Создать Жёлтого Карлика</div>
+            <div class="form-group">
+                <label>Название новости:</label>
+                <input type="text" class="form-input" id="dwarf-name-input" autocomplete="off">
+            </div>
+            <div class="form-group">
+                <label>Описание новости:</label>
+                <textarea class="form-textarea" id="dwarf-desc-input" placeholder="Текст новости..."></textarea>
+            </div>
+            <div class="form-group">
+                <label>Панорама новости:</label>
+                <button class="auth-btn" onclick="document.getElementById('dwarf-cover-input').click()">🖼 Загрузить панораму</button>
+                <span id="dwarf-cover-status" style="font-size: 1rem; opacity: 0.8; margin-top: 4px;">Панорама не выбрана (будет сгенерирована)</span>
+            </div>
+            <div class="modal-actions" style="margin-top: 12px;">
+                <button class="auth-btn" onclick="submitCreateDwarf()">Опубликовать</button>
+                <button class="auth-btn" onclick="closeDwarfCreateModal()">Отмена</button>
+            </div>
+        </div>
+    </div>
 
     <!-- Фиксированная шапка -->
     <header>
@@ -252,18 +1488,23 @@
                 <button class="nav-item" onclick="setTab(event, 'hall', 'Звёздный Зал')">Звёздный Зал</button>
                 <button class="nav-item" id="nav-proto-btn" style="display: none;" onclick="setTab(event, 'proto', 'Протозвездие')">Протозвездие</button>
                 <button class="nav-item" onclick="setTab(event, 'telescope', 'Телескоп Новостей')">Телескоп Новостей</button>
+                <button class="nav-item" id="nav-reports-btn" style="display: none; color: #ff5555;" onclick="setTab(event, 'reports', 'Ящик жалований')">Жалобы</button>
             </nav>
 
             <button class="auth-btn" id="auth-btn" onclick="openAuthModal()">Войти</button>
 
             <div class="user-header-profile" id="user-header-profile" onclick="openMyProfile()">
+                <button class="bell-icon-btn" id="bell-notifications-btn" title="Уведомления" onclick="event.stopPropagation(); openNotificationsModal()">🔔</button>
+                
                 <div class="user-header-text">
                     <div class="name" id="header-user-name">Никнейм</div>
                     <div class="role" id="header-user-role">[Начинающий]</div>
                     <button class="logout-btn" onclick="event.stopPropagation(); logout();">Выйти</button>
                 </div>
-                <div class="star-avatar-small" id="header-avatar-container">
-                    <svg class="star-shape" viewBox="0 0 100 100"><path d="M 50 0 C 50 35, 65 50, 100 50 C 65 50, 50 65, 50 100 C 50 65, 35 50, 0 50 C 35 50, 50 35, 50 0 Z" /></svg>
+                <div class="star-avatar-small" id="header-avatar-container" title="Перейти в профиль">
+                    <svg class="star-shape" viewBox="0 0 100 100">
+                        <path d="M 50 0 C 50 35, 65 50, 100 50 C 65 50, 50 65, 50 100 C 50 65, 35 50, 0 50 C 35 50, 50 35, 50 0 Z" />
+                    </svg>
                 </div>
             </div>
         </div>
@@ -272,8 +1513,10 @@
     <main id="main-layout">
         <aside class="profile-card" id="profile-sidebar">
             <div class="card-header">
-                <div class="star-avatar-large" id="main-avatar-container" onclick="triggerAvatarSelect()">
-                    <svg class="star-shape" viewBox="0 0 100 100"><path d="M 50 0 C 50 35, 65 50, 100 50 C 65 50, 50 65, 50 100 C 50 65, 35 50, 0 50 C 35 50, 50 35, 50 0 Z" /></svg>
+                <div class="star-avatar-large" id="main-avatar-container" onclick="triggerAvatarSelect()" title="Нажмите, чтобы загрузить аватар">
+                    <svg class="star-shape" viewBox="0 0 100 100">
+                        <path d="M 50 0 C 50 35, 65 50, 100 50 C 65 50, 50 65, 50 100 C 50 65, 35 50, 0 50 C 35 50, 50 35, 50 0 Z" />
+                    </svg>
                 </div>
                 <div class="card-user-info">
                     <div class="name" id="card-user-name">Никнейм</div>
@@ -283,32 +1526,51 @@
 
             <div class="stats-list">
                 <div class="stats-row"><span>Звёзд — <span id="stat-projects">0</span></span></div>
+                <div class="stats-row"><span>Наград — <span id="stat-awards">0</span></span></div>
                 <div class="stats-row"><span>Лайков — <span id="stat-likes">0</span></span></div>
-                <div class="stats-row"><span>Подписчиков — <span id="stat-followers">0</span></span></div>
                 <div class="stats-row"><span>Следующих — <span id="stat-following">0</span></span></div>
+                <div class="stats-row"><span>Подписчиков — <span id="stat-followers">0</span></span></div>
+                <div class="stats-row" style="margin-top: 8px;"><span>Репутация — <span id="stat-rep">6</span>/10</span></div>
                 <div class="stats-row highlight"><span>Вывод: <span id="stat-verdict">ты нормальный человек</span></span></div>
+            </div>
+
+            <div class="tester-panel" id="tester-panel">
+                <div style="color: var(--gold-bright);">Панель Тестера:</div>
+                <div class="tester-controls">
+                    <input type="number" id="tester-rep-input" class="tester-input" min="0" max="10" value="6">
+                    <button class="auth-btn" onclick="changeReputationTester()">Изменить</button>
+                </div>
             </div>
         </aside>
 
         <section class="content-section">
-            <!-- Главная -->
+            <!-- Главная (Строго чистый оригинальный дизайн с инструкцией по файлообменникам) -->
             <div id="tab-main" class="tab-page active">
                 <h1 class="page-title">О сайте</h1>
-                <p class="page-text">Staralgo это фан проект по алгоритмике созданный из за проблем с его аналогом AlgoVive! Сам проект создан НЕзморином и Никролом.</p>
+                <p class="page-text">Staralgo это фан проект по алгоритмике созданный из за проблем с его аналогом AlgoVive! Сам проект создан НЕзморином и Никролом В данной версии имеется:
+ 
+1.Рабочая регистрация и профили
+2.Загрузка проектов (ещё с проблемами) 
+3.Селебрити (у нас сверхновые) Администрация и т д.(короче то что есть на алговив но лучше)
+Мы будем признательны при поддержке! Также вступайте в дискорд сервер: (ссылка на север). Спасибо за посещение сайта удачи!</p>
 
+                <!-- Блок правильной загрузки файлов (Модель AlgoVive) -->
                 <div class="info-box-styled">
-                    <h3>🚀 ЗАГРУЗКА ФАЙЛОВ И ОБЛОЖЕК</h3>
-                    <p>• <b>Картинки и обложки:</b> <code>catbox.moe</code> | <code>imgbb.com</code></p>
-                    <p>• <b>Scratch файлы (.sb3):</b> <code>catbox.moe</code></p>
+                    <h3>🚀 ЗАГРУЗКА ФАЙЛОВ И ОБЛОЖЕК (Модель AlgoVive)</h3>
+                    <p>Так как наш проект хостится на бесплатной платформе <b>Cloudflare Pages</b>, мы экономим место и используем внешние прямые ссылки:</p>
+                    <p>• <b>Картинки и обложки:</b> <code>catbox.moe</code> | <code>imgbb.com</code> | <code>image2url.com</code> | <code>iimg.live</code></p>
+                    <p>• <b>Scratch проекты (.sb3):</b> <code>catbox.moe</code></p>
+                    <p>• <b>HTML / Игры:</b> <code>github.io</code> | <code>vercel.app</code> | <code>pagedrop.io</code></p>
+                    <p style="opacity: 0.8; margin-top: 6px;"><i>Заливайте файл на любой из указанных сайтов и вставляйте полученную ссылку при создании звезды!</i></p>
                 </div>
 
                 <div class="search-container">
                     <div class="search-title">Поиск пользователей</div>
                     <div class="search-input-row">
-                        <input type="text" id="user-search-input" class="search-input" placeholder="Введите никнейм друга..." oninput="handleUserSearch()">
+                        <input type="text" id="user-search-input" class="search-input" placeholder="Введите никнейм..." oninput="handleUserSearch()">
                     </div>
                     <div class="search-results-list" id="search-results-list">
-                        <div class="empty-placeholder">Начните ввод для поиска друга...</div>
+                        <div class="empty-placeholder">Начните ввод для поиска пользователей...</div>
                     </div>
                 </div>
             </div>
@@ -316,11 +1578,46 @@
             <!-- Звёздный Зал -->
             <div id="tab-hall" class="tab-page">
                 <h1 class="page-title">Звёздный Зал</h1>
+                
                 <div class="constellations-header">
-                    <span style="font-size: 1.6rem; color: var(--gold-bright);">Опубликованные звёзды</span>
+                    <span style="font-size: 1.6rem; color: var(--gold-bright);">Созвездия (Топ Звёзд)</span>
+                    <div class="filter-group">
+                        <button class="filter-btn active" onclick="setPeriodFilter(event, 'day')">День</button>
+                        <button class="filter-btn" onclick="setPeriodFilter(event, 'week')">Неделя</button>
+                        <button class="filter-btn" onclick="setPeriodFilter(event, 'month')">Месяц</button>
+                    </div>
                 </div>
+
+                <div class="search-container" style="max-width: 100%; margin-bottom: 20px;">
+                    <div class="search-title" style="font-size: 1.4rem;">Поиск звёзд</div>
+                    <div class="search-input-row">
+                        <input type="text" id="star-search-input" class="search-input" placeholder="Введите название звезды или автора..." oninput="handleStarSearch()">
+                    </div>
+                    <div class="search-results-list" id="star-search-results-list" style="display:none; max-height: 180px;"></div>
+                </div>
+
+                <div class="constellation-display-box" id="constellation-display-box">
+                    <span style="font-size: 1.3rem; opacity: 0.7;">Создавай звёзды и получай лайки, чтобы попасть в Созвездия!</span>
+                </div>
+
+                <div class="sub-filters-row1">
+                    <button class="sub-filter-pill active" onclick="setSortFilter(event, 'new')">Новые</button>
+                    <button class="sub-filter-pill" onclick="setSortFilter(event, 'popular')">Популярные (Лайки)</button>
+                    <button class="sub-filter-pill" onclick="setSortFilter(event, 'discussed')">Обсуждаемые</button>
+                    <button class="sub-filter-pill" onclick="setSortFilter(event, 'supernovas')">Сверхновые</button>
+                </div>
+
+                <div class="sub-filters-row2">
+                    <button class="sub-filter-pill active" onclick="setHallCategory(event, 'all')">Все</button>
+                    <button class="sub-filter-pill" onclick="setHallCategory(event, 'Scratch')">Scratch</button>
+                    <button class="sub-filter-pill" onclick="setHallCategory(event, 'Python')">Python</button>
+                    <button class="sub-filter-pill" onclick="setHallCategory(event, 'Картинки')">Картинки</button>
+                    <button class="sub-filter-pill" onclick="setHallCategory(event, 'Roblox')">Roblox</button>
+                    <button class="sub-filter-pill" onclick="setHallCategory(event, 'HTML')">HTML</button>
+                </div>
+
                 <div class="zvezdny-feed-grid" id="zvezdny-feed-grid">
-                    <div class="empty-placeholder">Пока нет опубликованных звёзд.</div>
+                    <div class="empty-placeholder">Пока нет опубликованных звёзд. Будьте первыми!</div>
                 </div>
             </div>
 
@@ -329,8 +1626,9 @@
                 <div class="proto-layout">
                     <div class="proto-sidebar">
                         <div class="proto-sidebar-title">ПРОТОЗВЕЗДИЕ</div>
-                        <div class="proto-nav-list">
-                            <button class="proto-nav-item active">Звёзды</button>
+                        <div class="proto-nav-list" id="proto-nav-list">
+                            <button class="proto-nav-item active" onclick="switchProtoSection(event, 'stars')">Звёзды</button>
+                            <button class="proto-nav-item" onclick="switchProtoSection(event, 'vacuum')">Вакуум</button>
                         </div>
                     </div>
                     <div class="proto-content-area" id="proto-main-content-area"></div>
@@ -338,49 +1636,124 @@
             </div>
 
             <!-- Телескоп Новостей -->
-            <div id="tab-telescope" class="tab-page">
-                <h1 class="page-title">Телескоп Новостей</h1>
-                <p class="page-text">Официальные новости космического сообщества.</p>
+            <div id="tab-telescope" class="tab-page" style="width: 100%;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h1 class="page-title" style="margin-bottom: 0;">Телескоп Новостей</h1>
+                    <button class="auth-btn" id="create-dwarf-btn" style="display: none;" onclick="openDwarfCreateModal()">+ Создать Карлика</button>
+                </div>
+                <p class="page-text">Официальные новости и события космоса от Администрации и Сингулярностей.</p>
+                <div class="dwarf-feed-grid" id="telescope-feed-grid">
+                    <div class="empty-placeholder">Новостей пока нет...</div>
+                </div>
+            </div>
+
+            <!-- Просмотр Жёлтого Карлика -->
+            <div id="tab-dwarf-viewer" class="tab-page">
+                <div class="star-editor-container">
+                    <div class="star-editor-top">
+                        <button class="auth-btn" onclick="setTab(null, 'telescope', 'Телескоп Новостей')">← К списку новостей</button>
+                        <h1 class="page-title" style="margin-bottom: 0;" id="dwarf-title-header">Жёлтый Карлик</h1>
+                        <div></div>
+                    </div>
+                    <div style="width: 100%; height: 380px; border-radius: 12px; border: 2px solid var(--gold-main); overflow: hidden; background: #000;">
+                        <img id="dwarf-panorama-img" style="width: 100%; height: 100%; object-fit: cover;" src="" alt="Dwarf Panorama">
+                    </div>
+                    <div class="editor-sidebar-box" style="width: 100%;">
+                        <div class="author-info-block" onclick="viewAuthorProfileFromDwarf()" style="cursor: pointer;">
+                            <div class="star-avatar-small" id="dwarf-author-avatar-box"></div>
+                            <div class="author-info-text">
+                                <div class="author-info-name" id="dwarf-author-name">Автор</div>
+                                <div class="author-info-role" id="dwarf-author-role">[Администратор]</div>
+                            </div>
+                        </div>
+                        <div class="star-detail-section">
+                            <div class="detail-label">НАЗВАНИЕ</div>
+                            <div class="detail-value" id="dwarf-detail-name">Название</div>
+                        </div>
+                        <div class="star-detail-section">
+                            <div class="detail-label">ОПИСАНИЕ НОВОСТИ</div>
+                            <div class="detail-value" id="dwarf-detail-desc">Описание...</div>
+                        </div>
+                        <div class="like-btn-box">
+                            <span style="font-size: 1.2rem;">❤️ <span id="dwarf-likes-counter">0</span> лайков</span>
+                            <button class="like-action-btn" onclick="likeCurrentDwarf()">👍 Оценить</button>
+                        </div>
+                    </div>
+                    <div class="comments-bottom-container">
+                        <div class="detail-label" style="font-size: 1.3rem; color: var(--gold-bright);">ОБСУЖДЕНИЕ НОВОСТИ</div>
+                        <div class="comments-list" id="dwarf-comments-list">
+                            <div class="empty-placeholder">Пока нет комментариев...</div>
+                        </div>
+                        <div class="comment-input-row">
+                            <input type="text" class="comment-input" id="dwarf-comment-input" placeholder="Написать комментарий...">
+                            <button class="auth-btn" onclick="postDwarfComment()">Отправить</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ящик жалований -->
+            <div id="tab-reports" class="tab-page">
+                <h1 class="page-title">Ящик жалований</h1>
+                <p class="page-text">Здесь собраны жалобы пользователей.</p>
+                <div class="reports-grid" id="reports-grid-container">
+                    <div class="empty-placeholder">Жалоб пока нет. Всё спокойно в космосе!</div>
+                </div>
             </div>
 
             <!-- Редактор звезды -->
             <div id="tab-star-editor" class="tab-page">
                 <div class="star-editor-container">
                     <div class="star-editor-top">
-                        <button class="auth-btn" onclick="setTab(null, 'proto', 'Протозвездие')">← К списку звезд</button>
-                        <h1 class="page-title" style="margin-bottom: 0;" id="editor-project-title-header">Звезда</h1>
-                        <button class="auth-btn" onclick="openPublishModal()">Публикация</button>
+                        <button class="auth-btn" id="star-back-btn" onclick="goBackFromStarEditor()">← К списку звезд</button>
+                        <h1 class="page-title" style="margin-bottom: 0;" id="editor-project-title-header">Название звезды</h1>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="auth-btn" id="publish-modal-trigger-btn" onclick="openPublishModal()">Публикация</button>
+                        </div>
                     </div>
 
                     <div class="star-panorama-wrapper">
-                        <img id="star-panorama-img" class="star-panorama-banner" src="" alt="Панорама">
+                        <img id="star-panorama-img" class="star-panorama-banner" src="" alt="Панорама звезды">
+                        <button class="panorama-zoom-btn" onclick="openPanoramaZoom()">🔍 Просмотр</button>
                     </div>
 
                     <div class="editor-split-layout">
-                        <div class="editor-preview-box">
-                            <div class="detail-label">ДАННЫЕ / КОД ЗВЕЗДЫ</div>
-                            <textarea id="star-code-input" class="form-textarea" style="min-height: 150px;" oninput="updateStarData(this.value)"></textarea>
-                        </div>
+                        <div class="editor-preview-box" id="editor-runtime-container"></div>
                         <div class="editor-sidebar-box">
-                            <div class="author-info-block">
+                            <div class="author-info-block" onclick="viewAuthorProfileFromStar()" style="cursor: pointer;">
                                 <div class="star-avatar-small" id="star-author-avatar-box"></div>
-                                <div>
+                                <div class="author-info-text">
                                     <div class="author-info-name" id="star-author-name">Автор</div>
                                     <div class="author-info-role" id="star-author-role">[Начинающий]</div>
                                 </div>
                             </div>
                             <div class="star-detail-section">
-                                <div class="detail-label">НАЗВАНИЕ</div>
+                                <div class="detail-label">НАЗВАНИЕ ЗВЁЗДЫ</div>
                                 <div class="detail-value" id="star-detail-name">Название</div>
                             </div>
                             <div class="star-detail-section">
                                 <div class="detail-label">ОПИСАНИЕ</div>
-                                <div class="detail-value" id="star-detail-desc">Нет описания</div>
+                                <div class="detail-value" id="star-detail-desc">Без описания...</div>
+                            </div>
+                            <div class="counters-row">
+                                <span>👁 <span id="star-views-counter">0</span> просм.</span>
+                                <span>💬 <span id="star-comments-counter">0</span> коммент.</span>
                             </div>
                             <div class="like-btn-box">
-                                <span>❤️ <span id="star-likes-counter">0</span> лайков</span>
+                                <span style="font-size: 1.2rem;">❤️ <span id="star-likes-counter">0</span> лайков</span>
                                 <button class="like-action-btn" onclick="likeCurrentStar()">👍 Оценить</button>
                             </div>
+                        </div>
+                    </div>
+
+                    <div class="comments-bottom-container">
+                        <div class="detail-label" style="font-size: 1.3rem; color: var(--gold-bright);">ОБСУЖДЕНИЕ И КОММЕНТАРИИ</div>
+                        <div class="comments-list" id="star-comments-list">
+                            <div class="empty-placeholder">Пока нет комментариев...</div>
+                        </div>
+                        <div class="comment-input-row">
+                            <input type="text" class="comment-input" id="new-comment-input" placeholder="Написать комментарий...">
+                            <button class="auth-btn" onclick="postComment()">Отправить</button>
                         </div>
                     </div>
                 </div>
@@ -389,12 +1762,12 @@
             <!-- Страница профиля -->
             <div id="tab-profile" class="tab-page">
                 <div class="profile-page-container">
-                    <div style="margin-bottom:-10px;">
-                        <button class="auth-btn" onclick="setTab(null, 'main', 'Главная')">← На главную</button>
+                    <div class="profile-back-row" id="profile-back-row" style="display:none; margin-bottom:-12px;">
+                        <button class="auth-btn" onclick="openMyProfile()">← К моему профилю</button>
                     </div>
 
                     <div class="profile-page-header">
-                        <div class="profile-page-avatar" id="profile-page-avatar-container">
+                        <div class="profile-page-avatar" id="profile-page-avatar-container" onclick="checkAndTriggerAvatar()">
                             <svg class="star-shape" viewBox="0 0 100 100"><path d="M 50 0 C 50 35, 65 50, 100 50 C 65 50, 50 65, 50 100 C 50 65, 35 50, 0 50 C 35 50, 50 35, 50 0 Z"/></svg>
                         </div>
                         <div class="profile-page-info">
@@ -404,6 +1777,7 @@
                             </div>
                             <div class="profile-page-stats">
                                 <div class="p-stat-item"><span class="p-stat-num" id="pp-stat-projects">0</span><span class="p-stat-label">звёзд</span></div>
+                                <div class="p-stat-item"><span class="p-stat-num" id="pp-stat-awards">0</span><span class="p-stat-label">наград</span></div>
                                 <div class="p-stat-item"><span class="p-stat-num" id="pp-stat-likes">0</span><span class="p-stat-label">лайков</span></div>
                                 <div class="p-stat-item"><span class="p-stat-num" id="pp-stat-followers">0</span><span class="p-stat-label">подписчики</span></div>
                                 <div class="p-stat-item"><span class="p-stat-num" id="pp-stat-following">0</span><span class="p-stat-label">следует за</span></div>
@@ -413,15 +1787,55 @@
 
                     <div class="profile-bio-box">
                         <div class="bio-header">
-                            <span style="font-size: 1.2rem; color: var(--gold-main);">О СЕБЕ</span>
+                            <span class="bio-title">О СЕБЕ</span>
                             <button class="bio-edit-btn" id="bio-edit-btn" onclick="toggleBioEdit()">РЕДАКТИРОВАТЬ</button>
                         </div>
-                        <div class="bio-text" id="bio-display-text">Статус не указан...</div>
+                        <div class="bio-text" id="bio-display-text"></div>
                         <textarea class="bio-textarea" id="bio-textarea-input"></textarea>
+                    </div>
+
+                    <div style="display:flex; flex-direction:column; gap:20px;">
+                        <div class="project-category-card-wide">
+                            <div class="cat-title">Новые звёзды</div>
+                            <div class="profile-stars-horizontal-row" id="profile-grid-new"><div class="empty-placeholder">Нет звёзд</div></div>
+                        </div>
+                        <div class="project-category-card-wide">
+                            <div class="cat-title">Самые-самые звёзды</div>
+                            <div class="profile-stars-horizontal-row" id="profile-grid-top"><div class="empty-placeholder">Нет звёзд</div></div>
+                        </div>
+                    </div>
+
+                    <div class="relations-row">
+                        <div class="relation-box">
+                            <div class="cat-title">Подписчики (<span id="count-followers-top">0</span>)</div>
+                            <div class="relation-users-grid" id="followers-grid"><span class="empty-placeholder">Никого нет</span></div>
+                        </div>
+                        <div class="relation-box">
+                            <div class="cat-title">Друзья (<span id="count-following-top">0</span>)</div>
+                            <div class="relation-users-grid" id="following-grid"><span class="empty-placeholder">Никого нет</span></div>
+                        </div>
                     </div>
                 </div>
             </div>
         </section>
+
+        <!-- Сингулярность (Админ колонка справа) -->
+        <aside id="singularity-admin-column" style="display:none; background: var(--card-bg); border: 2px solid var(--gold-main); padding: 18px; border-radius: 14px; font-size: 0.95rem;">
+            <div style="font-size: 1.5rem; color: var(--gold-bright); margin-bottom: 15px;">⭐ СИНГУЛЯРНОСТЬ</div>
+            <div style="display: flex; flex-direction: column; gap: 14px;">
+                <div>
+                    <label style="font-size: 1.1rem;">Управление пользователем:</label>
+                    <select id="admin-user-select" class="form-select" onchange="loadAdminUserData(this.value)" style="width: 100%; font-size: 1rem; padding: 6px; margin-top: 6px;"></select>
+                </div>
+                <div id="admin-user-edit-form" style="display:none; flex-direction:column; gap: 10px; border-top: 1px dashed var(--gold-main); padding-top: 10px;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                        <div><label style="font-size:0.9rem;">Реп (0-10):</label><input type="number" id="admin-edit-rep" class="form-input" min="0" max="10" style="width:100%; font-size:1rem; padding:4px;"></div>
+                        <div><label style="font-size:0.9rem;">Лайки:</label><input type="number" id="admin-edit-likes" class="form-input" min="0" style="width:100%; font-size:1rem; padding:4px;"></div>
+                    </div>
+                    <button class="auth-btn" onclick="saveAdminUserData()" style="width: 100%; font-size: 1rem; padding: 6px;">Сохранить</button>
+                </div>
+            </div>
+        </aside>
     </main>
 
     <!-- Модалка авторизации -->
@@ -451,6 +1865,7 @@
                     <option value="Scratch">Scratch</option>
                     <option value="Python">Python</option>
                     <option value="HTML">HTML</option>
+                    <option value="Картинки">Картинки</option>
                 </select>
             </div>
             <div class="modal-actions" style="margin-top: 12px;">
@@ -462,38 +1877,100 @@
 
     <!-- Модалка публикации -->
     <div class="modal-overlay" id="publish-modal">
-        <div class="modal-box" style="width: 500px;">
+        <div class="modal-box" style="width: 560px;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div class="modal-title" style="font-size: 1.8rem; text-align: left;">Публикация</div>
+                <div class="modal-title" style="font-size: 1.8rem; text-align: left;">Описание и публикация</div>
                 <button class="auth-btn" onclick="closePublishModal()" style="padding: 2px 6px;">✕</button>
             </div>
-            <div class="form-group"><label>Описание</label><textarea class="form-textarea" id="modal-proj-desc" placeholder="Расскажите о звезде..."></textarea></div>
-            <div class="form-group"><label>Ссылка на панораму (картинку):</label><input type="text" class="form-input" id="modal-proj-cover" placeholder="https://i.imgur.com/..."></div>
+            <div class="form-group"><label>НАЗВАНИЕ</label><input type="text" class="form-input" id="modal-proj-name"></div>
+            <div class="form-group"><label>ОПИСАНИЕ</label><textarea class="form-textarea" id="modal-proj-desc" placeholder="Расскажите о вашей звезде..."></textarea></div>
+            <div style="display: flex; gap: 10px; margin-top: 5px;">
+                <button class="auth-btn" style="flex: 1;" onclick="document.getElementById('cover-file-input').click()">🖼️ Загрузить обложку (Панораму)</button>
+            </div>
+            <input type="file" id="cover-file-input" accept="image/*" style="display:none;" onchange="handleCoverUpload(event)">
             <div style="margin-top: 10px;">
-                <button class="auth-btn" onclick="togglePublishProject()" style="width:100%;">🌐 Опубликовать в Звёздный зал</button>
+                <button class="auth-btn" id="publish-toggle-btn" onclick="togglePublishProject()" style="width:100%;">🌐 Опубликовать в Звёздный зал</button>
             </div>
         </div>
     </div>
 
+    <!-- Модалка увеличения панорамы -->
+    <div class="modal-overlay" id="panorama-zoom-modal" onclick="this.classList.remove('open')">
+        <div style="max-width: 90vw; max-height: 90vh;" onclick="event.stopPropagation()">
+            <img id="zoomed-panorama-img" style="width: 100%; height: auto; border: 2px solid var(--gold-main); border-radius: 10px;" src="" alt="Zoomed Panorama">
+        </div>
+    </div>
+
+    <!-- CodeMirror 5 CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemir.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/xml/xml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/css/css.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/htmlmixed/htmlmixed.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
+
     <script>
         let currentTab = 'main';
-        let authMode = 'register';
+        let authMode = 'register'; 
         let currentUser = null;
         let viewingUser = null;
         let isEditingBio = false;
         let activeStarObject = null;
+        let activeDwarfObject = null;
+        let tempDwarfCover = '';
+        let codeMirrorEditor = null;
+        let currentHallCategory = 'all';
+        let currentPeriodFilter = 'day';
+        let currentSortFilter = 'new';
+        let replyingToCommentId = null;
+        let activeProtoSectionName = 'stars';
+        let starOpenSource = 'proto';
 
         const defaultStarSvg = `<svg class="star-shape" viewBox="0 0 100 100"><path d="M 50 0 C 50 35, 65 50, 100 50 C 65 50, 50 65, 50 100 C 50 65, 35 50, 0 50 C 35 50, 50 35, 50 0 Z"/></svg>`;
 
         function generateRandomPanorama(seedStr) {
+            if (!seedStr) seedStr = "star";
             let hash = 0;
             for (let i = 0; i < seedStr.length; i++) hash = seedStr.charCodeAt(i) + ((hash << 5) - hash);
             const hue = Math.abs(hash) % 360;
-            const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="300" viewBox="0 0 800 300"><rect width="800" height="300" fill="hsl(${hue}, 65%, 12%)"/><circle cx="400" cy="150" r="45" fill="hsl(${hue+180}, 90%, 80%)" opacity="0.8"/></svg>`;
-            return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg)));
+            const c1 = `hsl(${hue}, 65%, 14%)`;
+            const starColor = `hsl(${(hue + 180) % 360}, 90%, 85%)`;
+            const mainX = 200 + (Math.abs(hash * 13) % 400);
+            const mainY = 80 + (Math.abs(hash * 7) % 140);
+            const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="300" viewBox="0 0 800 300"><rect width="800" height="300" fill="${c1}"/><circle cx="${mainX}" cy="${mainY}" r="40" fill="${starColor}" opacity="0.8"/></svg>`;
+            return 'data:image/svg+xml;base64,' + b2a(svg);
+        }
+
+        function generateYellowDwarfPanorama(seedStr) {
+            const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="300" viewBox="0 0 800 300"><rect width="800" height="300" fill="#141005"/><circle cx="400" cy="150" r="60" fill="#f5d65c" opacity="0.9"/></svg>`;
+            return 'data:image/svg+xml;base64,' + b2a(svg);
+        }
+
+        function b2a(str) { return btoa(unescape(encodeURIComponent(str))); }
+        
+        function isUserSingularity(username) {
+            if (!username) return false;
+            return username.toLowerCase() === 'nezmorin' || username.toLowerCase() === 'papa liva';
+        }
+
+        function getUsersDB() {
+            return JSON.parse(localStorage.getItem('staralgo_users_db') || '{}');
+        }
+
+        function saveUsersDB(db) {
+            localStorage.setItem('staralgo_users_db', JSON.stringify(db));
+        }
+
+        function getDwarfsDB() {
+            return JSON.parse(localStorage.getItem('staralgo_dwarfs_db') || '[]');
+        }
+
+        function saveDwarfsDB(dwarfs) {
+            localStorage.setItem('staralgo_dwarfs_db', JSON.stringify(dwarfs));
         }
 
         function initApp() {
+            updateRealTime();
             setInterval(updateRealTime, 1000);
             try {
                 const savedSession = localStorage.getItem('staralgo_current_session');
@@ -503,16 +1980,34 @@
                     applyUserSession();
                 }
             } catch (e) { console.error(e); }
+
             handleUserSearch();
             renderZvezdnyFeed();
+            renderTelescopeFeed();
+            updateSidebarVisibility();
+
             window.addEventListener('storage', (e) => {
-                if (e.key === 'staralgo_users_db') {
+                if (e.key === 'staralgo_users_db' || e.key === 'staralgo_dwarfs_db') {
                     syncUserFromDB();
                     if (currentTab === 'hall') renderZvezdnyFeed();
+                    if (currentTab === 'telescope') renderTelescopeFeed();
+                    if (currentTab === 'proto' && currentUser) switchProtoSection(null, activeProtoSectionName);
                     if (viewingUser) {
-                        let db = JSON.parse(localStorage.getItem('staralgo_users_db') || '{}');
+                        let db = getUsersDB();
                         let updated = db[viewingUser.username.toLowerCase()];
                         if (updated) { viewingUser = updated; renderProfileData(viewingUser); }
+                    }
+                    if (activeStarObject) {
+                        let db = getUsersDB();
+                        const authorUser = db[activeStarObject.author.toLowerCase()];
+                        if (authorUser && authorUser.projectsList) {
+                            const updatedProj = authorUser.projectsList.find(p => p.id === activeStarObject.id);
+                            if (updatedProj) {
+                                activeStarObject = updatedProj;
+                                renderStarComments();
+                                document.getElementById('star-likes-counter').textContent = activeStarObject.likes || 0;
+                            }
+                        }
                     }
                 }
             });
@@ -520,7 +2015,7 @@
 
         function syncUserFromDB() {
             if (!currentUser) return;
-            let db = JSON.parse(localStorage.getItem('staralgo_users_db') || '{}');
+            let db = getUsersDB();
             let fresh = db[currentUser.username.toLowerCase()];
             if (fresh) { currentUser = fresh; applyUserSession(); }
         }
@@ -529,30 +2024,79 @@
 
         function updateRealTime() {
             const now = new Date();
-            const timeElem = document.getElementById('timer');
-            if (timeElem) timeElem.textContent = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const timerElem = document.getElementById('timer');
+            if (timerElem) timerElem.textContent = `${hours}:${minutes}`;
+        }
+
+        function getVerdict(rep) {
+            rep = Number(rep);
+            if (rep >= 7) return 'ты хороший человек';
+            if (rep >= 5) return 'ты нормальный человек';
+            return 'ты плохой человек';
         }
 
         function updateSidebarVisibility() {
             const sidebar = document.getElementById('profile-sidebar');
             const mainLayout = document.getElementById('main-layout');
+            const adminCol = document.getElementById('singularity-admin-column');
             if (!sidebar || !mainLayout) return;
-            const show = (currentUser && currentTab === 'main');
-            sidebar.style.display = show ? 'block' : 'none';
-            mainLayout.className = show ? 'layout-sidebar-content' : '';
+
+            const isSing = currentUser && isUserSingularity(currentUser.username);
+            const showSidebar = (currentUser && currentTab === 'main');
+            const showAdmin = (isSing && currentTab === 'main');
+
+            sidebar.style.display = showSidebar ? 'block' : 'none';
+            if (adminCol) {
+                adminCol.style.display = showAdmin ? 'block' : 'none';
+                if (showAdmin) populateAdminUserSelect();
+            }
+
+            mainLayout.className = '';
+            if (showSidebar && showAdmin) mainLayout.classList.add('layout-sidebar-content-admin');
+            else if (showSidebar) mainLayout.classList.add('layout-sidebar-content');
+            else if (showAdmin) mainLayout.classList.add('layout-content-admin');
+        }
+
+        function updateNavVisibility() {
+            const protoBtn = document.getElementById('nav-proto-btn');
+            if (protoBtn) protoBtn.style.display = currentUser ? 'inline-block' : 'none';
+            
+            const reportsBtn = document.getElementById('nav-reports-btn');
+            if (reportsBtn) reportsBtn.style.display = (currentUser && isUserSingularity(currentUser.username)) ? 'inline-block' : 'none';
+
+            const createDwarfBtn = document.getElementById('create-dwarf-btn');
+            if (createDwarfBtn) createDwarfBtn.style.display = (currentUser && isUserSingularity(currentUser.username)) ? 'inline-block' : 'none';
         }
 
         function setTab(event, tabId, name) {
             if (tabId === 'proto' && !currentUser) { openAuthModal(); return; }
             currentTab = tabId;
-            document.querySelectorAll('.tab-page').forEach(p => p.classList.remove('active'));
-            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
-            document.getElementById(`tab-${tabId}`).classList.add('active');
-            if (event && event.currentTarget) event.currentTarget.classList.add('active');
-            document.getElementById('breadcrumb').textContent = name;
+            document.querySelectorAll('.tab-page').forEach(page => page.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
 
-            if (tabId === 'proto' && currentUser) renderProtoStars();
+            const targetPage = document.getElementById(`tab-${tabId}`);
+            if (targetPage) targetPage.classList.add('active');
+
+            if (event && event.currentTarget) {
+                event.currentTarget.classList.add('active');
+            } else {
+                const navItems = document.querySelectorAll('.nav-item');
+                navItems.forEach(item => {
+                    if (item.getAttribute('onclick') && item.getAttribute('onclick').includes(`'${tabId}'`)) {
+                        item.classList.add('active');
+                    }
+                });
+            }
+
+            const breadcrumb = document.getElementById('breadcrumb');
+            if (breadcrumb) breadcrumb.textContent = name;
+
+            if (tabId === 'proto' && currentUser) switchProtoSection(null, activeProtoSectionName);
             if (tabId === 'hall') renderZvezdnyFeed();
+            if (tabId === 'telescope') renderTelescopeFeed();
+            if (tabId === 'reports') renderReports();
             updateSidebarVisibility();
         }
 
@@ -560,8 +2104,10 @@
             viewingUser = null;
             if (currentUser) {
                 renderProfileData(currentUser);
+                document.getElementById('profile-back-row').style.display = 'none';
                 document.getElementById('follow-action-btn').style.display = 'none';
-                setTab(null, 'profile', 'Профиль');
+                document.getElementById('bio-edit-btn').style.display = 'inline-block';
+                setTab(null, 'profile', 'Мой Профиль');
             }
         }
 
@@ -576,39 +2122,62 @@
         }
 
         function handleAuthSubmit() {
-            const username = document.getElementById('auth-username').value.trim();
-            const password = document.getElementById('auth-password').value.trim();
-            const err = document.getElementById('auth-error');
-            if (!username || !password) { err.textContent = 'Заполните все поля!'; err.style.display = 'block'; return; }
+            const usernameInput = document.getElementById('auth-username').value.trim();
+            const passwordInput = document.getElementById('auth-password').value.trim();
+            const errorElem = document.getElementById('auth-error');
 
-            let db = JSON.parse(localStorage.getItem('staralgo_users_db') || '{}');
+            if (!usernameInput || !passwordInput) {
+                errorElem.textContent = 'Заполните все поля!';
+                errorElem.style.display = 'block';
+                return;
+            }
+
+            let usersDB = getUsersDB();
             if (authMode === 'register') {
-                if (db[username.toLowerCase()]) { err.textContent = 'Имя занято!'; err.style.display = 'block'; return; }
+                if (usersDB[usernameInput.toLowerCase()]) {
+                    errorElem.textContent = 'Пользователь уже существует!';
+                    errorElem.style.display = 'block';
+                    return;
+                }
                 currentUser = {
-                    username, password, role: '[Начинающий]',
-                    projectsList: [], followersList: [], followingList: [],
-                    likes: 0, avatarHtml: defaultStarSvg, bio: ''
+                    username: usernameInput,
+                    password: passwordInput,
+                    role: isUserSingularity(usernameInput) ? '[Сингулярность]' : '[Начинающий]',
+                    reputation: 6,
+                    projectsList: [],
+                    vacuumList: [],
+                    followingList: [],
+                    followersList: [],
+                    notifications: [],
+                    avatarHtml: defaultStarSvg,
+                    bio: '',
+                    likes: 0
                 };
-                db[username.toLowerCase()] = currentUser;
-                localStorage.setItem('staralgo_users_db', JSON.stringify(db));
-                saveSession();
+                usersDB[usernameInput.toLowerCase()] = currentUser;
+                saveUsersDB(usersDB);
+                saveSession(currentUser);
                 applyUserSession();
                 closeAuthModal();
             } else {
-                let user = db[username.toLowerCase()];
-                if (!user || user.password !== password) { err.textContent = 'Неверный логин или пароль!'; err.style.display = 'block'; return; }
+                const user = usersDB[usernameInput.toLowerCase()];
+                if (!user || user.password !== passwordInput) {
+                    errorElem.textContent = 'Неверный никнейм или пароль!';
+                    errorElem.style.display = 'block';
+                    return;
+                }
                 currentUser = user;
-                saveSession();
+                saveSession(currentUser);
                 applyUserSession();
                 closeAuthModal();
             }
         }
 
-        function saveSession() {
-            localStorage.setItem('staralgo_current_session', JSON.stringify(currentUser));
-            let db = JSON.parse(localStorage.getItem('staralgo_users_db') || '{}');
-            db[currentUser.username.toLowerCase()] = currentUser;
-            localStorage.setItem('staralgo_users_db', JSON.stringify(db));
+        function saveSession(user) {
+            if (!user) user = currentUser;
+            localStorage.setItem('staralgo_current_session', JSON.stringify(user));
+            let usersDB = getUsersDB();
+            usersDB[user.username.toLowerCase()] = user;
+            saveUsersDB(usersDB);
         }
 
         function applyUserSession() {
@@ -619,8 +2188,17 @@
             document.getElementById('card-user-role').textContent = currentUser.role;
             document.getElementById('stat-projects').textContent = (currentUser.projectsList || []).length;
             document.getElementById('stat-likes').textContent = currentUser.likes || 0;
-            document.getElementById('stat-followers').textContent = (currentUser.followersList || []).length;
             document.getElementById('stat-following').textContent = (currentUser.followingList || []).length;
+            document.getElementById('stat-followers').textContent = (currentUser.followersList || []).length;
+            document.getElementById('stat-rep').textContent = currentUser.reputation || 6;
+            document.getElementById('stat-verdict').textContent = getVerdict(currentUser.reputation || 6);
+
+            const unread = (currentUser.notifications || []).some(n => !n.read);
+            const bell = document.getElementById('bell-notifications-btn');
+            if (bell) {
+                if (unread) bell.classList.add('has-unread');
+                else bell.classList.remove('has-unread');
+            }
 
             document.getElementById('auth-btn').style.display = 'none';
             document.getElementById('user-header-profile').style.display = 'flex';
@@ -628,8 +2206,8 @@
                 document.getElementById('main-avatar-container').innerHTML = currentUser.avatarHtml;
                 document.getElementById('header-avatar-container').innerHTML = currentUser.avatarHtml;
             }
-            document.getElementById('nav-proto-btn').style.display = 'inline-block';
             updateSidebarVisibility();
+            updateNavVisibility();
         }
 
         function logout() {
@@ -639,20 +2217,26 @@
         }
 
         function triggerAvatarSelect() { document.getElementById('avatar-file-input').click(); }
-        function handleAvatarUpload(e) {
-            const file = e.target.files[0];
+        function handleAvatarUpload(event) {
+            const file = event.target.files[0];
             if (!file) return;
-            const r = new FileReader();
-            r.onload = function(evt) {
-                currentUser.avatarHtml = `<img src="${evt.target.result}" alt="Avatar">`;
-                saveSession();
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                currentUser.avatarHtml = `<img src="${e.target.result}" alt="Avatar">`;
+                saveSession(currentUser);
                 applyUserSession();
             };
-            r.readAsDataURL(file);
+            reader.readAsDataURL(file);
+        }
+
+        function checkAndTriggerAvatar() {
+            if (!viewingUser || (currentUser && viewingUser.username.toLowerCase() === currentUser.username.toLowerCase())) {
+                triggerAvatarSelect();
+            }
         }
 
         function toggleBioEdit() {
-            if (viewingUser) return;
+            if (viewingUser && viewingUser.username.toLowerCase() !== currentUser.username.toLowerCase()) return;
             isEditingBio = !isEditingBio;
             document.getElementById('bio-display-text').style.display = isEditingBio ? 'none' : 'block';
             document.getElementById('bio-textarea-input').style.display = isEditingBio ? 'block' : 'none';
@@ -660,47 +2244,8 @@
             if (!isEditingBio) {
                 currentUser.bio = document.getElementById('bio-textarea-input').value;
                 document.getElementById('bio-display-text').textContent = currentUser.bio || 'Статус не указан...';
-                saveSession();
+                saveSession(currentUser);
             }
-        }
-
-        function handleUserSearch() {
-            const query = document.getElementById('user-search-input').value.toLowerCase().trim();
-            const list = document.getElementById('search-results-list');
-            let db = JSON.parse(localStorage.getItem('staralgo_users_db') || '{}');
-            const found = Object.values(db).filter(u => u.username.toLowerCase().includes(query));
-            if (!query || found.length === 0) {
-                list.innerHTML = `<div class="empty-placeholder">Пользователи не найдены</div>`;
-                return;
-            }
-            list.innerHTML = found.map(u => `
-                <div class="search-result-card" onclick="viewUserProfile('${u.username}')">
-                    <div class="search-result-avatar">${u.avatarHtml || defaultStarSvg}</div>
-                    <div class="search-result-info">
-                        <div class="uname">${u.username}</div>
-                        <div class="urole">${u.role} — Лайков: ${u.likes || 0}</div>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        function viewUserProfile(username) {
-            let db = JSON.parse(localStorage.getItem('staralgo_users_db') || '{}');
-            let target = db[username.toLowerCase()];
-            if (!target) return;
-            viewingUser = target;
-            renderProfileData(target);
-            const isSelf = currentUser && currentUser.username.toLowerCase() === target.username.toLowerCase();
-            const followBtn = document.getElementById('follow-action-btn');
-            if (isSelf || !currentUser) {
-                followBtn.style.display = 'none';
-            } else {
-                followBtn.style.display = 'inline-block';
-                const isFollowing = (currentUser.followingList || []).includes(target.username);
-                followBtn.textContent = isFollowing ? '✓ Вы подписаны' : '➕ Подписаться';
-                followBtn.className = isFollowing ? 'follow-btn following' : 'follow-btn';
-            }
-            setTab(null, 'profile', `Профиль: ${target.username}`);
         }
 
         function renderProfileData(user) {
@@ -712,11 +2257,106 @@
             document.getElementById('bio-display-text').textContent = user.bio || 'Статус не указан...';
             document.getElementById('bio-textarea-input').value = user.bio || '';
             document.getElementById('profile-page-avatar-container').innerHTML = user.avatarHtml || defaultStarSvg;
+
+            document.getElementById('count-followers-top').textContent = (user.followersList || []).length;
+            document.getElementById('count-following-top').textContent = (user.followingList || []).length;
+
+            const followersGrid = document.getElementById('followers-grid');
+            if (!user.followersList || user.followersList.length === 0) {
+                followersGrid.innerHTML = `<span class="empty-placeholder">Никого нет</span>`;
+            } else {
+                followersGrid.innerHTML = user.followersList.map(fName => `
+                    <button class="sub-filter-pill" onclick="viewUserProfile('${fName}')">${fName}</button>
+                `).join('');
+            }
+
+            const followingGrid = document.getElementById('following-grid');
+            if (!user.followingList || user.followingList.length === 0) {
+                followingGrid.innerHTML = `<span class="empty-placeholder">Никого нет</span>`;
+            } else {
+                followingGrid.innerHTML = user.followingList.map(fName => `
+                    <button class="sub-filter-pill" onclick="viewUserProfile('${fName}')">${fName}</button>
+                `).join('');
+            }
+
+            const projects = user.projectsList || [];
+            const newGrid = document.getElementById('profile-grid-new');
+            const topGrid = document.getElementById('profile-grid-top');
+
+            if (projects.length === 0) {
+                newGrid.innerHTML = `<div class="empty-placeholder">Нет звёзд</div>`;
+                topGrid.innerHTML = `<div class="empty-placeholder">Нет звёзд</div>`;
+            } else {
+                const sortedNew = [...projects].sort((a,b) => b.id - a.id);
+                const sortedTop = [...projects].sort((a,b) => (b.likes||0) - (a.likes||0));
+
+                newGrid.innerHTML = sortedNew.map(p => `
+                    <div class="profile-horizontal-star-card" onclick="viewPublishedStar('${user.username}', ${p.id})">
+                        <img src="${p.coverUrl || generateRandomPanorama(p.name)}" alt="cover">
+                        <div style="font-size:1.1rem; color:var(--gold-bright); font-weight:bold;">${p.name}</div>
+                        <div style="font-size:0.9rem; opacity:0.8;">❤️ ${p.likes||0}</div>
+                    </div>
+                `).join('');
+
+                topGrid.innerHTML = sortedTop.map(p => `
+                    <div class="profile-horizontal-star-card" onclick="viewPublishedStar('${user.username}', ${p.id})">
+                        <img src="${p.coverUrl || generateRandomPanorama(p.name)}" alt="cover">
+                        <div style="font-size:1.1rem; color:var(--gold-bright); font-weight:bold;">${p.name}</div>
+                        <div style="font-size:0.9rem; opacity:0.8;">❤️ ${p.likes||0}</div>
+                    </div>
+                `).join('');
+            }
+        }
+
+        function handleUserSearch() {
+            const query = document.getElementById('user-search-input').value.toLowerCase().trim();
+            const resultsList = document.getElementById('search-results-list');
+            let usersDB = getUsersDB();
+            if (!query) { resultsList.innerHTML = `<div class="empty-placeholder">Начните ввод для поиска пользователей...</div>`; return; }
+            const matched = Object.values(usersDB).filter(u => u.username.toLowerCase().includes(query));
+            resultsList.innerHTML = matched.length === 0 ? `<div class="empty-placeholder">Пользователи не найдены</div>` : matched.map(u => `
+                <div class="search-result-card" onclick="viewUserProfile('${u.username}')">
+                    <div class="search-result-avatar">${u.avatarHtml || defaultStarSvg}</div>
+                    <div class="search-result-info"><div class="uname">${u.username}</div><div class="urole">${u.role} | ❤️ ${u.likes||0}</div></div>
+                </div>
+            `).join('');
+        }
+
+        function viewUserProfile(username) {
+            let usersDB = getUsersDB();
+            const target = usersDB[username.toLowerCase()];
+            if (!target) return;
+            viewingUser = target;
+            renderProfileData(target);
+
+            const isSelf = currentUser && currentUser.username.toLowerCase() === target.username.toLowerCase();
+            const backRow = document.getElementById('profile-back-row');
+            const followBtn = document.getElementById('follow-action-btn');
+            const bioEditBtn = document.getElementById('bio-edit-btn');
+
+            if (isSelf) {
+                backRow.style.display = 'none';
+                followBtn.style.display = 'none';
+                bioEditBtn.style.display = 'inline-block';
+            } else {
+                backRow.style.display = 'block';
+                bioEditBtn.style.display = 'none';
+                if (currentUser) {
+                    followBtn.style.display = 'inline-block';
+                    const isFollowing = (currentUser.followingList || []).includes(target.username);
+                    followBtn.textContent = isFollowing ? '✓ Вы подписаны' : '➕ Подписаться';
+                    followBtn.className = isFollowing ? 'follow-btn following' : 'follow-btn';
+                } else {
+                    followBtn.style.display = 'none';
+                }
+            }
+
+            setTab(null, 'profile', `Профиль: ${target.username}`);
         }
 
         function toggleFollowUser() {
-            if (!currentUser || !viewingUser || currentUser.username === viewingUser.username) return;
-            let db = JSON.parse(localStorage.getItem('staralgo_users_db') || '{}');
+            if (!currentUser || !viewingUser || currentUser.username.toLowerCase() === viewingUser.username.toLowerCase()) return;
+            let db = getUsersDB();
             let me = db[currentUser.username.toLowerCase()];
             let target = db[viewingUser.username.toLowerCase()];
 
@@ -730,14 +2370,23 @@
             } else {
                 me.followingList.push(target.username);
                 target.followersList.push(me.username);
+
+                if (!target.notifications) target.notifications = [];
+                target.notifications.unshift({
+                    id: Date.now(),
+                    text: `Пользователь ${me.username} подписался на вас!`,
+                    read: false,
+                    date: Date.now()
+                });
             }
 
             db[me.username.toLowerCase()] = me;
             db[target.username.toLowerCase()] = target;
-            localStorage.setItem('staralgo_users_db', JSON.stringify(db));
+            saveUsersDB(db);
+
             currentUser = me;
             viewingUser = target;
-            saveSession();
+            saveSession(me);
             viewUserProfile(target.username);
         }
 
@@ -749,95 +2398,637 @@
             const category = document.getElementById('project-category-select').value;
             if (!name) return;
             if (!currentUser.projectsList) currentUser.projectsList = [];
-            const newProj = { id: Date.now(), author: currentUser.username, name, category, description: '', published: false, coverUrl: '', likes: 0, data: '' };
-            currentUser.projectsList.push(newProj);
-            saveSession();
+            
+            const newStar = {
+                id: Date.now(),
+                author: currentUser.username,
+                name: name,
+                category: category,
+                description: '',
+                published: false,
+                coverUrl: '',
+                likes: 0,
+                views: 0,
+                comments: [],
+                data: category === 'Python' ? 'print("Hello StarAlgo!")' : (category === 'HTML' ? '<h1>Hello World</h1>' : ''),
+                date: Date.now()
+            };
+
+            currentUser.projectsList.push(newStar);
+            saveSession(currentUser);
             closeCreateProjectModal();
-            renderProtoStars();
+            switchProtoSection(null, 'stars');
         }
 
-        function renderProtoStars() {
+        function switchProtoSection(event, sectionName) {
+            activeProtoSectionName = sectionName;
+            const navItems = document.querySelectorAll('.proto-nav-item');
+            navItems.forEach(item => item.classList.remove('active'));
+            if (event && event.currentTarget) event.currentTarget.classList.add('active');
+
             const area = document.getElementById('proto-main-content-area');
-            const projects = currentUser.projectsList || [];
-            area.innerHTML = `
-                <div class="proto-top-bar"><h1 class="page-title" style="margin-bottom: 0;">Мои звёзды</h1><button class="proto-create-btn" onclick="openCreateProjectModal()">+ Создать</button></div>
-                <div class="proto-projects-grid">${projects.map(p => `
-                    <div class="project-item-card" onclick="openStarEditor(${p.id})">
-                        <div class="project-item-title">${p.name}</div>
-                        <div class="project-item-cat">${p.category} ${p.published ? '🌐' : ''}</div>
+            if (sectionName === 'stars') {
+                const projects = currentUser.projectsList || [];
+                area.innerHTML = `
+                    <div class="proto-top-bar">
+                        <h1 class="page-title" style="margin-bottom: 0;">Звёзды</h1>
+                        <button class="proto-create-btn" onclick="openCreateProjectModal()">+ Создать звезду</button>
                     </div>
-                `).join('')}</div>
-            `;
+                    <div class="proto-projects-grid">
+                        ${projects.length === 0 ? '<div class="empty-placeholder">У вас пока нет звёзд. Создайте первую!</div>' : projects.map(p => `
+                            <div class="project-item-card" onclick="openStarEditor(${p.id})">
+                                <div class="project-item-title">${p.name} ${p.published ? '🌐' : ''}</div>
+                                <div class="project-item-cat">${p.category} | ❤️ ${p.likes||0}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            } else {
+                const vacuum = currentUser.vacuumList || [];
+                area.innerHTML = `
+                    <div class="proto-top-bar"><h1 class="page-title" style="margin-bottom: 0;">Вакуум</h1></div>
+                    <p class="page-text">Здесь хранятся удалённые звёзды.</p>
+                    <div class="proto-projects-grid">
+                        ${vacuum.length === 0 ? '<div class="empty-placeholder">Вакуум чист.</div>' : vacuum.map(p => `
+                            <div class="project-item-card">
+                                <div class="project-item-title">${p.name}</div>
+                                <div class="project-item-cat">${p.category}</div>
+                                <button class="auth-btn" style="margin-top:5px; font-size:0.9rem;" onclick="restoreStarFromVacuum(${p.id})">Восстановить</button>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            }
+        }
+
+        function deleteStarToVacuum(id) {
+            if (!currentUser || !currentUser.projectsList) return;
+            const idx = currentUser.projectsList.findIndex(p => p.id === id);
+            if (idx > -1) {
+                const [removed] = currentUser.projectsList.splice(idx, 1);
+                if (!currentUser.vacuumList) currentUser.vacuumList = [];
+                currentUser.vacuumList.push(removed);
+                saveSession(currentUser);
+                setTab(null, 'proto', 'Протозвездие');
+            }
+        }
+
+        function restoreStarFromVacuum(id) {
+            if (!currentUser || !currentUser.vacuumList) return;
+            const idx = currentUser.vacuumList.findIndex(p => p.id === id);
+            if (idx > -1) {
+                const [restored] = currentUser.vacuumList.splice(idx, 1);
+                if (!currentUser.projectsList) currentUser.projectsList = [];
+                currentUser.projectsList.push(restored);
+                saveSession(currentUser);
+                switchProtoSection(null, 'vacuum');
+            }
         }
 
         function openStarEditor(id) {
-            const p = currentUser.projectsList.find(item => item.id === id);
-            if (!p) return;
-            activeStarObject = p;
-            setTab(null, 'star-editor', `Звезда: ${p.name}`);
-            document.getElementById('editor-project-title-header').textContent = p.name;
-            document.getElementById('star-panorama-img').src = p.coverUrl || generateRandomPanorama(p.name);
-            document.getElementById('star-code-input').value = p.data || '';
-            document.getElementById('star-author-name').textContent = currentUser.username;
-            document.getElementById('star-author-role').textContent = currentUser.role;
-            document.getElementById('star-author-avatar-box').innerHTML = currentUser.avatarHtml || defaultStarSvg;
-            document.getElementById('star-detail-name').textContent = p.name;
-            document.getElementById('star-detail-desc').textContent = p.description || 'Нет описания';
-            document.getElementById('star-likes-counter').textContent = p.likes || 0;
+            let db = getUsersDB();
+            let foundProj = null;
+            let foundAuthor = null;
+
+            if (currentUser && currentUser.projectsList) {
+                foundProj = currentUser.projectsList.find(item => item.id === id);
+                if (foundProj) foundAuthor = currentUser;
+            }
+
+            if (!foundProj) {
+                Object.values(db).forEach(u => {
+                    if (u.projectsList) {
+                        const p = u.projectsList.find(item => item.id === id);
+                        if (p) { foundProj = p; foundAuthor = u; }
+                    }
+                });
+            }
+
+            if (!foundProj) return;
+
+            activeStarObject = foundProj;
+            starOpenSource = currentTab;
+            setTab(null, 'star-editor', `Звезда: ${foundProj.name}`);
+
+            document.getElementById('editor-project-title-header').textContent = foundProj.name;
+            document.getElementById('star-panorama-img').src = foundProj.coverUrl || generateRandomPanorama(foundProj.name);
+
+            document.getElementById('star-author-name').textContent = foundAuthor.username;
+            document.getElementById('star-author-role').textContent = foundAuthor.role;
+            document.getElementById('star-author-avatar-box').innerHTML = foundAuthor.avatarHtml || defaultStarSvg;
+
+            document.getElementById('star-detail-name').textContent = foundProj.name;
+            document.getElementById('star-detail-desc').textContent = foundProj.description || 'Без описания...';
+            document.getElementById('star-views-counter').textContent = (foundProj.views || 0) + 1;
+            document.getElementById('star-likes-counter').textContent = foundProj.likes || 0;
+            document.getElementById('star-comments-counter').textContent = (foundProj.comments || []).length;
+
+            const isOwner = currentUser && currentUser.username.toLowerCase() === foundAuthor.username.toLowerCase();
+            document.getElementById('publish-modal-trigger-btn').style.display = isOwner ? 'inline-block' : 'none';
+
+            const runtimeContainer = document.getElementById('editor-runtime-container');
+            if (isOwner) {
+                runtimeContainer.innerHTML = `
+                    <div class="detail-label" style="margin-bottom:6px;">РЕДАКТОР КОДА / ДАННЫХ ЗВЕЗДЫ (${foundProj.category})</div>
+                    <textarea id="code-editor-textarea" class="form-textarea" style="height:220px; font-family:monospace;">${foundProj.data || ''}</textarea>
+                    <div style="display:flex; gap:10px; margin-top:8px;">
+                        <button class="auth-btn" onclick="saveEditorCode()">Сохранить код</button>
+                        <button class="auth-btn" style="color:#ff5555; border-color:#ff5555;" onclick="deleteStarToVacuum(${foundProj.id})">Удалить в вакуум</button>
+                    </div>
+                `;
+            } else {
+                runtimeContainer.innerHTML = `
+                    <div class="detail-label" style="margin-bottom:6px;">СОДЕРЖИМОЕ ЗВЕЗДЫ (${foundProj.category})</div>
+                    <div style="background:#080705; border:1px solid var(--gold-main); padding:12px; border-radius:6px; font-family:monospace; white-space:pre-wrap;">${foundProj.data || 'Проект не содержит кода.'}</div>
+                `;
+            }
+
+            foundProj.views = (foundProj.views || 0) + 1;
+            db[foundAuthor.username.toLowerCase()] = foundAuthor;
+            saveUsersDB(db);
+
+            renderStarComments();
         }
 
-        function updateStarData(val) {
+        function goBackFromStarEditor() {
+            if (starOpenSource === 'hall') setTab(null, 'hall', 'Звёздный Зал');
+            else setTab(null, 'proto', 'Протозвездие');
+        }
+
+        function saveEditorCode() {
+            if (!activeStarObject || !currentUser) return;
+            const textarea = document.getElementById('code-editor-textarea');
+            if (textarea) {
+                activeStarObject.data = textarea.value;
+                saveSession(currentUser);
+                alert('Код звезды сохранён!');
+            }
+        }
+
+        function viewAuthorProfileFromStar() {
+            if (activeStarObject && activeStarObject.author) {
+                viewUserProfile(activeStarObject.author);
+            }
+        }
+
+        function openPanoramaZoom() {
             if (!activeStarObject) return;
-            activeStarObject.data = val;
-            saveSession();
+            const img = document.getElementById('zoomed-panorama-img');
+            img.src = activeStarObject.coverUrl || generateRandomPanorama(activeStarObject.name);
+            document.getElementById('panorama-zoom-modal').classList.add('open');
         }
 
         function openPublishModal() {
             if (!activeStarObject) return;
+            document.getElementById('modal-proj-name').value = activeStarObject.name;
             document.getElementById('modal-proj-desc').value = activeStarObject.description || '';
-            document.getElementById('modal-proj-cover').value = activeStarObject.coverUrl || '';
+            const pubBtn = document.getElementById('publish-toggle-btn');
+            pubBtn.textContent = activeStarObject.published ? '❌ Снять с публикации' : '🌐 Опубликовать в Звёздный зал';
             document.getElementById('publish-modal').classList.add('open');
         }
         function closePublishModal() { document.getElementById('publish-modal').classList.remove('open'); }
 
-        function togglePublishProject() {
-            if (!activeStarObject) return;
-            activeStarObject.description = document.getElementById('modal-proj-desc').value;
-            activeStarObject.coverUrl = document.getElementById('modal-proj-cover').value;
-            activeStarObject.published = true;
-            saveSession();
-            closePublishModal();
-            alert('Звезда опубликована в Звёздный зал!');
+        function handleCoverUpload(event) {
+            const file = event.target.files[0];
+            if (!file || !activeStarObject) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                activeStarObject.coverUrl = e.target.result;
+                document.getElementById('star-panorama-img').src = e.target.result;
+                saveSession(currentUser);
+                alert('Обложка-панорама успешно обновлена!');
+            };
+            reader.readAsDataURL(file);
         }
 
-        function renderZvezdnyFeed() {
-            let db = JSON.parse(localStorage.getItem('staralgo_users_db') || '{}');
-            let allStars = [];
-            Object.values(db).forEach(u => {
-                if (u.projectsList) {
-                    u.projectsList.forEach(p => { if (p.published) allStars.push(p); });
-                }
-            });
-            const grid = document.getElementById('zvezdny-feed-grid');
-            if (allStars.length === 0) {
-                grid.innerHTML = `<div class="empty-placeholder">В Звёздном зале пока нет опубликованных звёзд.</div>`;
+        function togglePublishProject() {
+            if (!activeStarObject) return;
+            activeStarObject.name = document.getElementById('modal-proj-name').value;
+            activeStarObject.description = document.getElementById('modal-proj-desc').value;
+            activeStarObject.published = !activeStarObject.published;
+            saveSession(currentUser);
+            closePublishModal();
+            alert(activeStarObject.published ? 'Звезда опубликована в Звёздный зал!' : 'Звезда снята с публикации.');
+        }
+
+        function renderStarComments() {
+            if (!activeStarObject) return;
+            const commentsContainer = document.getElementById('star-comments-list');
+            const comments = activeStarObject.comments || [];
+            if (comments.length === 0) {
+                commentsContainer.innerHTML = `<div class="empty-placeholder">Пока нет комментариев. Напишите первый!</div>`;
                 return;
             }
-            grid.innerHTML = allStars.map(s => `
-                <div class="feed-star-card">
-                    <img src="${s.coverUrl || generateRandomPanorama(s.name)}" class="star-cover-preview" alt="cover">
-                    <div class="feed-star-title">${s.name}</div>
-                    <div class="feed-star-author">Автор: ${s.author}</div>
+            commentsContainer.innerHTML = comments.map(c => `
+                <div class="comment-item">
+                    <div class="comment-header-row">
+                        <span class="comment-author" onclick="viewUserProfile('${c.author}')">${c.author}</span>
+                        <span style="font-size:0.8rem; opacity:0.6;">${new Date(c.date).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
+                    </div>
+                    <div>${c.text}</div>
                 </div>
             `).join('');
         }
 
-        function likeCurrentStar() {
+        function postComment() {
+            if (!currentUser) { openAuthModal(); return; }
             if (!activeStarObject) return;
-            activeStarObject.likes = (activeStarObject.likes || 0) + 1;
-            document.getElementById('star-likes-counter').textContent = activeStarObject.likes;
-            saveSession();
+            const input = document.getElementById('new-comment-input');
+            const text = input.value.trim();
+            if (!text) return;
+
+            let db = getUsersDB();
+            let authorUser = db[activeStarObject.author.toLowerCase()];
+            let proj = authorUser?.projectsList?.find(p => p.id === activeStarObject.id);
+
+            if (proj) {
+                if (!proj.comments) proj.comments = [];
+                proj.comments.push({
+                    id: Date.now(),
+                    author: currentUser.username,
+                    text: text,
+                    date: Date.now()
+                });
+
+                if (authorUser.username.toLowerCase() !== currentUser.username.toLowerCase()) {
+                    if (!authorUser.notifications) authorUser.notifications = [];
+                    authorUser.notifications.unshift({
+                        id: Date.now(),
+                        text: `Пользователь ${currentUser.username} прокомментировал вашу звезду "${proj.name}"`,
+                        read: false,
+                        date: Date.now()
+                    });
+                }
+
+                db[authorUser.username.toLowerCase()] = authorUser;
+                saveUsersDB(db);
+                activeStarObject = proj;
+                input.value = '';
+                renderStarComments();
+                document.getElementById('star-comments-counter').textContent = proj.comments.length;
+            }
+        }
+
+        function likeCurrentStar() {
+            if (!currentUser) { openAuthModal(); return; }
+            if (!activeStarObject) return;
+
+            let db = getUsersDB();
+            let authorUser = db[activeStarObject.author.toLowerCase()];
+            let proj = authorUser?.projectsList?.find(p => p.id === activeStarObject.id);
+
+            if (proj) {
+                proj.likes = (proj.likes || 0) + 1;
+                authorUser.likes = (authorUser.likes || 0) + 1;
+
+                if (authorUser.username.toLowerCase() !== currentUser.username.toLowerCase()) {
+                    if (!authorUser.notifications) authorUser.notifications = [];
+                    authorUser.notifications.unshift({
+                        id: Date.now(),
+                        text: `Пользователь ${currentUser.username} оценил вашу звезду "${proj.name}"!`,
+                        read: false,
+                        date: Date.now()
+                    });
+                }
+
+                db[authorUser.username.toLowerCase()] = authorUser;
+                saveUsersDB(db);
+                activeStarObject = proj;
+                document.getElementById('star-likes-counter').textContent = proj.likes;
+            }
+        }
+
+        function renderZvezdnyFeed() {
+            let usersDB = getUsersDB();
+            let stars = [];
+            Object.values(usersDB).forEach(u => {
+                if (u.projectsList) {
+                    u.projectsList.forEach(p => { if (p.published) stars.push(p); });
+                }
+            });
+
+            if (currentHallCategory !== 'all') {
+                stars = stars.filter(s => s.category === currentHallCategory);
+            }
+
+            if (currentSortFilter === 'popular') {
+                stars.sort((a,b) => (b.likes||0) - (a.likes||0));
+            } else if (currentSortFilter === 'discussed') {
+                stars.sort((a,b) => (b.comments?.length||0) - (a.comments?.length||0));
+            } else {
+                stars.sort((a,b) => b.id - a.id);
+            }
+
+            const grid = document.getElementById('zvezdny-feed-grid');
+            if (stars.length === 0) {
+                grid.innerHTML = `<div class="empty-placeholder">В Звёздном зале пока нет опубликованных звёзд данной категории.</div>`;
+                return;
+            }
+
+            grid.innerHTML = stars.map(s => `
+                <div class="feed-star-card" onclick="viewPublishedStar('${s.author}', ${s.id})">
+                    <img src="${s.coverUrl || generateRandomPanorama(s.name)}" class="star-cover-preview" alt="cover">
+                    <div class="feed-star-title">${s.name}</div>
+                    <div class="feed-star-author">Автор: ${s.author} | ${s.category}</div>
+                    <div style="font-size:0.9rem; opacity:0.8; margin-top:4px;">❤️ ${s.likes||0} | 💬 ${(s.comments||[]).length}</div>
+                </div>
+            `).join('');
+
+            renderConstellationsTop(stars);
+        }
+
+        function renderConstellationsTop(stars) {
+            const box = document.getElementById('constellation-display-box');
+            if (!stars || stars.length === 0) {
+                box.innerHTML = `<span style="font-size: 1.3rem; opacity: 0.7;">Создавай звёзды и получай лайки, чтобы попасть в Созвездия!</span>`;
+                return;
+            }
+            const top3 = [...stars].sort((a,b) => (b.likes||0) - (a.likes||0)).slice(0, 3);
+            box.innerHTML = `
+                <div style="font-size:1.4rem; color:var(--gold-bright); margin-bottom:10px;">👑 СОЗВЕЗДИЯ ТОР-3</div>
+                <div class="constellation-top-cards">
+                    ${top3.map((s, idx) => `
+                        <div style="background:rgba(8,7,5,0.8); border:1px solid var(--gold-main); padding:10px; border-radius:10px; min-width:160px; cursor:pointer;" onclick="viewPublishedStar('${s.author}', ${s.id})">
+                            <div style="font-size:1.2rem; color:var(--gold-bright); font-weight:bold;">#${idx+1} ${s.name}</div>
+                            <div style="font-size:0.96rem; opacity:0.8;">by ${s.author}</div>
+                            <div style="font-size:1rem; color:var(--gold-bright); margin-top:4px;">❤️ ${s.likes||0}</div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        function viewPublishedStar(author, id) {
+            openStarEditor(id);
+        }
+
+        function handleStarSearch() {
+            const query = document.getElementById('star-search-input').value.toLowerCase().trim();
+            const list = document.getElementById('star-search-results-list');
+            if (!query) { list.style.display = 'none'; return; }
+
+            let usersDB = getUsersDB();
+            let stars = [];
+            Object.values(usersDB).forEach(u => {
+                if (u.projectsList) {
+                    u.projectsList.forEach(p => { if (p.published) stars.push(p); });
+                }
+            });
+
+            const matched = stars.filter(s => s.name.toLowerCase().includes(query) || s.author.toLowerCase().includes(query));
+            list.style.display = 'flex';
+            if (matched.length === 0) {
+                list.innerHTML = `<div class="empty-placeholder">Звёзды не найдены</div>`;
+            } else {
+                list.innerHTML = matched.map(s => `
+                    <div class="search-result-card" onclick="viewPublishedStar('${s.author}', ${s.id})">
+                        <div style="flex:1;">
+                            <div style="color:var(--gold-bright); font-size:1.1rem;">${s.name}</div>
+                            <div style="font-size:0.9rem; opacity:0.8;">by ${s.author} (${s.category})</div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+
+        function setPeriodFilter(e, p) {
+            currentPeriodFilter = p;
+            document.querySelectorAll('.filter-group .filter-btn').forEach(btn => btn.classList.remove('active'));
+            if (e && e.currentTarget) e.currentTarget.classList.add('active');
+            renderZvezdnyFeed();
+        }
+
+        function setSortFilter(e, s) {
+            currentSortFilter = s;
+            document.querySelectorAll('.sub-filters-row1 .sub-filter-pill').forEach(btn => btn.classList.remove('active'));
+            if (e && e.currentTarget) e.currentTarget.classList.add('active');
+            renderZvezdnyFeed();
+        }
+
+        function setHallCategory(e, c) {
+            currentHallCategory = c;
+            document.querySelectorAll('.sub-filters-row2 .sub-filter-pill').forEach(btn => btn.classList.remove('active'));
+            if (e && e.currentTarget) e.currentTarget.classList.add('active');
+            renderZvezdnyFeed();
+        }
+
+        function openDwarfCreateModal() { document.getElementById('dwarf-create-modal').classList.add('open'); }
+        function closeDwarfCreateModal() { document.getElementById('dwarf-create-modal').classList.remove('open'); }
+
+        function handleDwarfCoverUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                tempDwarfCover = e.target.result;
+                document.getElementById('dwarf-cover-status').textContent = 'Панорама загружена!';
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function submitCreateDwarf() {
+            if (!currentUser || !isUserSingularity(currentUser.username)) return;
+            const name = document.getElementById('dwarf-name-input').value.trim();
+            const desc = document.getElementById('dwarf-desc-input').value.trim();
+            if (!name || !desc) return;
+
+            let dwarfs = getDwarfsDB();
+            const newDwarf = {
+                id: Date.now(),
+                author: currentUser.username,
+                title: name,
+                description: desc,
+                coverUrl: tempDwarfCover || generateYellowDwarfPanorama(name),
+                likes: 0,
+                comments: [],
+                date: Date.now()
+            };
+
+            dwarfs.unshift(newDwarf);
+            saveDwarfsDB(dwarfs);
+
+            tempDwarfCover = '';
+            document.getElementById('dwarf-name-input').value = '';
+            document.getElementById('dwarf-desc-input').value = '';
+            closeDwarfCreateModal();
+            renderTelescopeFeed();
+        }
+
+        function renderTelescopeFeed() {
+            const grid = document.getElementById('telescope-feed-grid');
+            let dwarfs = getDwarfsDB();
+
+            if (dwarfs.length === 0) {
+                grid.innerHTML = `<div class="empty-placeholder">Новостей пока нет...</div>`;
+                return;
+            }
+
+            grid.innerHTML = dwarfs.map(d => `
+                <div class="dwarf-banner-card" onclick="viewDwarfDetails(${d.id})">
+                    <img src="${d.coverUrl || generateYellowDwarfPanorama(d.title)}" class="dwarf-cover-large" alt="Dwarf cover">
+                    <div style="font-size:2rem; color:var(--gold-bright); line-height:1.1;">${d.title}</div>
+                    <div style="font-size:1.1rem; opacity:0.8;">Опубликовал: ${d.author}</div>
+                    <div style="font-size:1.2rem; line-height:1.4;">${d.description.slice(0, 150)}${d.description.length > 150 ? '...' : ''}</div>
+                    <div style="font-size:1.1rem; color:var(--gold-bright); margin-top:5px;">❤️ ${d.likes||0} | 💬 ${(d.comments||[]).length}</div>
+                </div>
+            `).join('');
+        }
+
+        function viewDwarfDetails(id) {
+            let dwarfs = getDwarfsDB();
+            const d = dwarfs.find(item => item.id === id);
+            if (!d) return;
+
+            activeDwarfObject = d;
+            setTab(null, 'dwarf-viewer', `Новость: ${d.title}`);
+
+            document.getElementById('dwarf-title-header').textContent = d.title;
+            document.getElementById('dwarf-panorama-img').src = d.coverUrl || generateYellowDwarfPanorama(d.title);
+            document.getElementById('dwarf-author-name').textContent = d.author;
+            document.getElementById('dwarf-detail-name').textContent = d.title;
+            document.getElementById('dwarf-detail-desc').textContent = d.description;
+            document.getElementById('dwarf-likes-counter').textContent = d.likes || 0;
+
+            renderDwarfComments();
+        }
+
+        function viewAuthorProfileFromDwarf() {
+            if (activeDwarfObject && activeDwarfObject.author) {
+                viewUserProfile(activeDwarfObject.author);
+            }
+        }
+
+        function likeCurrentDwarf() {
+            if (!currentUser) { openAuthModal(); return; }
+            if (!activeDwarfObject) return;
+
+            let dwarfs = getDwarfsDB();
+            const d = dwarfs.find(item => item.id === activeDwarfObject.id);
+            if (d) {
+                d.likes = (d.likes || 0) + 1;
+                saveDwarfsDB(dwarfs);
+                activeDwarfObject = d;
+                document.getElementById('dwarf-likes-counter').textContent = d.likes;
+            }
+        }
+
+        function renderDwarfComments() {
+            if (!activeDwarfObject) return;
+            const container = document.getElementById('dwarf-comments-list');
+            const comments = activeDwarfObject.comments || [];
+
+            if (comments.length === 0) {
+                container.innerHTML = `<div class="empty-placeholder">Пока нет комментариев...</div>`;
+                return;
+            }
+
+            container.innerHTML = comments.map(c => `
+                <div class="comment-item">
+                    <div class="comment-header-row">
+                        <span class="comment-author" onclick="viewUserProfile('${c.author}')">${c.author}</span>
+                        <span style="font-size:0.8rem; opacity:0.6;">${new Date(c.date).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
+                    </div>
+                    <div>${c.text}</div>
+                </div>
+            `).join('');
+        }
+
+        function postDwarfComment() {
+            if (!currentUser) { openAuthModal(); return; }
+            if (!activeDwarfObject) return;
+            const input = document.getElementById('dwarf-comment-input');
+            const text = input.value.trim();
+            if (!text) return;
+
+            let dwarfs = getDwarfsDB();
+            const d = dwarfs.find(item => item.id === activeDwarfObject.id);
+            if (d) {
+                if (!d.comments) d.comments = [];
+                d.comments.push({
+                    id: Date.now(),
+                    author: currentUser.username,
+                    text: text,
+                    date: Date.now()
+                });
+
+                saveDwarfsDB(dwarfs);
+                activeDwarfObject = d;
+                input.value = '';
+                renderDwarfComments();
+            }
+        }
+
+        function openNotificationsModal() {
+            if (!currentUser) return;
+            const container = document.getElementById('notifications-list-container');
+            const notifications = currentUser.notifications || [];
+
+            if (notifications.length === 0) {
+                container.innerHTML = `<div class="empty-placeholder">Уведомлений пока нет...</div>`;
+            } else {
+                container.innerHTML = notifications.map(n => `
+                    <div class="notification-item" style="${n.read ? 'opacity:0.6;' : 'font-weight:bold;'}">
+                        <div>${n.text}</div>
+                        <div style="font-size:0.8rem; opacity:0.7; margin-top:4px;">${new Date(n.date).toLocaleString()}</div>
+                    </div>
+                `).join('');
+
+                notifications.forEach(n => n.read = true);
+                saveSession(currentUser);
+                applyUserSession();
+            }
+
+            document.getElementById('notification-modal').classList.add('open');
+        }
+
+        function closeNotificationsModal(e) {
+            document.getElementById('notification-modal').classList.remove('open');
+        }
+
+        function populateAdminUserSelect() {
+            const select = document.getElementById('admin-user-select');
+            let db = getUsersDB();
+            select.innerHTML = `<option value="">-- Выберите пользователя --</option>` + Object.keys(db).map(name => `
+                <option value="${name}">${name}</option>
+            `).join('');
+        }
+
+        function loadAdminUserData(username) {
+            const form = document.getElementById('admin-user-edit-form');
+            if (!username) { form.style.display = 'none'; return; }
+            let db = getUsersDB();
+            const user = db[username.toLowerCase()];
+            if (user) {
+                document.getElementById('admin-edit-rep').value = user.reputation || 6;
+                document.getElementById('admin-edit-likes').value = user.likes || 0;
+                form.style.display = 'flex';
+            }
+        }
+
+        function saveAdminUserData() {
+            const username = document.getElementById('admin-user-select').value;
+            if (!username) return;
+            let db = getUsersDB();
+            const user = db[username.toLowerCase()];
+            if (user) {
+                user.reputation = Number(document.getElementById('admin-edit-rep').value);
+                user.likes = Number(document.getElementById('admin-edit-likes').value);
+                saveUsersDB(db);
+                if (currentUser && currentUser.username.toLowerCase() === username.toLowerCase()) {
+                    currentUser = user;
+                    saveSession(user);
+                    applyUserSession();
+                }
+                alert(`Данные пользователя ${username} сохранены!`);
+            }
+        }
+
+        function renderReports() {
+            const container = document.getElementById('reports-grid-container');
+            container.innerHTML = `<div class="empty-placeholder">Жалоб пока нет. Всё спокойно в космосе!</div>`;
         }
     </script>
+
 </body>
 </html>
+index.html. На экране.
