@@ -12,9 +12,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/brython/3.11.1/brython.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/brython/3.11.1/brython_stdlib.js"></script>
 
-    <!-- Supabase SDK -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
     <style>
         @font-face {
             font-family: 'OldRobloxFont';
@@ -80,7 +77,7 @@
 
         .logo-container { justify-self: start; display: flex; flex-direction: column; gap: 4px; }
         .logo { font-family: var(--font-roblox); font-size: 3rem; line-height: 0.8; color: var(--gold-main); text-shadow: 0 0 8px rgba(212, 178, 54, 0.6); letter-spacing: 3px; }
-        .breadcrumb { display: inline-block; background: #18150a; border: 1px solid var(--gold-main); color: var(--gold-main); padding: 2px 8px; font-size: 1rem; border-radius: 4px; width: fit-content; }
+        .breadcrumb { display: inline-block; background: #18150a; border: 1px solid var(--gold-main); color: var(--gold-main); padding: 2px 8px; font-size: 1rem; border-radius: 4px; width: fit-content; font-family: var(--font-undertale); }
         .timer-display { justify-self: center; font-family: var(--font-roblox); font-size: 3rem; line-height: 0.8; color: var(--gold-main); text-shadow: 0 0 10px rgba(212, 178, 54, 0.6); }
         .header-right { justify-self: end; display: flex; flex-direction: row; align-items: center; gap: 15px; }
         nav { display: flex; gap: 15px; flex-wrap: wrap; justify-content: flex-end; }
@@ -89,7 +86,8 @@
 
         .auth-btn {
             background: transparent; border: 1px solid var(--gold-main); color: var(--gold-main);
-            padding: 6px 14px; font-family: var(--font-undertale); font-size: 1.1rem; cursor: pointer; border-radius: 4px; white-space: nowrap;
+            padding: 6px 14px; font-family: var(--font-undertale); font-size: 1.1rem; cursor: pointer; border-radius: 4px;
+            box-shadow: inset 0 0 6px rgba(212, 178, 54, 0.1); white-space: nowrap;
         }
         .auth-btn:hover { background: rgba(212, 178, 54, 0.15); color: var(--gold-bright); border-color: var(--gold-bright); }
 
@@ -97,8 +95,9 @@
         .user-header-text { text-align: right; line-height: 1.1; }
         .user-header-text .name { font-size: 1.5rem; color: var(--gold-main); }
         .user-header-text .role { font-size: 1rem; color: var(--gold-main); opacity: 0.8; }
-        .bell-icon-btn { background: transparent; border: 1px solid var(--gold-main); color: var(--gold-main); font-size: 1.1rem; padding: 5px 10px; border-radius: 20px; cursor: pointer; }
-        .logout-btn { background: transparent; border: 1px solid var(--gold-main); color: var(--gold-main); font-size: 0.8rem; padding: 2px 4px; cursor: pointer; border-radius: 3px; margin-top: 2px; }
+        .bell-icon-btn { background: transparent; border: 1px solid var(--gold-main); color: var(--gold-main); font-size: 1.1rem; padding: 5px 10px; border-radius: 20px; cursor: pointer; font-family: var(--font-undertale); }
+        .bell-icon-btn.has-unread { background: var(--gold-main) !important; color: var(--bg-color) !important; font-weight: bold; }
+        .logout-btn { background: transparent; border: 1px solid var(--gold-main); color: var(--gold-main); font-family: var(--font-undertale); font-size: 0.8rem; padding: 2px 4px; cursor: pointer; border-radius: 3px; margin-top: 2px; }
 
         .star-avatar-small { width: 40px; height: 40px; border: 2px solid var(--gold-main); border-radius: 50%; background: #0a0906; overflow: hidden; display: flex; align-items: center; justify-content: center; }
         .star-avatar-small img, .star-avatar-large img, .profile-page-avatar img, .search-result-avatar img { width: 100%; height: 100%; object-fit: cover; }
@@ -117,6 +116,7 @@
 
         .stats-list { display: flex; flex-direction: column; gap: 10px; font-size: 1.2rem; }
         .stats-row { display: flex; align-items: center; gap: 8px; }
+        .stats-row.highlight { margin-top: 10px; font-size: 1.25rem; }
 
         .content-section { width: 100%; }
         .tab-page { display: none; }
@@ -125,21 +125,12 @@
         .page-title { font-size: 2.6rem; color: var(--gold-main); margin-bottom: 15px; font-weight: normal; }
         .page-text { font-size: 1.35rem; line-height: 1.4; color: var(--gold-main); max-width: 800px; margin-bottom: 25px; white-space: pre-line; }
 
-        .search-container {
-            display: flex; flex-direction: column; gap: 12px; background: var(--card-bg); border: 2px solid var(--gold-main);
-            padding: 18px; border-radius: 14px; max-width: 600px; margin-top: 20px;
-        }
+        .search-container { display: flex; flex-direction: column; gap: 12px; background: var(--card-bg); border: 2px solid var(--gold-main); padding: 18px; border-radius: 14px; max-width: 600px; margin-top: 20px; }
         .search-title { font-size: 1.6rem; color: var(--gold-bright); }
         .search-input-row { display: flex; gap: 10px; }
-        .search-input {
-            flex: 1; background: #080705; border: 1px solid var(--gold-main); color: var(--gold-bright);
-            padding: 8px 12px; font-family: var(--font-undertale); font-size: 1.2rem; border-radius: 6px; outline: none;
-        }
+        .search-input { flex: 1; background: #080705; border: 1px solid var(--gold-main); color: var(--gold-bright); padding: 8px 12px; font-family: var(--font-undertale); font-size: 1.2rem; border-radius: 6px; outline: none; }
         .search-results-list { display: flex; flex-direction: column; gap: 8px; max-height: 220px; overflow-y: auto; }
-        .search-result-card {
-            display: flex; align-items: center; gap: 10px; background: rgba(212, 178, 54, 0.05);
-            border: 1px solid rgba(212, 178, 54, 0.3); padding: 8px; border-radius: 6px; cursor: pointer;
-        }
+        .search-result-card { display: flex; align-items: center; gap: 10px; background: rgba(212, 178, 54, 0.05); border: 1px solid rgba(212, 178, 54, 0.3); padding: 8px; border-radius: 6px; cursor: pointer; }
         .search-result-avatar { width: 35px; height: 35px; border: 1px solid var(--gold-main); border-radius: 50%; background: #080705; overflow: hidden; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
         .search-result-info .uname { font-size: 1.2rem; color: var(--gold-bright); }
         .search-result-info .urole { font-size: 0.9rem; opacity: 0.8; }
@@ -149,67 +140,95 @@
         .filter-btn { background: transparent; border: none; color: var(--gold-main); padding: 6px 14px; font-family: var(--font-undertale); font-size: 1.1rem; cursor: pointer; }
         .filter-btn.active { background: var(--gold-main); color: var(--bg-color); }
 
-        .constellation-display-box {
-            background: var(--card-bg); border: 2px solid var(--gold-main); border-radius: 16px;
-            min-height: 140px; display: flex; flex-direction: column; align-items: center; justify-content: center;
-            text-align: center; padding: 20px; margin-bottom: 25px;
-        }
+        .constellation-display-box { background: var(--card-bg); border: 2px solid var(--gold-main); border-radius: 16px; min-height: 140px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px; margin-bottom: 25px; gap: 12px; }
+        .sub-filters-row1, .sub-filters-row2 { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 15px; }
+        .sub-filter-pill { background: transparent; border: 1px solid var(--gold-main); color: var(--gold-main); padding: 5px 14px; font-family: var(--font-undertale); font-size: 1.1rem; border-radius: 20px; cursor: pointer; }
+        .sub-filter-pill:hover, .sub-filter-pill.active { background: rgba(212, 178, 54, 0.2); color: var(--gold-bright); }
 
         .zvezdny-feed-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 18px; margin-top: 20px; }
-        .feed-star-card {
-            background: var(--card-bg); border: 2px solid var(--gold-main); border-radius: 14px;
-            padding: 14px; display: flex; flex-direction: column; gap: 8px; cursor: pointer;
-        }
+        .feed-star-card { background: var(--card-bg); border: 2px solid var(--gold-main); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 8px; cursor: pointer; }
         .star-cover-preview { width: 100%; height: 130px; background: #000; border-radius: 8px; object-fit: cover; border: 1px solid var(--gold-main); }
         .feed-star-title { font-size: 1.5rem; color: var(--gold-bright); }
         .feed-star-author { font-size: 1rem; opacity: 0.8; }
 
+        .dwarf-banner-card { background-color: var(--card-bg); border: 2px solid var(--gold-main); border-radius: 18px; padding: 28px; display: flex; flex-direction: column; gap: 16px; cursor: pointer; margin-bottom: 20px; width: 100%; }
+        .dwarf-cover-large { width: 100%; height: 320px; border-radius: 12px; border: 2px solid var(--gold-main); object-fit: cover; background: #000; }
+
         .proto-layout { display: grid; grid-template-columns: 220px 1fr; gap: 25px; align-items: start; }
         .proto-sidebar { display: flex; flex-direction: column; gap: 12px; }
         .proto-sidebar-title { display: flex; align-items: center; gap: 8px; font-size: 1.1rem; color: var(--gold-main); opacity: 0.7; }
-        .proto-nav-item {
-            background: transparent; border: none; color: var(--gold-main); font-family: var(--font-undertale);
-            font-size: 1.3rem; text-align: left; cursor: pointer; padding: 4px 0;
-        }
+        .proto-nav-item { background: transparent; border: none; color: var(--gold-main); font-family: var(--font-undertale); font-size: 1.3rem; text-align: left; cursor: pointer; padding: 4px 0; }
         .proto-nav-item.active { color: var(--gold-bright); text-shadow: 0 0 6px rgba(245, 214, 92, 0.6); }
 
+        .proto-tabs-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 15px; }
+        .proto-tab-pill { background: var(--card-bg); border: 1px solid var(--gold-main); color: var(--gold-main); padding: 5px 16px; font-family: var(--font-undertale); font-size: 1.2rem; border-radius: 20px; cursor: pointer; }
+        .proto-tab-pill.active { background: rgba(212, 178, 54, 0.25); color: var(--gold-bright); }
+
         .proto-projects-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; margin-top: 10px; }
-        .project-item-card {
-            background: var(--card-bg); border: 1px solid var(--gold-main); border-radius: 12px;
-            padding: 12px; display: flex; flex-direction: column; gap: 6px; cursor: pointer;
-        }
+        .project-item-card { background: var(--card-bg); border: 1px solid var(--gold-main); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 6px; cursor: pointer; }
+        .project-item-title { font-size: 1.4rem; color: var(--gold-bright); }
+        .project-item-cat { font-size: 1rem; opacity: 0.7; }
 
         .star-editor-container { display: flex; flex-direction: column; gap: 22px; max-width: 1400px; }
         .star-editor-top { display: flex; justify-content: space-between; align-items: center; }
         .star-panorama-wrapper { position: relative; width: 100%; height: 240px; border-radius: 12px; border: 2px solid var(--gold-main); overflow: hidden; background: #000; }
         .star-panorama-banner { width: 100%; height: 100%; object-fit: cover; }
+        .panorama-zoom-btn { position: absolute; bottom: 12px; right: 12px; background: rgba(20, 18, 10, 0.85); border: 1px solid var(--gold-main); color: var(--gold-bright); padding: 6px 10px; border-radius: 8px; cursor: pointer; font-size: 1.1rem; font-family: var(--font-undertale); }
 
         .editor-split-layout { display: grid; grid-template-columns: 1fr 400px; gap: 20px; align-items: start; }
-        .editor-preview-box, .editor-sidebar-box {
-            background: var(--card-bg); border: 2px solid var(--gold-main); border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 12px;
-        }
+        .editor-preview-box, .editor-sidebar-box { background: var(--card-bg); border: 2px solid var(--gold-main); border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 14px; }
 
-        .modal-overlay {
-            position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.85);
-            display: none; justify-content: center; align-items: center; z-index: 2500;
-        }
+        .author-info-block { display: flex; align-items: center; gap: 12px; border-bottom: 1px dashed rgba(212, 178, 54, 0.4); padding-bottom: 12px; cursor: pointer; }
+        .author-info-name { font-size: 1.6rem; color: var(--gold-bright); }
+        .author-info-role { font-size: 1rem; opacity: 0.8; }
+
+        .star-detail-section { display: flex; flex-direction: column; gap: 4px; }
+        .detail-label { font-size: 1rem; opacity: 0.7; }
+        .detail-value { font-size: 1.3rem; color: var(--gold-bright); word-break: break-word; white-space: pre-wrap; }
+        .like-btn-box { display: flex; align-items: center; justify-content: space-between; background: rgba(212, 178, 54, 0.1); border: 1px solid var(--gold-main); padding: 8px 12px; border-radius: 8px; }
+        .like-action-btn { background: transparent; border: 1px solid var(--gold-bright); color: var(--gold-bright); padding: 5px 12px; font-family: var(--font-undertale); font-size: 1.1rem; border-radius: 6px; cursor: pointer; }
+        .like-action-btn:hover { background: var(--gold-main); color: var(--bg-color); }
+
+        .comments-bottom-container { background: var(--card-bg); border: 2px solid var(--gold-main); border-radius: 14px; padding: 20px; display: flex; flex-direction: column; gap: 12px; margin-top: 10px; }
+        .comments-list { display: flex; flex-direction: column; gap: 10px; max-height: 320px; overflow-y: auto; }
+        .comment-item { background: rgba(8, 7, 5, 0.9); border: 1px solid rgba(212, 178, 54, 0.4); padding: 10px; border-radius: 8px; font-size: 1.1rem; display: flex; flex-direction: column; gap: 5px; }
+        .comment-header-row { display: flex; justify-content: space-between; align-items: center; }
+        .comment-author { color: var(--gold-bright); cursor: pointer; }
+        .comment-actions-row { display: flex; gap: 12px; font-size: 0.9rem; }
+        .comment-action-btn { background: none; border: none; color: var(--gold-main); cursor: pointer; font-family: var(--font-undertale); text-decoration: underline; }
+
+        .comment-input-row { display: flex; gap: 10px; margin-top: 8px; }
+        .comment-input { flex: 1; background: #080705; border: 1px solid var(--gold-main); color: var(--gold-bright); padding: 8px 12px; font-family: var(--font-undertale); font-size: 1.2rem; border-radius: 6px; outline: none; }
+
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.85); display: none; justify-content: center; align-items: center; z-index: 2500; }
         .modal-overlay.open { display: flex; }
-        .modal-box {
-            background: #14120a; border: 2px solid var(--gold-main); padding: 25px; border-radius: 14px; width: 420px; max-width: 90vw; display: flex; flex-direction: column; gap: 12px;
-        }
+        .modal-box { background: #14120a; border: 2px solid var(--gold-main); padding: 25px; border-radius: 14px; width: 420px; max-width: 90vw; display: flex; flex-direction: column; gap: 12px; }
         .modal-title { font-size: 2.2rem; text-align: center; color: var(--gold-bright); }
         .form-group { display: flex; flex-direction: column; gap: 4px; }
-        .form-input, .form-select, .form-textarea {
-            background: #080705; border: 1px solid var(--gold-main); color: var(--gold-bright); padding: 8px 10px; font-family: var(--font-undertale); font-size: 1.3rem; border-radius: 4px; outline: none;
-        }
+        .form-input, .form-select, .form-textarea { background: #080705; border: 1px solid var(--gold-main); color: var(--gold-bright); padding: 8px 10px; font-family: var(--font-undertale); font-size: 1.3rem; border-radius: 4px; outline: none; }
+        .form-textarea { resize: vertical; min-height: 70px; }
         .auth-error { color: #ff5555; font-size: 1rem; display: none; text-align: center; }
         .modal-switch { text-align: center; font-size: 1.1rem; cursor: pointer; text-decoration: underline; margin-top: 4px; }
+        .modal-actions { display: flex; justify-content: space-between; gap: 10px; margin-top: 8px; }
+        .modal-actions .auth-btn { flex: 1; text-align: center; }
     </style>
 </head>
 <body onload="brython()">
 
     <audio id="click-sound" src="click.mp3" preload="auto"></audio>
-    <input type="file" id="avatar-file-input" accept="image/*" style="display: none;" onchange="handleAvatarUpload(event)">
+
+    <!-- Окно уведомлений -->
+    <div class="modal-overlay" id="notification-modal" onclick="this.classList.remove('open')">
+        <div class="modal-box" onclick="event.stopPropagation()">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed var(--gold-main); padding-bottom: 8px;">
+                <div class="modal-title" style="font-size: 1.6rem;">Уведомления</div>
+                <button class="auth-btn" onclick="document.getElementById('notification-modal').classList.remove('open')" style="padding: 2px 6px;">✕</button>
+            </div>
+            <div id="notifications-list-container" style="display: flex; flex-direction: column; gap: 8px;">
+                <div class="empty-placeholder">Уведомлений пока нет...</div>
+            </div>
+        </div>
+    </div>
 
     <!-- Верхняя шапка -->
     <header>
@@ -233,6 +252,7 @@
 
             <div class="user-header-profile" id="user-header-profile" onclick="openMyProfile()">
                 <button class="bell-icon-btn" id="bell-notifications-btn" title="Уведомления" onclick="event.stopPropagation(); openNotificationsModal()">🔔</button>
+                
                 <div class="user-header-text">
                     <div class="name" id="header-user-name">Никнейм</div>
                     <div class="role" id="header-user-role">[Начинающий]</div>
@@ -248,7 +268,7 @@
     <main id="main-layout">
         <aside class="profile-card" id="profile-sidebar">
             <div class="card-header">
-                <div class="star-avatar-large" id="main-avatar-container" onclick="triggerAvatarSelect()">
+                <div class="star-avatar-large" id="main-avatar-container" onclick="promptAvatarUrl()">
                     <svg class="star-shape" viewBox="0 0 100 100"><path d="M 50 0 C 50 35, 65 50, 100 50 C 65 50, 50 65, 50 100 C 50 65, 35 50, 0 50 C 35 50, 50 35, 50 0 Z"/></svg>
                 </div>
                 <div class="card-user-info">
@@ -256,9 +276,11 @@
                     <div class="role" id="card-user-role">[Начинающий]</div>
                 </div>
             </div>
+
             <div class="stats-list">
                 <div class="stats-row"><span>Звёзд — <span id="stat-projects">0</span></span></div>
                 <div class="stats-row"><span>Лайков — <span id="stat-likes">0</span></span></div>
+                <div class="stats-row highlight"><span>Вывод: <span id="stat-verdict">ты нормальный человек</span></span></div>
             </div>
         </aside>
 
@@ -266,7 +288,7 @@
             <!-- Главная -->
             <div id="tab-main" class="tab-page active">
                 <h1 class="page-title">О сайте</h1>
-                <p class="page-text">Staralgo — облачный проект по алгоритмике на базе Supabase. Добро пожаловать в Звёздный зал!</p>
+                <p class="page-text">Staralgo — автономная версия для алго-сообщества. Создавайте проекты, делитесь ссылками на изображения (ImgBB, Catbox и т.д.)[cite: 7] и исследуйте созвездия!</p>
 
                 <div class="search-container">
                     <div class="search-title">Поиск пользователей</div>
@@ -282,10 +304,15 @@
             <!-- Звёздный Зал -->
             <div id="tab-hall" class="tab-page">
                 <h1 class="page-title">Звёздный Зал</h1>
-                <div class="constellation-display-box" id="constellation-display-box">
-                    <span style="font-size: 1.3rem; opacity: 0.7;">Загрузка созвездий из облака Supabase...</span>
+                <div class="constellations-header">
+                    <span style="font-size: 1.6rem; color: var(--gold-bright);">Топ созвездий</span>
                 </div>
-                <div class="zvezdny-feed-grid" id="zvezdny-feed-grid"></div>
+                <div class="constellation-display-box" id="constellation-display-box">
+                    <span style="font-size: 1.3rem; opacity: 0.7;">Здесь отображаются лучшие звёзды сообщества!</span>
+                </div>
+                <div class="zvezdny-feed-grid" id="zvezdny-feed-grid">
+                    <div class="empty-placeholder">Пока нет опубликованных звёзд.</div>
+                </div>
             </div>
 
             <!-- Протозвездие -->
@@ -295,6 +322,7 @@
                         <div class="proto-sidebar-title">ПРОТОЗВЕЗДИЕ</div>
                         <div class="proto-nav-list">
                             <button class="proto-nav-item active" onclick="switchProtoSection(event, 'stars')">Звёзды</button>
+                            <button class="proto-nav-item" onclick="switchProtoSection(event, 'vacuum')">Вакуум</button>
                         </div>
                     </div>
                     <div class="proto-content-area" id="proto-main-content-area"></div>
@@ -303,14 +331,20 @@
 
             <!-- Телескоп Новостей -->
             <div id="tab-telescope" class="tab-page">
-                <h1 class="page-title">Телескоп Новостей</h1>
-                <p class="page-text">Официальные новости космоса.</p>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h1 class="page-title" style="margin-bottom: 0;">Телескоп Новостей</h1>
+                    <button class="auth-btn" id="create-dwarf-btn" style="display: none;" onclick="openDwarfModal()">+ Создать Карлика</button>
+                </div>
+                <div id="telescope-feed-grid">
+                    <div class="empty-placeholder">Новостей пока нет...</div>
+                </div>
             </div>
 
-            <!-- Жалобы -->
+            <!-- Ящик жалований -->
             <div id="tab-reports" class="tab-page">
                 <h1 class="page-title">Ящик жалований</h1>
-                <p class="page-text">Собрание жалоб.</p>
+                <p class="page-text">Собрание жалоб пользователей.</p>
+                <div id="reports-grid-container"><div class="empty-placeholder">Всё спокойно!</div></div>
             </div>
 
             <!-- Редактор звезды -->
@@ -323,14 +357,34 @@
                     </div>
                     <div class="star-panorama-wrapper">
                         <img id="star-panorama-img" class="star-panorama-banner" src="" alt="Панорама">
+                        <button class="panorama-zoom-btn" onclick="openZoom()">🔍 Просмотр</button>
                     </div>
                     <div class="editor-split-layout">
                         <div class="editor-preview-box" id="editor-runtime-container"></div>
                         <div class="editor-sidebar-box">
-                            <div class="detail-label">НАЗВАНИЕ</div>
-                            <div class="detail-value" id="star-detail-name">Название</div>
+                            <div class="star-detail-section">
+                                <div class="detail-label">НАЗВАНИЕ</div>
+                                <div class="detail-value" id="star-detail-name">Название</div>
+                            </div>
+                            <div class="star-detail-section">
+                                <div class="detail-label">ОПИСАНИЕ</div>
+                                <div class="detail-value" id="star-detail-desc">Описание...</div>
+                            </div>
+                            <div class="like-btn-box">
+                                <span style="font-size: 1.2rem;">❤️ <span id="star-likes-counter">0</span> лайков</span>
+                                <button class="like-action-btn" onclick="likeCurrentStar()">👍 Оценить</button>
+                            </div>
                         </div>
                     </div>
+                </div>
+            </div>
+
+            <!-- Профиль -->
+            <div id="tab-profile" class="tab-page">
+                <div class="star-editor-container">
+                    <h1 class="page-title" id="pp-username">Профиль</h1>
+                    <div class="star-avatar-large" style="width:120px; height:120px;" id="pp-avatar-box"></div>
+                    <p class="page-text" id="pp-bio">Био отсутствует...</p>
                 </div>
             </div>
         </section>
@@ -338,6 +392,7 @@
         <!-- Админ панель Сингулярности -->
         <aside id="singularity-admin-column" style="display:none; background: var(--card-bg); border: 2px solid var(--gold-main); padding: 18px; border-radius: 14px;">
             <div style="font-size: 1.5rem; color: var(--gold-bright); margin-bottom: 15px;">⭐ СИНГУЛЯРНОСТЬ</div>
+            <p style="font-size: 1rem; opacity: 0.8;">Панель создателя активна.</p>
         </aside>
     </main>
 
@@ -349,9 +404,28 @@
             <div class="form-group"><label>Пароль:</label><input type="password" class="form-input" id="auth-password"></div>
             <div class="auth-error" id="auth-error">Заполните все поля!</div>
             <div class="modal-switch" onclick="toggleAuthMode()">Уже есть аккаунт? Войти</div>
-            <div class="modal-actions" style="display:flex; gap:10px; margin-top:10px;">
-                <button class="auth-btn" style="flex:1;" id="modal-submit-btn" onclick="handleAuthSubmit()">Зарегистрироваться</button>
+            <div class="modal-actions">
+                <button class="auth-btn" id="modal-submit-btn" onclick="handleAuthSubmit()">Зарегистрироваться</button>
                 <button class="auth-btn" onclick="closeAuthModal()">Отмена</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="project-modal">
+        <div class="modal-box">
+            <div class="modal-title" style="font-size: 2rem;">Создать звезду</div>
+            <div class="form-group"><label>Название:</label><input type="text" class="form-input" id="project-name-input"></div>
+            <div class="form-group"><label>Категория:</label>
+                <select class="form-select" id="project-category-select">
+                    <option value="HTML">HTML</option>
+                    <option value="Python">Python</option>
+                    <option value="Roblox">Roblox</option>
+                    <option value="Картинки">Картинки</option>
+                </select>
+            </div>
+            <div class="modal-actions" style="margin-top: 10px;">
+                <button class="auth-btn" onclick="submitCreateProject()">Создать</button>
+                <button class="auth-btn" onclick="document.getElementById('project-modal').classList.remove('open')">Отмена</button>
             </div>
         </div>
     </div>
@@ -361,9 +435,10 @@
             <div class="modal-title" style="font-size:1.8rem;">Публикация</div>
             <div class="form-group"><label>Название</label><input type="text" class="form-input" id="modal-proj-name"></div>
             <div class="form-group"><label>Описание</label><textarea class="form-textarea" id="modal-proj-desc"></textarea></div>
+            <div class="form-group"><label>Ссылка на панораму/обложку (ImgBB / Catbox и др.)[cite: 7]:</label><input type="text" class="form-input" id="modal-proj-cover" placeholder="https://..."></div>
             <div style="display:flex; gap:10px; margin-top:10px;">
-                <button class="auth-btn" style="flex:1;" onclick="togglePublishProject()">🌐 Опубликовать в Звёздный зал</button>
-                <button class="auth-btn" onclick="closePublishModal()">Закрыть</button>
+                <button class="auth-btn" style="flex:1;" onclick="togglePublishProject()">🌐 Опубликовать в Зал</button>
+                <button class="auth-btn" onclick="document.getElementById('publish-modal').classList.remove('open')">Закрыть</button>
             </div>
         </div>
     </div>
@@ -376,11 +451,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
 
     <script>
-        // Инициализация Supabase (по твоим данным со скриншота)
-        const SUPABASE_URL = 'https://gkpqzbnrumjawbuqjiti.supabase.co';
-        const SUPABASE_ANON_KEY = 'sb_publishable_dEfo3jU_R3vXL3dSXdAoew_0znuixMD';
-        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
         let currentTab = 'main';
         let authMode = 'register';
         let currentUser = null;
@@ -396,6 +466,11 @@
         }
 
         function initApp() {
+            setInterval(() => {
+                const now = new Date();
+                document.getElementById('timer').textContent = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+            }, 1000);
+
             try {
                 const session = localStorage.getItem('staralgo_current_session');
                 if (session) {
@@ -417,6 +492,18 @@
             document.getElementById('breadcrumb').textContent = name;
             if (tabId === 'hall') renderZvezdnyFeed();
             if (tabId === 'proto') renderProtoProjectsView(document.getElementById('proto-main-content-area'));
+            updateSidebarVisibility();
+        }
+
+        function updateSidebarVisibility() {
+            const sidebar = document.getElementById('profile-sidebar');
+            const mainLayout = document.getElementById('main-layout');
+            const adminCol = document.getElementById('singularity-admin-column');
+            const isSing = currentUser && (currentUser.username.toLowerCase() === 'nezmorin' || currentUser.username.toLowerCase() === 'papa liva');
+            const showSidebar = (currentUser && currentTab === 'main');
+            if (sidebar) sidebar.style.display = showSidebar ? 'block' : 'none';
+            if (adminCol) adminCol.style.display = (isSing && currentTab === 'main') ? 'block' : 'none';
+            if (mainLayout) mainLayout.className = showSidebar ? 'layout-sidebar-content' : '';
         }
 
         function openAuthModal() { document.getElementById('auth-modal').classList.add('open'); }
@@ -430,8 +517,19 @@
         function handleAuthSubmit() {
             const u = document.getElementById('auth-username').value.trim();
             const p = document.getElementById('auth-password').value.trim();
-            if (!u || !p) return;
-            currentUser = { username: u, projectsList: [], role: '[Начинающий]' };
+            const err = document.getElementById('auth-error');
+            if (!u || !p) { err.style.display = 'block'; return; }
+
+            let db = JSON.parse(localStorage.getItem('staralgo_users_db') || '{}');
+            if (authMode === 'register') {
+                if (db[u.toLowerCase()]) { err.textContent = 'Уже существует!'; err.style.display = 'block'; return; }
+                currentUser = { username: u, password: p, projectsList: [], vacuumList: [], role: '[Начинающий]', avatarHtml: defaultStarSvg, likes: 0 };
+                db[u.toLowerCase()] = currentUser;
+            } else {
+                if (!db[u.toLowerCase()] || db[u.toLowerCase()].password !== p) { err.textContent = 'Неверно!'; err.style.display = 'block'; return; }
+                currentUser = db[u.toLowerCase()];
+            }
+            localStorage.setItem('staralgo_users_db', JSON.stringify(db));
             localStorage.setItem('staralgo_current_session', JSON.stringify(currentUser));
             applyUserSession();
             closeAuthModal();
@@ -442,12 +540,16 @@
             document.getElementById('card-user-name').textContent = currentUser.username;
             document.getElementById('auth-btn').style.display = 'none';
             document.getElementById('user-header-profile').style.display = 'flex';
-            document.getElementById('profile-sidebar').style.display = 'block';
             document.getElementById('nav-proto-btn').style.display = 'inline-block';
             if (currentUser.username.toLowerCase() === 'nezmorin' || currentUser.username.toLowerCase() === 'papa liva') {
+                currentUser.role = '[Сингулярность]';
                 document.getElementById('singularity-admin-column').style.display = 'block';
                 document.getElementById('nav-reports-btn').style.display = 'inline-block';
+                document.getElementById('create-dwarf-btn').style.display = 'inline-block';
             }
+            document.getElementById('header-avatar-container').innerHTML = currentUser.avatarHtml || defaultStarSvg;
+            document.getElementById('main-avatar-container').innerHTML = currentUser.avatarHtml || defaultStarSvg;
+            updateSidebarVisibility();
         }
 
         function logout() {
@@ -455,55 +557,91 @@
             currentUser = null;
             document.getElementById('auth-btn').style.display = 'block';
             document.getElementById('user-header-profile').style.display = 'none';
-            document.getElementById('profile-sidebar').style.display = 'none';
             document.getElementById('nav-proto-btn').style.display = 'none';
             document.getElementById('singularity-admin-column').style.display = 'none';
             document.getElementById('nav-reports-btn').style.display = 'none';
             setTab(null, 'main', 'Главная');
         }
 
+        function promptAvatarUrl() {
+            const url = prompt('Введите URL картинки аватара (например, с ImgBB / Catbox)[cite: 7]:');
+            if (!url) return;
+            currentUser.avatarHtml = `<img src="${url}" alt="Avatar">`;
+            saveSession();
+            applyUserSession();
+        }
+
+        function saveSession() {
+            localStorage.setItem('staralgo_current_session', JSON.stringify(currentUser));
+            let db = JSON.parse(localStorage.getItem('staralgo_users_db') || '{}');
+            db[currentUser.username.toLowerCase()] = currentUser;
+            localStorage.setItem('staralgo_users_db', JSON.stringify(db));
+        }
+
         function handleUserSearch() {
             const query = document.getElementById('user-search-input').value.toLowerCase().trim();
             const resultsList = document.getElementById('search-results-list');
-            let usersDB = JSON.parse(localStorage.getItem('staralgo_users_db') || '{}');
-            if (!query) { resultsList.innerHTML = `<div class="empty-placeholder">Начните ввод для поиска пользователей...</div>`; return; }
-            const matched = Object.values(usersDB).filter(u => u.username.toLowerCase().includes(query));
-            resultsList.innerHTML = matched.length === 0 ? `<div class="empty-placeholder">Пользователи не найдены</div>` : matched.map(u => `
-                <div class="search-result-card">
+            let db = JSON.parse(localStorage.getItem('staralgo_users_db') || '{}');
+            if (!query) { resultsList.innerHTML = `<div class="empty-placeholder">Начните ввод...</div>`; return; }
+            const matched = Object.values(db).filter(u => u.username.toLowerCase().includes(query));
+            resultsList.innerHTML = matched.length === 0 ? `<div class="empty-placeholder">Не найдено</div>` : matched.map(u => `
+                <div class="search-result-card" onclick="viewUserProfile('${u.username}')">
                     <div class="search-result-avatar">${u.avatarHtml || defaultStarSvg}</div>
                     <div class="search-result-info"><div class="uname">${u.username}</div><div class="urole">${u.role}</div></div>
                 </div>
             `).join('');
         }
 
-        // Подгрузка Звёздного зала из облака Supabase
-        async function renderZvezdnyFeed() {
+        function viewUserProfile(username) {
+            let db = JSON.parse(localStorage.getItem('staralgo_users_db') || '{}');
+            const u = db[username.toLowerCase()];
+            if (!u) return;
+            document.getElementById('pp-username').textContent = u.username;
+            document.getElementById('pp-bio').textContent = u.bio || 'Без описания...';
+            document.getElementById('pp-avatar-box').innerHTML = u.avatarHtml || defaultStarSvg;
+            setTab(null, 'profile', 'Профиль');
+        }
+
+        function renderZvezdnyFeed() {
             const grid = document.getElementById('zvezdny-feed-grid');
-            grid.innerHTML = '<div style="opacity:0.7">Загрузка созвездий из Supabase...</div>';
-            
-            const { data, error } = await supabaseClient.from('projects').select('*').eq('published', true);
-            if (error || !data || data.length === 0) {
-                grid.innerHTML = '<div style="opacity:0.7">Пока нет опубликованных звёзд в облаке.</div>';
-                return;
-            }
-            grid.innerHTML = data.map(p => `
-                <div class="feed-star-card" onclick="viewCloudStar(${p.id})">
-                    <img src="${p.cover_url || generateRandomPanorama(p.name)}" class="star-cover-preview" alt="cover">
+            let db = JSON.parse(localStorage.getItem('staralgo_users_db') || '{}');
+            let stars = [];
+            Object.values(db).forEach(u => {
+                if (u.projectsList) u.projectsList.forEach(p => { if (p.published) stars.push(p); });
+            });
+            if (stars.length === 0) { grid.innerHTML = `<div class="empty-placeholder">Пока нет опубликованных звёзд.</div>`; return; }
+            grid.innerHTML = stars.map(p => `
+                <div class="feed-star-card" onclick="viewPublishedStar('${p.author}', ${p.id})">
+                    <img src="${p.coverUrl || generateRandomPanorama(p.name)}" class="star-cover-preview" alt="cover">
                     <div class="feed-star-title">${p.name}</div>
-                    <div class="feed-star-author">Автор: ${p.author_username} [${p.category || 'HTML'}]</div>
+                    <div class="feed-star-author">Автор: ${p.author} [${p.category}]</div>
                     <div style="color:var(--gold-bright);">❤️ ${p.likes || 0}</div>
                 </div>
             `).join('');
         }
 
-        async function viewCloudStar(id) {
-            const { data } = await supabaseClient.from('projects').select('*').eq('id', id).single();
-            if (!data) return;
-            activeStarObject = data;
-            setTab(null, 'star-editor', data.name);
-            document.getElementById('editor-project-title-header').textContent = data.name;
-            document.getElementById('star-panorama-img').src = data.cover_url || generateRandomPanorama(data.name);
-            document.getElementById('editor-runtime-container').innerHTML = `<textarea style="width:100%; height:120px; background:#080705; color:#f5d65c; padding:8px;">${data.data || ''}</textarea>`;
+        function viewPublishedStar(author, id) {
+            let db = JSON.parse(localStorage.getItem('staralgo_users_db') || '{}');
+            const u = db[author.toLowerCase()];
+            if (!u) return;
+            const star = u.projectsList.find(p => p.id === id);
+            if (!star) return;
+            activeStarObject = star;
+            setTab(null, 'star-editor', star.name);
+            document.getElementById('editor-project-title-header').textContent = star.name;
+            document.getElementById('star-panorama-img').src = star.coverUrl || generateRandomPanorama(star.name);
+            document.getElementById('star-detail-name').textContent = star.name;
+            document.getElementById('star-detail-desc').textContent = star.description || 'Без описания';
+            document.getElementById('star-likes-counter').textContent = star.likes || 0;
+            document.getElementById('editor-runtime-container').innerHTML = `<textarea style="width:100%; height:120px; background:#080705; color:#f5d65c; padding:8px;" readonly>${star.data || ''}</textarea>`;
+        }
+
+        function switchProtoSection(e, sec) {
+            document.querySelectorAll('.proto-nav-item').forEach(b => b.classList.remove('active'));
+            if (e && e.currentTarget) e.currentTarget.classList.add('active');
+            const area = document.getElementById('proto-main-content-area');
+            if (sec === 'stars') renderProtoProjectsView(area);
+            else renderVacuumView(area);
         }
 
         function renderProtoProjectsView(container) {
@@ -511,73 +649,119 @@
             container.innerHTML = `
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
                     <h2>Мои звёзды</h2>
-                    <button class="auth-btn" onclick="createCloudProject()">+ Создать</button>
+                    <button class="auth-btn" onclick="document.getElementById('project-modal').classList.add('open')">+ Создать</button>
                 </div>
                 <div class="proto-projects-grid">
                     ${(currentUser.projectsList || []).map(p => `
                         <div class="project-item-card" onclick="openStarEditor(${p.id})">
-                            <img src="${p.cover_url}" class="star-cover-preview" alt="cover">
-                            <div class="feed-star-title" style="font-size:1.2rem;">${p.name}</div>
+                            <img src="${p.coverUrl || generateRandomPanorama(p.name)}" class="star-cover-preview" alt="cover">
+                            <div class="project-item-title">${p.name}</div>
+                            <div class="project-item-cat">${p.category} ${p.published ? '🌐' : ''}</div>
                         </div>
                     `).join('')}
                 </div>
             `;
         }
 
-        async function createCloudProject() {
-            const name = prompt('Название звезды:');
+        function renderVacuumView(container) {
+            if (!currentUser) return;
+            container.innerHTML = `<h2>Вакуум</h2><div class="proto-projects-grid">${(currentUser.vacuumList || []).map(p => `
+                <div class="project-item-card">
+                    <div class="project-item-title">${p.name}</div>
+                    <button class="auth-btn" onclick="restoreStar(${p.id})">Восстановить</button>
+                </div>
+            `).join('')}</div>`;
+        }
+
+        function restoreStar(id) {
+            const idx = currentUser.vacuumList.findIndex(p => p.id === id);
+            if (idx === -1) return;
+            currentUser.projectsList.push(currentUser.vacuumList.splice(idx, 1)[0]);
+            saveSession();
+            switchProtoSection(null, 'stars');
+        }
+
+        function submitCreateProject() {
+            const name = document.getElementById('project-name-input').value.trim();
+            const cat = document.getElementById('project-category-select').value;
             if (!name) return;
-            const newProj = {
-                author_username: currentUser.username,
-                name: name,
-                category: 'HTML',
-                description: 'Описание...',
-                published: false,
-                cover_url: generateRandomPanorama(name),
-                likes: 0,
-                data: '// код'
-            };
-            const { data, error } = await supabaseClient.from('projects').insert([newProj]).select();
-            if (error) { alert('Ошибка Supabase: ' + error.message); return; }
-            if (data && data[0]) {
-                currentUser.projectsList.push(data[0]);
-                localStorage.setItem('staralgo_current_session', JSON.stringify(currentUser));
-                renderProtoProjectsView(document.getElementById('proto-main-content-area'));
-            }
+            currentUser.projectsList.push({ id: Date.now(), author: currentUser.username, name, category: cat, description: '', published: false, coverUrl: '', likes: 0, data: '// код' });
+            saveSession();
+            document.getElementById('project-modal').classList.remove('open');
+            switchProtoSection(null, 'stars');
         }
 
         function openStarEditor(id) {
-            const proj = currentUser.projectsList.find(p => p.id === id);
-            if (!proj) return;
-            activeStarObject = proj;
-            setTab(null, 'star-editor', proj.name);
-            document.getElementById('editor-project-title-header').textContent = proj.name;
-            document.getElementById('star-panorama-img').src = proj.cover_url;
-            document.getElementById('editor-runtime-container').innerHTML = `<textarea id="cm-box" style="width:100%; height:150px;">${proj.data || ''}</textarea>`;
-            setTimeout(() => {
-                if (window.CodeMirror) {
-                    CodeMirror.fromTextArea(document.getElementById('cm-box'), { theme: 'dracula', lineNumbers: true });
-                }
-            }, 50);
+            const p = currentUser.projectsList.find(item => item.id === id);
+            if (!p) return;
+            activeStarObject = p;
+            setTab(null, 'star-editor', p.name);
+            document.getElementById('editor-project-title-header').textContent = p.name;
+            document.getElementById('star-panorama-img').src = p.coverUrl || generateRandomPanorama(p.name);
+            document.getElementById('star-detail-name').textContent = p.name;
+            document.getElementById('star-detail-desc').textContent = p.description || 'Без описания';
+            document.getElementById('star-likes-counter').textContent = p.likes || 0;
+            document.getElementById('editor-runtime-container').innerHTML = `<textarea id="cm-box" style="width:100%; height:150px;">${p.data || ''}</textarea>`;
+            setTimeout(() => { if (window.CodeMirror) CodeMirror.fromTextArea(document.getElementById('cm-box'), { theme: 'dracula', lineNumbers: true }); }, 50);
         }
 
-        function openPublishModal() { document.getElementById('publish-modal').classList.add('open'); }
-        function closePublishModal() { document.getElementById('publish-modal').classList.remove('open'); }
-
-        async function togglePublishProject() {
+        function openPublishModal() {
             if (!activeStarObject) return;
-            activeStarObject.published = true;
-            activeStarObject.name = document.getElementById('modal-proj-name').value || activeStarObject.name;
-            
-            await supabaseClient.from('projects').update({
-                published: true,
-                name: activeStarObject.name,
-                description: document.getElementById('modal-proj-desc').value
-            }).eq('id', activeStarObject.id);
+            document.getElementById('modal-proj-name').value = activeStarObject.name;
+            document.getElementById('modal-proj-desc').value = activeStarObject.description || '';
+            document.getElementById('modal-proj-cover').value = activeStarObject.coverUrl || '';
+            document.getElementById('publish-modal').classList.add('open');
+        }
 
-            alert('Звезда опубликована в Звёздный зал через Supabase!');
-            closePublishModal();
+        function togglePublishProject() {
+            if (!activeStarObject) return;
+            activeStarObject.name = document.getElementById('modal-proj-name').value;
+            activeStarObject.description = document.getElementById('modal-proj-desc').value;
+            activeStarObject.coverUrl = document.getElementById('modal-proj-cover').value;
+            activeStarObject.published = true;
+            saveSession();
+            document.getElementById('publish-modal').classList.remove('open');
+            alert('Звезда опубликована в Звёздный зал!');
             renderZvezdnyFeed();
+        }
+
+        function likeCurrentStar() {
+            if (!currentUser || !activeStarObject) return;
+            activeStarObject.likes = (activeStarObject.likes || 0) + 1;
+            saveSession();
+            document.getElementById('star-likes-counter').textContent = activeStarObject.likes;
+        }
+
+        function openZoom() {
+            window.open(document.getElementById('star-panorama-img').src, '_blank');
+        }
+
+        function renderTelescopeFeed() {
+            const grid = document.getElementById('telescope-feed-grid');
+            let dwarfs = JSON.parse(localStorage.getItem('staralgo_yellow_dwarfs_db') || '[]');
+            if (dwarfs.length === 0) { grid.innerHTML = `<div class="empty-placeholder">Новости пока отсутствуют...</div>`; return; }
+            grid.innerHTML = dwarfs.map(d => `
+                <div class="dwarf-banner-card">
+                    <img src="${d.coverUrl}" class="dwarf-cover-large" alt="cover">
+                    <div class="feed-star-title">${d.name}</div>
+                    <div style="font-size:1.2rem;">${d.description}</div>
+                </div>
+            `).join('');
+        }
+
+        function openDwarfModal() {
+            const name = prompt('Название новости (Желтого Карлика):');
+            const desc = prompt('Текст новости:');
+            const img = prompt('Ссылка на картинку/панораму[cite: 7]:');
+            if (!name || !desc) return;
+            let dwarfs = JSON.parse(localStorage.getItem('staralgo_yellow_dwarfs_db') || '[]');
+            dwarfs.push({ id: Date.now(), name, description: desc, coverUrl: img || generateRandomPanorama(name) });
+            localStorage.setItem('staralgo_yellow_dwarfs_db', JSON.stringify(dwarfs));
+            renderTelescopeFeed();
+        }
+
+        function openNotificationsModal() {
+            document.getElementById('notification-modal').classList.add('open');
         }
     </script>
 </body>
