@@ -98,9 +98,21 @@
         .user-header-text .role { font-size: 1rem; color: var(--gold-main); opacity: 0.8; }
 
         .star-avatar-small { width: 40px; height: 40px; border: 2px solid var(--gold-main); border-radius: 50%; background: #0a0906; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+        .star-avatar-large { width: 90px; height: 90px; border: 2px solid var(--gold-main); border-radius: 50%; background: #0a0906; margin-right: 15px; flex-shrink: 0; overflow: hidden; display: flex; align-items: center; justify-content: center; }
         .star-shape { width: 70%; height: 70%; fill: none; stroke: var(--gold-main); stroke-width: 1.5; margin: auto; }
 
         main { display: grid; grid-template-columns: 1fr; gap: 30px; align-items: start; }
+        main.layout-sidebar-content { grid-template-columns: 320px 1fr; }
+
+        .profile-card {
+            display: none; background: var(--card-bg); border: 2px solid var(--gold-main);
+            border-radius: 16px; padding: 20px; box-shadow: inset 0 0 15px rgba(212, 178, 54, 0.15), 0 0 10px rgba(0, 0, 0, 0.8);
+        }
+        .card-header { display: flex; align-items: center; margin-bottom: 20px; }
+        .card-user-info .name { font-size: 1.8rem; line-height: 1; color: var(--gold-main); word-break: break-all; }
+        .card-user-info .role { font-size: 1.2rem; color: var(--gold-main); opacity: 0.85; }
+        .stats-list { display: flex; flex-direction: column; gap: 10px; font-size: 1.2rem; }
+
         .content-section { width: 100%; }
         .tab-page { display: none; }
         .tab-page.active { display: block; }
@@ -119,12 +131,24 @@
         .search-title { font-size: 1.6rem; color: var(--gold-bright); }
         .search-input-row { display: flex; gap: 10px; }
         .search-input { flex: 1; background: #080705; border: 1px solid var(--gold-main); color: var(--gold-bright); padding: 8px 12px; font-family: var(--font-undertale); font-size: 1.2rem; border-radius: 6px; outline: none; }
+        .search-results-list { display: flex; flex-direction: column; gap: 8px; max-height: 220px; overflow-y: auto; margin-top: 5px; }
+        .search-result-card { display: flex; align-items: center; justify-content: space-between; background: rgba(212, 178, 54, 0.05); border: 1px solid rgba(212, 178, 54, 0.3); padding: 10px; border-radius: 6px; }
+
+        .zvezdny-feed-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 18px; margin-top: 20px; }
+        .feed-star-card { background: var(--card-bg); border: 2px solid var(--gold-main); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 8px; transition: transform 0.2s, box-shadow 0.2s; overflow: hidden; }
+        .feed-star-card:hover { transform: translateY(-3px); box-shadow: 0 0 15px rgba(212, 178, 54, 0.4); }
+        .star-cover-preview { width: 100%; height: 130px; background: #000; border-radius: 8px; object-fit: cover; border: 1px solid var(--gold-main); }
+        .feed-star-title { font-size: 1.5rem; color: var(--gold-bright); }
+        .feed-star-author { font-size: 1rem; opacity: 0.8; }
+        .star-action-btn { background: transparent; border: 1px solid var(--gold-main); color: var(--gold-main); padding: 4px 10px; font-family: var(--font-undertale); font-size: 1rem; border-radius: 4px; cursor: pointer; }
+        .star-action-btn:hover { background: var(--gold-main); color: var(--bg-color); }
 
         .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.85); display: none; justify-content: center; align-items: center; z-index: 2500; }
         .modal-overlay.open { display: flex; }
-        .modal-box { background: #14120a; border: 2px solid var(--gold-main); padding: 25px; border-radius: 14px; width: 450px; max-width: 90vw; display: flex; flex-direction: column; gap: 12px; }
+        .modal-box { background: #14120a; border: 2px solid var(--gold-main); padding: 25px; border-radius: 14px; width: 480px; max-width: 90vw; display: flex; flex-direction: column; gap: 12px; }
         .form-group { display: flex; flex-direction: column; gap: 4px; }
-        .form-input { background: #080705; border: 1px solid var(--gold-main); color: var(--gold-bright); padding: 8px 10px; font-family: var(--font-undertale); font-size: 1.2rem; border-radius: 4px; outline: none; }
+        .form-input, .form-textarea { background: #080705; border: 1px solid var(--gold-main); color: var(--gold-bright); padding: 8px 10px; font-family: var(--font-undertale); font-size: 1.2rem; border-radius: 4px; outline: none; }
+        .form-textarea { resize: vertical; min-height: 80px; }
     </style>
 </head>
 <body onload="brython()">
@@ -147,7 +171,7 @@
 
             <button class="auth-btn" id="auth-btn" onclick="openAuthModal()">Войти</button>
 
-            <div class="user-header-profile" id="user-header-profile">
+            <div class="user-header-profile" id="user-header-profile" onclick="logoutUser()">
                 <div class="user-header-text">
                     <div class="name" id="header-user-name">Никнейм</div>
                     <div class="role" id="header-user-role">[Начинающий]</div>
@@ -159,7 +183,24 @@
         </div>
     </header>
 
-    <main>
+    <main id="main-layout">
+        <!-- Боковой профиль -->
+        <aside class="profile-card" id="profile-sidebar">
+            <div class="card-header">
+                <div class="star-avatar-large">
+                    <svg class="star-shape" viewBox="0 0 100 100"><path d="M 50 0 C 50 35, 65 50, 100 50 C 65 50, 50 65, 50 100 C 50 65, 35 50, 0 50 C 35 50, 50 35, 50 0 Z"/></svg>
+                </div>
+                <div class="card-user-info">
+                    <div class="name" id="card-user-name">Никнейм</div>
+                    <div class="role" id="card-user-role">[Начинающий]</div>
+                </div>
+            </div>
+            <div class="stats-list">
+                <div class="stats-row"><span>Звёзд — <span id="stat-projects">0</span></span></div>
+                <div class="stats-row"><span>Лайков — <span id="stat-likes">0</span></span></div>
+            </div>
+        </aside>
+
         <section class="content-section">
             <!-- Главная -->
             <div id="tab-main" class="tab-page active">
@@ -169,7 +210,7 @@
 1.Рабочая регистрация и профили
 2.Загрузка проектов (ещё с проблемами)
 3.Селебрити (у нас сверхновые) Администрация и т д.(короче то что есть на алговив но лучше)
-We будем признательны при поддержке! Спасибо за посещение сайта удачи!</p>
+Мы будем признательны при поддержке! Спасибо за посещение сайта удачи!</p>
 
                 <div class="info-box-styled">
                     <h3>🚀 ЗАГРУЗКА ФАЙЛОВ И ОБЛОЖЕК (Модель AlgoVive)</h3>
@@ -182,27 +223,31 @@ We будем признательны при поддержке! Спасибо
                 <div class="search-container">
                     <div class="search-title">Поиск пользователей</div>
                     <div class="search-input-row">
-                        <input type="text" id="user-search-input" class="search-input" placeholder="Введите никнейм...">
+                        <input type="text" id="user-search-input" class="search-input" placeholder="Введите никнейм..." oninput="searchUsers()">
                     </div>
+                    <div class="search-results-list" id="search-results-list"></div>
                 </div>
             </div>
 
             <!-- Звёздный Зал -->
             <div id="tab-hall" class="tab-page">
                 <h1 class="page-title">Звёздный Зал</h1>
-                <p class="page-text">Здесь публикуются звёзды сообщества.</p>
+                <div class="zvezdny-feed-grid" id="zvezdny-feed-grid"></div>
             </div>
 
             <!-- Протозвездие -->
             <div id="tab-proto" class="tab-page">
-                <h1 class="page-title">Протозвездие (Мои звёзды)</h1>
-                <p class="page-text">Ваша личная лаборатория разработки.</p>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h1 class="page-title" style="margin-bottom:0;">Протозвездие (Мои звёзды)</h1>
+                    <button class="auth-btn" onclick="openCreateStarModal()">+ Создать звезду</button>
+                </div>
+                <div class="zvezdny-feed-grid" id="my-stars-feed-grid"></div>
             </div>
 
             <!-- Телескоп Новостей -->
             <div id="tab-telescope" class="tab-page">
                 <h1 class="page-title">Телескоп Новостей</h1>
-                <p class="page-text">Свежие новости проекта.</p>
+                <p class="page-text">Свежие обновления платформы и новости разработки.</p>
             </div>
         </section>
     </main>
@@ -211,17 +256,14 @@ We будем признательны при поддержке! Спасибо
     <div class="modal-overlay" id="auth-modal">
         <div class="modal-box">
             <div style="font-size: 1.8rem; color: var(--gold-bright); margin-bottom: 5px;">Вход в STARALGO</div>
-            
             <div class="form-group">
                 <label>Никнейм:</label>
                 <input type="text" class="form-input" id="auth-username-input" placeholder="Введите ник...">
             </div>
-
             <div class="form-group">
                 <label>Пароль:</label>
                 <input type="password" class="form-input" id="auth-password-input" placeholder="******">
             </div>
-
             <div style="display: flex; gap: 10px; margin-top: 15px;">
                 <button class="auth-btn" onclick="submitAuth()">Войти / Зарегистрироваться</button>
                 <button class="auth-btn" onclick="closeAuthModal()">Отмена</button>
@@ -229,8 +271,40 @@ We будем признательны при поддержке! Спасибо
         </div>
     </div>
 
+    <!-- Модалка Создания Звезды -->
+    <div class="modal-overlay" id="star-modal">
+        <div class="modal-box">
+            <div style="font-size: 1.8rem; color: var(--gold-bright); margin-bottom: 5px;">Создать Звезду</div>
+            <div class="form-group">
+                <label>Название звезды:</label>
+                <input type="text" class="form-input" id="star-title-input" placeholder="Мой крутой проект...">
+            </div>
+            <div class="form-group">
+                <label>Описание:</label>
+                <textarea class="form-textarea" id="star-desc-input" placeholder="Расскажите о проекте..."></textarea>
+            </div>
+            <div class="form-group">
+                <label>Ссылка на обложку (catbox/imgbb):</label>
+                <input type="text" class="form-input" id="star-cover-input" placeholder="https://files.catbox.moe/...">
+            </div>
+            <div class="form-group">
+                <label>Ссылка на файл / Игру (.sb3 / HTML):</label>
+                <input type="text" class="form-input" id="star-file-input" placeholder="https://...">
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 15px;">
+                <button class="auth-btn" onclick="submitCreateStar()">Опубликовать</button>
+                <button class="auth-btn" onclick="closeCreateStarModal()">Отмена</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         let currentUser = null;
+        let usersDB = JSON.parse(localStorage.getItem('staralgo_users_db')) || [
+            { username: 'Nezmorin', role: '[Создатель]' },
+            { username: 'Nikrol', role: '[Разработчик]' }
+        ];
+        let starsDB = JSON.parse(localStorage.getItem('staralgo_stars_db')) || [];
 
         function updateRealTime() {
             const now = new Date();
@@ -250,56 +324,190 @@ We будем признательны при поддержке! Спасибо
 
             const breadcrumb = document.getElementById('breadcrumb');
             if (breadcrumb) breadcrumb.textContent = name;
+
+            if (tabId === 'hall') renderHall();
+            if (tabId === 'proto') renderMyStars();
         }
 
-        function openAuthModal() {
-            document.getElementById('auth-modal').classList.add('open');
-        }
-
-        function closeAuthModal() {
-            document.getElementById('auth-modal').classList.remove('open');
-        }
+        function openAuthModal() { document.getElementById('auth-modal').classList.add('open'); }
+        function closeAuthModal() { document.getElementById('auth-modal').classList.remove('open'); }
 
         function submitAuth() {
             const username = document.getElementById('auth-username-input').value.trim();
-            if (!username) {
-                alert('Введите никнейм!');
+            if (!username) { alert('Введите никнейм!'); return; }
+
+            let user = usersDB.find(u => u.username.toLowerCase() === username.toLowerCase());
+            if (!user) {
+                user = { username: username, role: '[Начинающий]' };
+                usersDB.push(user);
+                localStorage.setItem('staralgo_users_db', JSON.stringify(usersDB));
+            }
+
+            currentUser = user;
+            localStorage.setItem('staralgo_current_user', JSON.stringify(currentUser));
+            updateUIForAuth();
+            closeAuthModal();
+        }
+
+        function logoutUser() {
+            if (confirm('Выйти из аккаунта?')) {
+                localStorage.removeItem('staralgo_current_user');
+                currentUser = null;
+                location.reload();
+            }
+        }
+
+        function updateUIForAuth() {
+            if (currentUser) {
+                document.getElementById('auth-btn').style.display = 'none';
+                document.getElementById('user-header-profile').style.display = 'flex';
+                document.getElementById('header-user-name').textContent = currentUser.username;
+                document.getElementById('header-user-role').textContent = currentUser.role;
+
+                document.getElementById('main-layout').classList.add('layout-sidebar-content');
+                document.getElementById('profile-sidebar').style.display = 'block';
+                document.getElementById('card-user-name').textContent = currentUser.username;
+                document.getElementById('card-user-role').textContent = currentUser.role;
+
+                const protoBtn = document.getElementById('nav-proto-btn');
+                if (protoBtn) protoBtn.style.display = 'inline-block';
+
+                updateUserStats();
+            }
+        }
+
+        function updateUserStats() {
+            if (!currentUser) return;
+            const myStars = starsDB.filter(s => s.author === currentUser.username);
+            document.getElementById('stat-projects').textContent = myStars.length;
+            const totalLikes = myStars.reduce((acc, s) => acc + (s.likes || 0), 0);
+            document.getElementById('stat-likes').textContent = totalLikes;
+        }
+
+        function searchUsers() {
+            const query = document.getElementById('user-search-input').value.trim().toLowerCase();
+            const container = document.getElementById('search-results-list');
+            container.innerHTML = '';
+            if (!query) return;
+
+            const results = usersDB.filter(u => u.username.toLowerCase().includes(query));
+            if (results.length === 0) {
+                container.innerHTML = '<div style="opacity:0.6;">Пользователи не найдены</div>';
                 return;
             }
 
-            currentUser = {
-                username: username,
-                role: '[Начинающий]'
+            results.forEach(u => {
+                const card = document.createElement('div');
+                card.className = 'search-result-card';
+                card.innerHTML = `<div><b>${u.username}</b> <small style="opacity:0.8;">${u.role}</small></div>`;
+                container.appendChild(card);
+            });
+        }
+
+        function openCreateStarModal() { document.getElementById('star-modal').classList.add('open'); }
+        function closeCreateStarModal() { document.getElementById('star-modal').classList.remove('open'); }
+
+        function submitCreateStar() {
+            if (!currentUser) return;
+            const title = document.getElementById('star-title-input').value.trim();
+            const desc = document.getElementById('star-desc-input').value.trim();
+            const cover = document.getElementById('star-cover-input').value.trim();
+            const file = document.getElementById('star-file-input').value.trim();
+
+            if (!title) { alert('Введите название!'); return; }
+
+            const newStar = {
+                id: Date.now(),
+                title: title,
+                desc: desc,
+                cover: cover || 'https://via.placeholder.com/300x150/14120a/d4b236?text=STARALGO',
+                file: file,
+                author: currentUser.username,
+                likes: 0
             };
 
-            localStorage.setItem('staralgo_current_user', JSON.stringify(currentUser));
-
-            document.getElementById('auth-btn').style.display = 'none';
-            document.getElementById('user-header-profile').style.display = 'flex';
-            document.getElementById('header-user-name').textContent = currentUser.username;
-            document.getElementById('header-user-role').textContent = currentUser.role;
+            starsDB.unshift(newStar);
+            localStorage.setItem('staralgo_stars_db', JSON.stringify(starsDB));
             
-            const protoBtn = document.getElementById('nav-proto-btn');
-            if (protoBtn) protoBtn.style.display = 'inline-block';
+            closeCreateStarModal();
+            renderMyStars();
+            updateUserStats();
+        }
 
-            closeAuthModal();
+        function likeStar(id) {
+            const star = starsDB.find(s => s.id === id);
+            if (star) {
+                star.likes = (star.likes || 0) + 1;
+                localStorage.setItem('staralgo_stars_db', JSON.stringify(starsDB));
+                renderHall();
+                renderMyStars();
+                updateUserStats();
+            }
+        }
+
+        function renderHall() {
+            const feed = document.getElementById('zvezdny-feed-grid');
+            feed.innerHTML = '';
+            if (starsDB.length === 0) {
+                feed.innerHTML = '<div style="opacity:0.7;">В Звёздном Зале пока нет опубликованных звёзд. Будьте первыми!</div>';
+                return;
+            }
+            starsDB.forEach(s => {
+                const card = document.createElement('div');
+                card.className = 'feed-star-card';
+                card.innerHTML = `
+                    <img src="${s.cover}" class="star-cover-preview" onerror="this.src='https://via.placeholder.com/300x150/14120a/d4b236?text=STARALGO'">
+                    <div class="feed-star-title">${s.title}</div>
+                    <div class="feed-star-author">Автор: ${s.author}</div>
+                    <div style="font-size:0.9rem; opacity:0.8;">${s.desc}</div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:auto;">
+                        <button class="star-action-btn" onclick="likeStar(${s.id})">★ ${s.likes || 0}</button>
+                        ${s.file ? `<a href="${s.file}" target="_blank" class="star-action-btn" style="text-decoration:none;">Открыть</a>` : ''}
+                    </div>
+                `;
+                feed.appendChild(card);
+            });
+        }
+
+        function renderMyStars() {
+            const feed = document.getElementById('my-stars-feed-grid');
+            if (!feed) return;
+            feed.innerHTML = '';
+            if (!currentUser) return;
+
+            const myStars = starsDB.filter(s => s.author === currentUser.username);
+            if (myStars.length === 0) {
+                feed.innerHTML = '<div style="opacity:0.7;">У вас пока нет опубликованных звёзд. Нажмите «+ Создать звезду»!</div>';
+                return;
+            }
+
+            myStars.forEach(s => {
+                const card = document.createElement('div');
+                card.className = 'feed-star-card';
+                card.innerHTML = `
+                    <img src="${s.cover}" class="star-cover-preview" onerror="this.src='https://via.placeholder.com/300x150/14120a/d4b236?text=STARALGO'">
+                    <div class="feed-star-title">${s.title}</div>
+                    <div style="font-size:0.9rem; opacity:0.8;">${s.desc}</div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:auto;">
+                        <span style="color:var(--gold-bright);">★ ${s.likes || 0}</span>
+                        ${s.file ? `<a href="${s.file}" target="_blank" class="star-action-btn" style="text-decoration:none;">Открыть</a>` : ''}
+                    </div>
+                `;
+                feed.appendChild(card);
+            });
         }
 
         document.addEventListener('DOMContentLoaded', () => {
             updateRealTime();
             setInterval(updateRealTime, 1000);
 
-            // Восстановление сессии если была
             const savedUser = localStorage.getItem('staralgo_current_user');
             if (savedUser) {
                 currentUser = JSON.parse(savedUser);
-                document.getElementById('auth-btn').style.display = 'none';
-                document.getElementById('user-header-profile').style.display = 'flex';
-                document.getElementById('header-user-name').textContent = currentUser.username;
-                document.getElementById('header-user-role').textContent = currentUser.role;
-                const protoBtn = document.getElementById('nav-proto-btn');
-                if (protoBtn) protoBtn.style.display = 'inline-block';
+                updateUIForAuth();
             }
+
+            renderHall();
         });
     </script>
 </body>
