@@ -15,9 +15,6 @@
     <!-- Supabase SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-    <!-- CodeMirror Core JS -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemir.min.js"></script>
-
     <style>
         @font-face {
             font-family: 'OldRobloxFont';
@@ -100,6 +97,7 @@
         .user-header-text { text-align: right; line-height: 1.1; }
         .user-header-text .name { font-size: 1.5rem; color: var(--gold-main); }
         .user-header-text .role { font-size: 1rem; color: var(--gold-main); opacity: 0.8; }
+        .bell-icon-btn { background: transparent; border: 1px solid var(--gold-main); color: var(--gold-main); font-size: 1.1rem; padding: 5px 10px; border-radius: 20px; cursor: pointer; }
         .logout-btn { background: transparent; border: 1px solid var(--gold-main); color: var(--gold-main); font-size: 0.8rem; padding: 2px 4px; cursor: pointer; border-radius: 3px; margin-top: 2px; }
 
         .star-avatar-small { width: 40px; height: 40px; border: 2px solid var(--gold-main); border-radius: 50%; background: #0a0906; overflow: hidden; display: flex; align-items: center; justify-content: center; }
@@ -110,6 +108,7 @@
         main { display: grid; grid-template-columns: 1fr; gap: 30px; align-items: start; }
         main.layout-sidebar-content { grid-template-columns: 340px 1fr; }
         main.layout-sidebar-content-admin { grid-template-columns: 320px 1fr 340px; }
+        main.layout-content-admin { grid-template-columns: 1fr 340px; }
 
         .profile-card { display: none; background: var(--card-bg); border: 2px solid var(--gold-main); border-radius: 16px; padding: 20px; }
         .card-header { display: flex; align-items: center; margin-bottom: 20px; }
@@ -227,12 +226,13 @@
                 <button class="nav-item" onclick="setTab(event, 'hall', 'Звёздный Зал')">Звёздный Зал</button>
                 <button class="nav-item" id="nav-proto-btn" style="display: none;" onclick="setTab(event, 'proto', 'Протозвездие')">Протозвездие</button>
                 <button class="nav-item" onclick="setTab(event, 'telescope', 'Телескоп Новостей')">Телескоп Новостей</button>
-                <button class="nav-item" id="nav-reports-btn" style="display: none; color: #ff5555;" onclick="setTab(event, 'reports', 'Жалобы')">Жалобы</button>
+                <button class="nav-item" id="nav-reports-btn" style="display: none; color: #ff5555;" onclick="setTab(event, 'reports', 'Ящик жалований')">Жалобы</button>
             </nav>
 
             <button class="auth-btn" id="auth-btn" onclick="openAuthModal()">Войти</button>
 
-            <div class="user-header-profile" id="user-header-profile" onclick="openMyProfile()" style="display: none;">
+            <div class="user-header-profile" id="user-header-profile" onclick="openMyProfile()">
+                <button class="bell-icon-btn" id="bell-notifications-btn" title="Уведомления" onclick="event.stopPropagation(); openNotificationsModal()">🔔</button>
                 <div class="user-header-text">
                     <div class="name" id="header-user-name">Никнейм</div>
                     <div class="role" id="header-user-role">[Начинающий]</div>
@@ -266,9 +266,8 @@
             <!-- Главная -->
             <div id="tab-main" class="tab-page active">
                 <h1 class="page-title">О сайте</h1>
-                <p class="page-text">Staralgo — облачный проект по алгоритмике на базе Supabase. Добро пожаловать!</p>
+                <p class="page-text">Staralgo — облачный проект по алгоритмике на базе Supabase. Добро пожаловать в Звёздный зал!</p>
 
-                <!-- ВОССТАНОВЛЕННЫЙ ПОИСК ПОЛЬЗОВАТЕЛЕЙ -->
                 <div class="search-container">
                     <div class="search-title">Поиск пользователей</div>
                     <div class="search-input-row">
@@ -284,7 +283,7 @@
             <div id="tab-hall" class="tab-page">
                 <h1 class="page-title">Звёздный Зал</h1>
                 <div class="constellation-display-box" id="constellation-display-box">
-                    <span style="font-size: 1.3rem; opacity: 0.7;">Загрузка созвездий из облака...</span>
+                    <span style="font-size: 1.3rem; opacity: 0.7;">Загрузка созвездий из облака Supabase...</span>
                 </div>
                 <div class="zvezdny-feed-grid" id="zvezdny-feed-grid"></div>
             </div>
@@ -377,6 +376,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
 
     <script>
+        // Инициализация Supabase (по твоим данным со скриншота)
         const SUPABASE_URL = 'https://gkpqzbnrumjawbuqjiti.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_dEfo3jU_R3vXL3dSXdAoew_0znuixMD';
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -462,7 +462,6 @@
             setTab(null, 'main', 'Главная');
         }
 
-        // ПОИСК ПОЛЬЗОВАТЕЛЕЙ
         function handleUserSearch() {
             const query = document.getElementById('user-search-input').value.toLowerCase().trim();
             const resultsList = document.getElementById('search-results-list');
@@ -477,19 +476,21 @@
             `).join('');
         }
 
+        // Подгрузка Звёздного зала из облака Supabase
         async function renderZvezdnyFeed() {
             const grid = document.getElementById('zvezdny-feed-grid');
-            grid.innerHTML = '<div style="opacity:0.7">Загрузка созвездий...</div>';
+            grid.innerHTML = '<div style="opacity:0.7">Загрузка созвездий из Supabase...</div>';
+            
             const { data, error } = await supabaseClient.from('projects').select('*').eq('published', true);
             if (error || !data || data.length === 0) {
-                grid.innerHTML = '<div style="opacity:0.7">Пока нет опубликованных звёзд.</div>';
+                grid.innerHTML = '<div style="opacity:0.7">Пока нет опубликованных звёзд в облаке.</div>';
                 return;
             }
             grid.innerHTML = data.map(p => `
                 <div class="feed-star-card" onclick="viewCloudStar(${p.id})">
                     <img src="${p.cover_url || generateRandomPanorama(p.name)}" class="star-cover-preview" alt="cover">
                     <div class="feed-star-title">${p.name}</div>
-                    <div class="feed-star-author">Автор: ${p.author_username} [${p.category}]</div>
+                    <div class="feed-star-author">Автор: ${p.author_username} [${p.category || 'HTML'}]</div>
                     <div style="color:var(--gold-bright);">❤️ ${p.likes || 0}</div>
                 </div>
             `).join('');
@@ -537,7 +538,7 @@
                 data: '// код'
             };
             const { data, error } = await supabaseClient.from('projects').insert([newProj]).select();
-            if (error) { alert('Ошибка: ' + error.message); return; }
+            if (error) { alert('Ошибка Supabase: ' + error.message); return; }
             if (data && data[0]) {
                 currentUser.projectsList.push(data[0]);
                 localStorage.setItem('staralgo_current_session', JSON.stringify(currentUser));
@@ -574,8 +575,9 @@
                 description: document.getElementById('modal-proj-desc').value
             }).eq('id', activeStarObject.id);
 
-            alert('Звезда опубликована в Звёздный зал!');
+            alert('Звезда опубликована в Звёздный зал через Supabase!');
             closePublishModal();
+            renderZvezdnyFeed();
         }
     </script>
 </body>
