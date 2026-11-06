@@ -53,7 +53,8 @@ function mapProject(row, includePayload = false) {
   };
 }
 function mapComment(row) {
-  return { id: Number(row.id), parentId: row.parent_id ? Number(row.parent_id) : null,
+  // Keep timestamp-based IDs as strings to avoid precision loss in browsers.
+  return { id: String(row.id), parentId: row.parent_id ? String(row.parent_id) : null,
     replyToUser: row.reply_to_user || null, author: row.username, text: row.body,
     date: Number(row.created_at) };
 }
@@ -168,7 +169,7 @@ async function bootstrap(env, user) {
     current.notifications = notifRows.results.map(mapNotification);
     current.projectsList = current.projectsList.map(p => ({ ...p }));
     dwarfs = (await env.DB.prepare(`SELECT d.*,u.username author,(SELECT COUNT(*) FROM dwarf_likes l WHERE l.dwarf_id=d.id) likes_count,(SELECT COUNT(*) FROM dwarf_comments c WHERE c.dwarf_id=d.id) comments_count FROM yellow_dwarfs d JOIN users u ON u.id=d.author_id ORDER BY d.created_at DESC LIMIT 100`).all()).results.map(r => ({ id:Number(r.id), name:r.title, description:r.body, coverUrl:r.image_url || '', author:r.author, date:Number(r.created_at), likes:Number(r.likes_count), commentsCount:Number(r.comments_count), comments:[] }));
-    if (isStaff(user)) reports = (await env.DB.prepare(`SELECT r.*,u.username reporter,coalesce(t.username,'') target_owner FROM reports r JOIN users u ON u.id=r.reporter_id LEFT JOIN users t ON t.id=r.target_user_id WHERE r.status='open' ORDER BY r.created_at DESC LIMIT 100`).all()).results.map(r => ({id:Number(r.id),type:r.target_type,targetId:Number(r.target_id),targetName:r.target_name,targetOwner:r.target_owner,reporter:r.reporter,reason:r.reason,date:Number(r.created_at)}));
+    if (isStaff(user)) reports = (await env.DB.prepare(`SELECT r.*,u.username reporter,coalesce(t.username,'') target_owner FROM reports r JOIN users u ON u.id=r.reporter_id LEFT JOIN users t ON t.id=r.target_user_id WHERE r.status='open' ORDER BY r.created_at DESC LIMIT 100`).all()).results.map(r => ({id:Number(r.id),type:r.target_type,targetId:String(r.target_id),targetName:r.target_name,targetOwner:r.target_owner,reporter:r.reporter,reason:r.reason,date:Number(r.created_at)}));
   } else {
     dwarfs = (await env.DB.prepare(`SELECT d.*,u.username author,(SELECT COUNT(*) FROM dwarf_likes l WHERE l.dwarf_id=d.id) likes_count,(SELECT COUNT(*) FROM dwarf_comments c WHERE c.dwarf_id=d.id) comments_count FROM yellow_dwarfs d JOIN users u ON u.id=d.author_id ORDER BY d.created_at DESC LIMIT 100`).all()).results.map(r => ({ id:Number(r.id), name:r.title, description:r.body, coverUrl:r.image_url || '', author:r.author, date:Number(r.created_at), likes:Number(r.likes_count), commentsCount:Number(r.comments_count), comments:[] }));
   }
@@ -207,6 +208,23 @@ async function handle(request, env) {
 
   if (path === '/api/auth/register' && method === 'POST') {
     const body = await readBody(request);
+    if (env.TURNSTILE_SECRET_KEY) {
+      const captchaToken = typeof body.captchaToken === 'string' ? body.captchaToken : '';
+      if (!captchaToken) fail(400, 'Подтвердите, что вы не робот');
+      const verification = new FormData();
+      verification.set('secret', env.TURNSTILE_SECRET_KEY);
+      verification.set('response', captchaToken);
+      const remoteIp = request.headers.get('CF-Connecting-IP');
+      if (remoteIp) verification.set('remoteip', remoteIp);
+      let captchaResult;
+      try {
+        const captchaResponse = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', { method: 'POST', body: verification });
+        captchaResult = await captchaResponse.json();
+      } catch { fail(503, 'Не удалось проверить CAPTCHA. Попробуйте ещё раз'); }
+      if (!captchaResult?.success || (captchaResult.hostname && captchaResult.hostname !== 'staralgo.vercel.app')) {
+        fail(400, 'Проверка CAPTCHA не пройдена. Попробуйте ещё раз');
+      }
+    }
     const username = text(body.username, 24, 'Никнейм');
     const password = typeof body.password === 'string' ? body.password : '';
     if (!/^[\p{L}\p{N}_ .-]{3,24}$/u.test(username)) fail(400, 'Никнейм: 3–24 символа, буквы, цифры, пробел, _ . -');
@@ -406,7 +424,7 @@ async function handle(request, env) {
     const cid = makeId(), stamp = now();
     await env.DB.prepare('INSERT INTO comments(id,project_id,user_id,body,parent_id,reply_to_user,created_at) VALUES(?,?,?,?,?,?,?)').bind(cid,row.id,user.id,value,parentId,replyTo,stamp).run();
     await addNotification(env,row.user_id,user.id,'comment',`оставил комментарий в вашей звезде «${row.name}»`,{linkType:'star',targetAuthor:row.author,targetStarId:row.id});
-    return json({ comment:{id:Number(cid),parentId:parentId ? Number(parentId):null,replyToUser:replyTo,author:user.username,text:value,date:stamp} },201);
+    return json({ comment:{id:String(cid),parentId:parentId ? String(parentId):null,replyToUser:replyTo,author:user.username,text:value,date:stamp} },201);
   }
   const commentDelete = path.match(/^\/api\/comments\/([\w-]+)$/);
   if (commentDelete && method === 'DELETE') {
@@ -469,7 +487,7 @@ async function handle(request, env) {
     if (!exists) fail(404,'Новость не найдена');
     const body = await readBody(request), value = text(body.body,2000,'Комментарий'), cid=makeId(),stamp=now();
     await env.DB.prepare('INSERT INTO dwarf_comments(id,dwarf_id,user_id,body,created_at) VALUES(?,?,?,?,?)').bind(cid,dwarfComments[1],user.id,value,stamp).run();
-    return json({comment:{id:Number(cid),author:user.username,text:value,date:stamp}},201);
+    return json({comment:{id:String(cid),author:user.username,text:value,date:stamp}},201);
   }
   const dwarfCommentDelete = path.match(/^\/api\/dwarf-comments\/([\w-]+)$/);
   if (dwarfCommentDelete && method === 'DELETE') {
@@ -490,13 +508,15 @@ async function handle(request, env) {
       const t=await userByName(env,targetUsername); if (!t || t.id===user.id || isSingularity(t)) fail(404,'Пользователь не найден');
       targetUserId=t.id; targetName=targetName||t.username;
     } else {
-      const c=await env.DB.prepare('SELECT c.*,p.user_id FROM comments c JOIN projects p ON p.id=c.project_id WHERE c.id=?').bind(targetId).first();
-      if (!c || c.user_id===user.id) fail(404,'Комментарий не найден');
+      const c=await env.DB.prepare('SELECT c.*,p.user_id AS project_owner_id FROM comments c LEFT JOIN projects p ON p.id=c.project_id WHERE c.id=?').bind(targetId).first();
+      if (!c) fail(404,'Комментарий не найден');
+      if (String(c.user_id) === String(user.id)) fail(400,'Нельзя пожаловаться на собственный комментарий');
+      if (!c.project_owner_id) fail(404,'Проект с этим комментарием не найден');
       targetUserId=c.user_id;
     }
     const rid=makeId();
     await env.DB.prepare('INSERT INTO reports(id,reporter_id,target_type,target_id,target_user_id,target_name,reason,created_at) VALUES(?,?,?,?,?,?,?,?)').bind(rid,user.id,type,targetId,targetUserId,targetName,reason,now()).run();
-    return json({id:Number(rid)},201);
+    return json({id:String(rid)},201);
   }
   if (path === '/api/reports' && method === 'GET') {
     if (!isStaff(user)) fail(403,'Нет доступа');
