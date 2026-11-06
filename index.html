@@ -2054,6 +2054,8 @@
                 <input type="password" class="form-input" id="auth-password" autocomplete="current-password">
             </div>
 
+            <div id="turnstile-box" style="margin:12px 0; min-height:0;"></div>
+            <div id="turnstile-config-note" class="auth-error" style="display:none;">Защита CAPTCHA настраивается. Регистрация пока недоступна.</div>
             <div class="auth-error" id="auth-error">Заполните все поля!</div>
 
             <div class="modal-switch" id="modal-switch" onclick="toggleAuthMode()">Уже есть аккаунт? Войти</div>
@@ -2573,6 +2575,7 @@
         function openAuthModal() {
             const modal = document.getElementById('auth-modal');
             if (modal) modal.classList.add('open');
+            setTimeout(() => window.refreshStarAlgoCaptcha?.(), 0);
             const errorElem = document.getElementById('auth-error');
             if (errorElem) errorElem.style.display = 'none';
         }
@@ -2582,6 +2585,7 @@
             if (modal) modal.classList.remove('open');
             document.getElementById('auth-username').value = '';
             document.getElementById('auth-password').value = '';
+            window.starAlgoCaptchaToken = '';
         }
 
         function toggleAuthMode() {
@@ -2593,11 +2597,13 @@
                 document.getElementById('modal-title').textContent = 'Вход в аккаунт';
                 document.getElementById('modal-submit-btn').textContent = 'Войти';
                 document.getElementById('modal-switch').textContent = 'Нет аккаунта? Зарегистрироваться';
+                window.refreshStarAlgoCaptcha?.();
             } else {
                 authMode = 'register';
                 document.getElementById('modal-title').textContent = 'Регистрация';
                 document.getElementById('modal-submit-btn').textContent = 'Зарегистрироваться';
                 document.getElementById('modal-switch').textContent = 'Уже есть аккаунт? Войти';
+                window.refreshStarAlgoCaptcha?.();
             }
         }
 
@@ -4777,6 +4783,28 @@ except Exception as e:
             saveSession(currentUser);
         }
     </script>
+    <script>
+        window.starAlgoCaptchaToken = '';
+        window.onStarAlgoCaptchaSuccess = token => { window.starAlgoCaptchaToken = token || ''; };
+        window.onStarAlgoCaptchaExpired = () => { window.starAlgoCaptchaToken = ''; };
+        window.refreshStarAlgoCaptcha = function() {
+            const box = document.getElementById('turnstile-box');
+            const note = document.getElementById('turnstile-config-note');
+            if (!box || authMode !== 'register') { if(box) box.innerHTML=''; return; }
+            const key = window.STARALGO_TURNSTILE_SITE_KEY || '';
+            if (!key || !window.turnstile) {
+                box.innerHTML = '';
+                if(note) note.style.display = 'block';
+                return;
+            }
+            if(note) note.style.display = 'none';
+            box.innerHTML = '';
+            window.starAlgoCaptchaToken = '';
+            window.turnstile.render(box, {sitekey:key, callback:window.onStarAlgoCaptchaSuccess, 'expired-callback':window.onStarAlgoCaptchaExpired, theme:'dark'});
+        };
+    </script>
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?onload=starAlgoTurnstileReady&render=explicit" async defer></script>
+    <script>window.starAlgoTurnstileReady = function(){ window.refreshStarAlgoCaptcha?.(); };</script>
     <script src="./assets/api-config.js"></script>
     <script src="./assets/staralgo-cloud.js"></script>
 </body>
