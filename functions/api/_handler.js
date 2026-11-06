@@ -137,7 +137,6 @@ async function getProfile(env, profile, viewer) {
   };
 }
 async function bootstrap(env, user) {
-  await env.DB.prepare('DELETE FROM projects WHERE deleted_at IS NOT NULL AND deleted_at < ?').bind(now() - 180*86400000).run();
   const usersRows = await env.DB.prepare(`SELECT u.*,
     (SELECT COUNT(*) FROM projects p WHERE p.user_id=u.id AND p.published=1 AND p.deleted_at IS NULL) projects_count,
     (SELECT COUNT(*) FROM project_likes l JOIN projects p ON p.id=l.project_id WHERE p.user_id=u.id) likes_received
