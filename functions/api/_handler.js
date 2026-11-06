@@ -383,12 +383,14 @@ async function handle(request, env) {
     let target = body.userId ? await env.DB.prepare('SELECT * FROM users WHERE id=?').bind(String(body.userId)).first() : await userByName(env,body.username);
     if (!target || target.id === user.id) fail(400,'Некорректная подписка');
     const existing = await env.DB.prepare('SELECT 1 FROM follows WHERE follower_id=? AND followed_id=?').bind(user.id,target.id).first();
-    if (existing) await env.DB.prepare('DELETE FROM follows WHERE follower_id=? AND followed_id=?').bind(user.id,target.id).run();
-    else {
+    if (existing) {
+      await env.DB.prepare('DELETE FROM follows WHERE follower_id=? AND followed_id=?').bind(user.id,target.id).run();
+    } else {
       await env.DB.prepare('INSERT INTO follows(follower_id,followed_id,created_at) VALUES(?,?,?)').bind(user.id,target.id,now()).run();
       await addNotification(env,target.id,user.id,'follow','подписался на вас',{linkType:'profile',targetUser:user.username});
     }
-    return json({ following: !existing });
+    const counts=await env.DB.prepare('SELECT (SELECT COUNT(*) FROM follows WHERE followed_id=?) followers,(SELECT COUNT(*) FROM follows WHERE follower_id=?) following').bind(target.id,target.id).first();
+    return json({following:!existing,userId:target.id,followers:Number(counts.followers||0),followingCount:Number(counts.following||0)});
   }
   const likeMatch = path.match(/^\/api\/projects\/([\w-]+)\/like$/);
   if (likeMatch && method === 'POST') {
@@ -523,7 +525,7 @@ async function handle(request, env) {
   if (path === '/api/reports' && method === 'GET') {
     if (!isStaff(user)) fail(403,'Нет доступа');
     const rows = await env.DB.prepare(`SELECT r.*,u.username reporter,t.username target_owner,cpu.username AS comment_parent_owner,
-      pc.project_id AS comment_project_id, dc.dwarf_id AS comment_dwarf_id
+      pc.project_id AS comment_project_id, dc.dwarf_id AS comment_dwarf_id, du.username AS du_username
       FROM reports r
       JOIN users u ON u.id=r.reporter_id
       LEFT JOIN users t ON t.id=r.target_user_id
@@ -531,11 +533,13 @@ async function handle(request, env) {
       LEFT JOIN projects cp ON cp.id=pc.project_id
       LEFT JOIN users cpu ON cpu.id=cp.user_id
       LEFT JOIN dwarf_comments dc ON r.target_type='comment' AND dc.id=r.target_id
+      LEFT JOIN yellow_dwarfs yd ON yd.id=dc.dwarf_id
+      LEFT JOIN users du ON du.id=yd.author_id
       WHERE r.status='open' ORDER BY r.created_at DESC LIMIT 100`).all();
     return json({reports:rows.results.map(r=>({
       id:String(r.id),type:r.target_type,targetId:String(r.target_id),targetName:r.target_name,
       targetOwner:r.target_owner||'',targetParentType:r.comment_project_id?'project':r.comment_dwarf_id?'dwarf':'',
-      targetParentId:String(r.comment_project_id||r.comment_dwarf_id||''),targetParentOwner:r.comment_parent_owner||'',
+      targetParentId:String(r.comment_project_id||r.comment_dwarf_id||''),targetParentOwner:r.comment_parent_owner||(r.du_username||''),
       reporter:r.reporter,reason:r.reason,date:Number(r.created_at)
     }))});
   }
@@ -592,10 +596,26 @@ async function handle(request, env) {
     const rid=path.split('/').pop(), body=await readBody(request);
     const report=await env.DB.prepare('SELECT * FROM reports WHERE id=?').bind(rid).first(); if (!report) fail(404,'Жалоба не найдена');
     if (body.action==='delete-project' && report.target_type==='project') {
-      const p=await projectRow(env,report.target_id); if (p) await env.DB.prepare('UPDATE projects SET deleted_at=?,was_published=published,published=0,updated_at=? WHERE id=?').bind(now(),now(),p.id).run();
+      const p=await projectRow(env,report.target_id); if (!p) fail(404,'Проект не найден');
+      await env.DB.prepare('UPDATE projects SET deleted_at=?,was_published=published,published=0,updated_at=? WHERE id=?').bind(now(),now(),p.id).run();
+    } else if (body.action==='delete-comment' && report.target_type==='comment') {
+      const projectComment=await env.DB.prepare('SELECT id,user_id FROM comments WHERE id=?').bind(report.target_id).first();
+      if (projectComment) {
+        const author=await env.DB.prepare('SELECT role FROM users WHERE id=?').bind(projectComment.user_id).first();
+        if (author?.role==='[Сингулярность]') fail(403,'Нельзя удалить комментарий владельца');
+        await env.DB.prepare('DELETE FROM comments WHERE id=?').bind(report.target_id).run();
+      } else {
+        const dwarfComment=await env.DB.prepare('SELECT id,user_id FROM dwarf_comments WHERE id=?').bind(report.target_id).first();
+        if (!dwarfComment) fail(404,'Комментарий уже удалён');
+        const author=await env.DB.prepare('SELECT role FROM users WHERE id=?').bind(dwarfComment.user_id).first();
+        if (author?.role==='[Сингулярность]') fail(403,'Нельзя удалить комментарий владельца');
+        await env.DB.prepare('DELETE FROM dwarf_comments WHERE id=?').bind(report.target_id).run();
+      }
     } else if (body.action==='ban-user' && report.target_user_id && isAdmin(user)) {
       const until=Number(body.banUntil); if (!Number.isFinite(until)||until<=now()) fail(400,'Некорректный срок бана');
       await env.DB.prepare('UPDATE users SET is_banned=1,ban_until=?,updated_at=? WHERE id=? AND role<>\'[Сингулярность]\'').bind(until,now(),report.target_user_id).run();
+    } else if (!(body.action==='resolve-user' && report.target_type==='user')) {
+      fail(400,'Действие не поддерживается для этой жалобы');
     }
     await env.DB.prepare("UPDATE reports SET status='resolved' WHERE id=?").bind(rid).run();
     return json({ok:true});
