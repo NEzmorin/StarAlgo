@@ -406,11 +406,10 @@
     const name = document.getElementById('project-name-input').value.trim();
     const category = document.getElementById('project-category-select').value;
     if (!name) { alert('Введите название звезды!'); return; }
-    const projectUrl = String(document.getElementById('project-url-input')?.value || '').trim();
+    const projectUrl = '';
     const defaults = category === 'Python'
       ? '# Нарисуем квадрат черепашкой\nimport turtle\nfor i in range(4):\n    turtle.forward(100)\n    turtle.right(90)\n'
       : ['Roblox','Картинки','Медиа','Видео','Сайт','Разговорник','Scratch'].includes(category) ? '' : '// Напишите HTML код здесь';
-    if (['Roblox','Картинки','Медиа','Видео','Сайт','Разговорник'].includes(category) && !projectUrl) { alert('Добавь ссылку на внешний ресурс.'); return; }
     try {
       await api('/api/projects',{method:'POST',body:jsonBody({name,category,description:'',published:false,data:defaults,projectUrl})});
       await refreshBootstrap({render:false});
