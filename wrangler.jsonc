@@ -13,5 +13,10 @@
   ],
   "vars": {
     "APP_ORIGIN": "https://staralgo.vercel.app"
+  },
+  "triggers": {
+    "crons": [
+      "0 4 * * *"
+    ]
   }
 }
