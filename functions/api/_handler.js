@@ -277,7 +277,7 @@ async function fetchDriveScratchProject(fileId) {
       'cache-control': 'public, max-age=60',
       'x-content-type-options': 'nosniff'
     };
-    if (declaredLength > 0) headers['content-length'] = String(declaredLength);
+    // Do not forward Google's Content-Length: Workers may transparently decode upstream bodies, making it stale and causing browsers to truncate the ZIP.
     return new Response(body, { status: 200, headers });
   }
   return json({ error: 'Google Drive не отдал открытый .sb3-файл. Проверьте доступ «Все, у кого есть ссылка» и что ссылка ведёт на файл .sb3.' }, 502);
