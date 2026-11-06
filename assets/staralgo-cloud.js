@@ -816,7 +816,7 @@ except Exception as error:
   };
   window.addEventListener('beforeunload', () => { if (projectSaveTimer) clearTimeout(projectSaveTimer); });
 
-  const start = () => window.initApp();
+  const start = () => window.initApp().then(() => window.restoreRoute?.());
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once:true });
   else start();
 })();
