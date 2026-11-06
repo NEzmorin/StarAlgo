@@ -522,8 +522,20 @@ async function handle(request, env) {
   }
   if (path === '/api/reports' && method === 'GET') {
     if (!isStaff(user)) fail(403,'Нет доступа');
-    const rows = await env.DB.prepare(`SELECT r.*,u.username reporter,t.username target_owner FROM reports r JOIN users u ON u.id=r.reporter_id LEFT JOIN users t ON t.id=r.target_user_id WHERE r.status='open' ORDER BY r.created_at DESC LIMIT 100`).all();
-    return json({reports:rows.results.map(r=>({id:Number(r.id),type:r.target_type,targetId:Number(r.target_id),targetName:r.target_name,targetOwner:r.target_owner||'',reporter:r.reporter,reason:r.reason,date:Number(r.created_at)}))});
+    const rows = await env.DB.prepare(`SELECT r.*,u.username reporter,t.username target_owner,
+      pc.project_id AS comment_project_id, dc.dwarf_id AS comment_dwarf_id
+      FROM reports r
+      JOIN users u ON u.id=r.reporter_id
+      LEFT JOIN users t ON t.id=r.target_user_id
+      LEFT JOIN comments pc ON r.target_type='comment' AND pc.id=r.target_id
+      LEFT JOIN dwarf_comments dc ON r.target_type='comment' AND dc.id=r.target_id
+      WHERE r.status='open' ORDER BY r.created_at DESC LIMIT 100`).all();
+    return json({reports:rows.results.map(r=>({
+      id:String(r.id),type:r.target_type,targetId:String(r.target_id),targetName:r.target_name,
+      targetOwner:r.target_owner||'',targetParentType:r.comment_project_id?'project':r.comment_dwarf_id?'dwarf':'',
+      targetParentId:String(r.comment_project_id||r.comment_dwarf_id||''),
+      reporter:r.reporter,reason:r.reason,date:Number(r.created_at)
+    }))});
   }
   const reportMatch = path.match(/^\/api\/reports\/([\w-]+)$/);
   if (reportMatch && method === 'DELETE') {
