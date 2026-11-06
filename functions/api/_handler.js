@@ -266,7 +266,7 @@ async function handle(request, env) {
   if (path.startsWith('/api/scratch/drive/') && method === 'OPTIONS') return new Response(null, { status: 204, headers: { 'access-control-allow-methods': 'GET,HEAD,OPTIONS', 'access-control-allow-headers': 'Content-Type', 'access-control-max-age': '86400' } });
   if (path.startsWith('/api/scratch/drive/')) {
     if (method !== 'GET' && method !== 'HEAD') return json({ error: 'Метод не поддерживается' }, 405);
-    const match = path.match(/^\\/api\\/scratch\\/drive\\/([A-Za-z0-9_-]{10,100})$/);
+    const match = path.match(new RegExp("^/api/scratch/drive/([A-Za-z0-9_-]{10,100})$"));
     if (!match) return json({ error: 'Некорректный ID файла Google Drive' }, 400);
     const response = await fetchDriveScratchProject(match[1]);
     if (method === 'HEAD') return new Response(null, { status: response.status, headers: response.headers });
@@ -728,7 +728,7 @@ export default {
   async fetch(request, env) {
     const origin=request.headers.get('Origin')||'';
     const requestUrl = new URL(request.url);
-    const publicScratchProxy = /^\\/api\\/scratch\\/drive\\/[A-Za-z0-9_-]{10,100}$/.test(requestUrl.pathname) && ['GET','HEAD','OPTIONS'].includes(request.method);
+    const publicScratchProxy = new RegExp("^/api/scratch/drive/[A-Za-z0-9_-]{10,100}$").test(requestUrl.pathname) && ['GET','HEAD','OPTIONS'].includes(request.method);
     const configuredOrigin = env.APP_ORIGIN || requestUrl.origin;
     const allowed=publicScratchProxy || (!!origin && (configuredOrigin==='*' || origin===configuredOrigin || (env.ALLOW_PAGES_PREVIEWS==='true' && /^https:\/\/[a-z0-9-]+\.pages\.dev$/i.test(origin))));
     if (origin && !allowed) return json({error:'Origin не разрешён'},403);
