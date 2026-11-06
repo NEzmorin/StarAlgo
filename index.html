@@ -4079,6 +4079,7 @@
                     <div style="display:flex; flex-direction:column; gap:12px;">
                         <div style="color:var(--gold-bright);">${project.category === 'Сайт' ? 'Внешний веб-проект' : 'Документ / разговорник'}</div>
                         <a class="auth-btn" href="${resourceUrl}" target="_blank" rel="noopener noreferrer" style="text-align:center; text-decoration:none;">🌐 ${label}</a>
+                        ${!isReadOnly ? `<input class="form-input" id="project-resource-url" type="url" placeholder="https://..." value="${resourceUrl}"><button class="auth-btn" onclick="saveProjectResourceUrl()">Сохранить ссылку</button>` : ''}
                     </div>`;
             } else if (project.category === 'Видео' || project.category === 'Медиа') {
                 const resourceUrl = window.saEscapeHTML(project.projectUrl || '');
@@ -4086,6 +4087,7 @@
                 container.innerHTML = isVideo
                     ? `<video controls playsinline preload="metadata" style="width:100%; max-height:520px; background:#000; border:2px solid var(--gold-main); border-radius:8px;"><source src="${resourceUrl}">Ваш браузер не поддерживает видео.</video>`
                     : `<div style="display:flex; flex-direction:column; gap:10px; align-items:center;"><img src="${resourceUrl}" alt="Изображение или GIF" style="max-width:100%; max-height:520px; object-fit:contain; border:2px solid var(--gold-main); border-radius:8px;"><a class="auth-btn" href="${resourceUrl}" target="_blank" rel="noopener noreferrer">Открыть оригинал</a></div>`;
+                if (!isReadOnly) container.innerHTML += `<div style="display:flex; flex-direction:column; gap:8px;"><input class="form-input" id="project-resource-url" type="url" placeholder="https://..." value="${resourceUrl}"><button class="auth-btn" onclick="saveProjectResourceUrl()">Сохранить ссылку</button></div>`;
             } else if (project.category === 'Scratch') {
                 container.innerHTML = `
                     <div style="display: flex; flex-direction: column; gap: 12px;">
@@ -4720,6 +4722,7 @@ except Exception as e:
             if (activeStarObject) {
                 if (activeStarObject.author.toLowerCase() !== currentUser?.username?.toLowerCase()) return;
                 activeStarObject.data = val;
+                activeStarObject.projectUrl = val;
                 saveActiveStarChanges();
             }
         }
