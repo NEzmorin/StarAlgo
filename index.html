@@ -4422,7 +4422,7 @@ except Exception as e:
             }
         }
 
-        function openReportModal(type, targetId, targetName, targetOwner) {
+        function openReportModal(type, targetId, targetName, targetOwner, targetParentType = '', targetParentId = '') {
             if (!currentUser) {
                 openAuthModal();
                 return;
@@ -4431,7 +4431,7 @@ except Exception as e:
                 alert('Нельзя отправлять жалобы на создателей (Сингулярность)!');
                 return;
             }
-            pendingReportData = { type, targetId, targetName, targetOwner };
+            pendingReportData = { type, targetId, targetName, targetOwner, targetParentType, targetParentId };
             document.getElementById('report-reason-input').value = '';
             document.getElementById('report-modal').classList.add('open');
         }
