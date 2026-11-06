@@ -334,6 +334,7 @@ async function handle(request, env) {
     const description = typeof body.description === 'string' ? body.description.slice(0,4000) : '';
     const coverUrl = validateProjectResourceUrl(body.coverUrl || '', 'Обложка');
     const projectUrl = validateProjectResourceUrl(body.projectUrl || '', 'Ссылка проекта');
+    if (['Roblox','Картинки','Медиа','Видео','Сайт','Разговорник'].includes(category) && !projectUrl) fail(400,'Для этого типа проекта нужна внешняя ссылка.');
     const payload = { data: typeof body.data === 'string' ? body.data.slice(0,200000) : '', sb3Data: typeof body.sb3Data === 'string' ? body.sb3Data.slice(0,400000) : '', sb3Url: validateProjectResourceUrl(body.sb3Url || '', 'Scratch-файл'), isDummy: false };
     const pid = makeId(), stamp = now();
     await env.DB.prepare(`INSERT INTO projects(id,user_id,name,category,description,published,cover_url,project_url,source_text,payload_json,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`)
@@ -362,6 +363,7 @@ async function handle(request, env) {
     // Preserve legacy embedded images when unchanged; all new/changed resource links must use the allowlist.
     const cover = coverCandidate === row.cover_url ? row.cover_url : validateProjectResourceUrl(coverCandidate, 'Обложка');
     const pUrl = pUrlCandidate === row.project_url ? row.project_url : validateProjectResourceUrl(pUrlCandidate, 'Ссылка проекта');
+    if (category !== row.category && ['Roblox','Картинки','Медиа','Видео','Сайт','Разговорник'].includes(category) && !pUrl) fail(400,'Для этого типа проекта нужна внешняя ссылка.');
     const payload = parseJson(row.payload_json,{});
     if (body.data !== undefined) payload.data = String(body.data).slice(0,200000);
     if (body.sb3Data !== undefined) payload.sb3Data = String(body.sb3Data).slice(0,400000);
