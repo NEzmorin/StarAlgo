@@ -5,8 +5,7 @@
   const API_ROOT = String(window.STARALGO_API_BASE || '').replace(/\/+$/, '');
   const TOKEN_KEY = 'staralgo_auth_token';
   const LEGACY_KEYS = [
-    'staralgo_users_db', 'staralgo_current_session',
-    'staralgo_yellow_dwarfs_db', 'staralgo_reports_db'
+    'staralgo_users_db', 'staralgo_yellow_dwarfs_db', 'staralgo_reports_db'
   ];
   let profileSnapshot = '';
   let pendingProjectSave = null;
@@ -224,6 +223,14 @@
     // Local records from the former demo are deliberately not imported.
     LEGACY_KEYS.forEach(key => localStorage.removeItem(key));
     const token = localStorage.getItem(TOKEN_KEY);
+    // Restore the last server-confirmed profile immediately while the token is revalidated.
+    if (token) {
+      const cachedSession = readObjectCache('staralgo_current_session', null);
+      if (cachedSession) {
+        currentUser = normalizeUser(cachedSession);
+        applyUserSession();
+      }
+    }
     try {
       await refreshBootstrap({ render: false });
       if (token && !currentUser) localStorage.removeItem(TOKEN_KEY);
@@ -245,6 +252,12 @@
     renderTelescopeFeed();
     renderReportsInbox();
     if (currentUser) applyUserSession();
+    else {
+      const auth = document.getElementById('auth-btn');
+      const header = document.getElementById('user-header-profile');
+      if (auth) auth.style.display = 'block';
+      if (header) header.style.display = 'none';
+    }
   };
   window.handleAuthSubmit = async function() {
     const username = document.getElementById('auth-username').value.trim();
