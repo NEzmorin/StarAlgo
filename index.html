@@ -915,6 +915,56 @@
             gap: 12px;
         }
 
+        /* Code editors and runtime previews get a usable workspace size. */
+        #editor-runtime-container .CodeMirror {
+            height: 420px;
+            min-height: 320px;
+            font-size: 15px;
+        }
+        #editor-runtime-container .editor-preview-media {
+            width: 100%;
+            min-height: 420px;
+            height: 52vh;
+            max-height: 680px;
+        }
+        #editor-runtime-container .editor-preview-media iframe {
+            min-height: 420px;
+        }
+        #editor-runtime-container #html-preview-frame {
+            height: 420px !important;
+        }
+        #editor-runtime-container #turtle-graphics-canvas-container {
+            height: 320px !important;
+            min-height: 260px;
+        }
+        #editor-runtime-container .console-box {
+            min-height: 200px;
+            height: 220px;
+        }
+        #editor-runtime-container:fullscreen {
+            display: flex;
+            flex-direction: column;
+            overflow: auto;
+            padding: 24px;
+            background: #0c0b08;
+            border: 0;
+            border-radius: 0;
+            width: 100%;
+            height: 100%;
+        }
+        #editor-runtime-container:fullscreen .CodeMirror {
+            height: 58vh;
+        }
+        #editor-runtime-container:fullscreen .editor-preview-media,
+        #editor-runtime-container:fullscreen .editor-preview-media iframe {
+            height: 68vh;
+            max-height: none;
+        }
+        @media (max-width: 700px) {
+            #editor-runtime-container .CodeMirror { height: 360px; }
+            #editor-runtime-container .editor-preview-media { height: 360px; min-height: 360px; }
+        }
+
         .editor-sidebar-box {
             background: var(--card-bg);
             border: 2px solid var(--gold-main);
@@ -1667,7 +1717,21 @@
                 <div class="search-container" style="max-width: 900px;">
                     <div class="search-title">!Как загружать файлы и картинки!</div>
                     <p class="page-text" style="font-size:1.05rem; margin:0;">Чтобы экономить место и ускорять StarAlgo, не загружайте большие файлы напрямую на сайт. Сначала разместите файл на одном из разрешённых внешних сервисов, затем вставьте прямую HTTPS-ссылку в проект.</p>
-                    <p class="page-text" style="font-size:1.05rem; margin:0;"><strong>Разрешённые сервисы:</strong> image2url.com, catbox.moe (в том числе .sb3), imgbb.com / ibb.co, posty5.com (HTML), GitHub Pages (*.github.io), Vercel (*.vercel.app), Google Drive (прямая ссылка lh3.googleusercontent.com), Google Docs (разговорники), pagedrop.io, boomurl.com, iimg.live и x02.me.</p>
+                    <p class="page-text" style="font-size:1.05rem; margin:0;"><strong>Разрешённые сервисы:</strong>
+                        <a href="https://www.image2url.com/" target="_blank" rel="noopener noreferrer">image2url.com</a>,
+                        <a href="https://catbox.moe/" target="_blank" rel="noopener noreferrer">catbox.moe</a> (в том числе .sb3),
+                        <a href="https://imgbb.com/" target="_blank" rel="noopener noreferrer">imgbb.com</a> /
+                        <a href="https://ibb.co/" target="_blank" rel="noopener noreferrer">ibb.co</a>,
+                        <a href="https://posty5.com/" target="_blank" rel="noopener noreferrer">posty5.com</a> (HTML),
+                        <a href="https://pages.github.com/" target="_blank" rel="noopener noreferrer">GitHub Pages</a>,
+                        <a href="https://vercel.com/" target="_blank" rel="noopener noreferrer">Vercel</a>,
+                        <a href="https://drive.google.com/" target="_blank" rel="noopener noreferrer">Google Drive</a> (прямая ссылка lh3.googleusercontent.com),
+                        <a href="https://docs.google.com/" target="_blank" rel="noopener noreferrer">Google Docs</a> (разговорники),
+                        <a href="https://pagedrop.io/" target="_blank" rel="noopener noreferrer">pagedrop.io</a>,
+                        <a href="https://boomurl.com/" target="_blank" rel="noopener noreferrer">boomurl.com</a>,
+                        <a href="https://iimg.live/" target="_blank" rel="noopener noreferrer">iimg.live</a> и
+                        <a href="https://x02.me/" target="_blank" rel="noopener noreferrer">x02.me</a>.
+                    </p>
                     <p class="page-text" style="font-size:1.05rem; margin:0;"><strong>Встроенные файлы:</strong> можно ссылаться на cover.png и emptyprofile.png. Ссылки должны быть HTTPS и вести непосредственно к файлу или опубликованному проекту. Для Scratch загружайте .sb3 на Catbox или GitHub Pages и вставляйте прямую ссылку на файл. Плееру TurboWarp нужен прямой файл и поддержка CORS (заголовок Access-Control-Allow-Origin: *); GitHub Pages поддерживает это автоматически. Если Catbox не запускается, используйте GitHub Pages.</p>
                     <p class="page-text" style="font-size:1.05rem; margin:0; color:var(--gold-bright);">Сайт принимает новые внешние ссылки только с перечисленных доменов. Не вставляйте пароли, приватные документы или ссылки с ограниченным доступом.</p>
                 </div>
@@ -2144,12 +2208,6 @@
                     <option value="Разговорник">Разговорник (Google Docs)</option>
                 </select>
             </div>
-            <div class="form-group" style="margin-top:10px;">
-                <label>Внешняя ссылка (Roblox, сайт, видео, медиа или разговорник):</label>
-                <input type="url" class="form-input" id="project-url-input" placeholder="https://...">
-                <div style="font-size:0.95rem; opacity:0.75; margin-top:5px;">Вставь ссылку с одного из разрешённых сервисов из справки выше.</div>
-            </div>
-
             <div class="modal-actions" style="margin-top: 12px;">
                 <button class="auth-btn" onclick="submitCreateProject()">Создать</button>
                 <button class="auth-btn" onclick="closeCreateProjectModal()">Отмена</button>
@@ -4099,8 +4157,8 @@
                                 <span style="opacity:0.8; color:var(--gold-bright);" id="sb3-status-label">${project.sb3Url ? 'Внешняя ссылка сохранена' : 'Загрузи .sb3 на Catbox или GitHub Pages и вставь прямую ссылку (нужен CORS)'}</span>
                             </div>
                         ` : ''}
-                        <div class="editor-preview-media" style="background: #111;">
-                            <iframe id="scratch-player-iframe" style="width:100%; height:100%; border:none;"></iframe>
+                        <div class="editor-preview-media" style="background: #111; min-height:420px; height:52vh;">
+                            <iframe id="scratch-player-iframe" style="width:100%; height:100%; min-height:420px; border:none;"></iframe>
                         </div>
                     </div>
                 `;
@@ -4126,7 +4184,7 @@
                             <textarea id="html-code-textarea">${window.saEscapeHTML(project.data || '')}</textarea>
                             <button class="auth-btn" onclick="runHtmlSandbox()">Запустить / Обновить превью</button>
                             <div style="color: var(--gold-bright); margin-top: 5px;">Живое превью</div>
-                            <iframe sandbox="allow-scripts" id="html-preview-frame" style="width: 100%; height: 220px; background: #fff; border: 2px solid var(--gold-main); border-radius: 8px;"></iframe>
+                            <iframe sandbox="allow-scripts" id="html-preview-frame" style="width: 100%; height: 420px; background: #fff; border: 2px solid var(--gold-main); border-radius: 8px;"></iframe>
                         </div>
                     `;
                     setTimeout(() => {
@@ -4166,7 +4224,7 @@
                             <textarea id="python-code-textarea">${window.saEscapeHTML(project.data || '')}</textarea>
                             <button class="auth-btn" onclick="runPythonWithTurtle()">Запустить скрипт</button>
                             <div style="color: var(--gold-bright);">Графика (Turtle / Терминал)</div>
-                            <div id="turtle-graphics-canvas-container" style="width: 100%; height: 160px; background: #ffffff; border: 2px solid var(--gold-main); border-radius: 6px; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center;">
+                            <div id="turtle-graphics-canvas-container" style="width: 100%; height: 320px; background: #ffffff; border: 2px solid var(--gold-main); border-radius: 6px; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center;">
                                 <span style="color: #000; font-size: 1rem;" id="turtle-placeholder">Графика turtle...</span>
                             </div>
                             <div class="console-box" id="python-console-output">Готов к выполнению Python...</div>
@@ -4187,7 +4245,28 @@
                     }, 50);
                 }
             }
+
+            if (['Scratch','HTML','Python'].includes(project.category)) {
+                const fullscreenBar = document.createElement('div');
+                fullscreenBar.style.cssText = 'display:flex;justify-content:flex-end;margin-bottom:8px;';
+                fullscreenBar.innerHTML = '<button type="button" class="auth-btn" onclick="toggleProjectFullscreen()">⛶ На весь экран</button>';
+                container.prepend(fullscreenBar);
+            }
         }
+
+        window.toggleProjectFullscreen = async function() {
+            const target = document.getElementById('editor-runtime-container');
+            if (!target) return;
+            try {
+                if (document.fullscreenElement === target) await document.exitFullscreen();
+                else if (!document.fullscreenElement && target.requestFullscreen) await target.requestFullscreen();
+                else target.classList.toggle('project-workspace-expanded');
+                if (window.codeMirrorEditor?.refresh) window.codeMirrorEditor.refresh();
+                if (typeof codeMirrorEditor !== 'undefined' && codeMirrorEditor?.refresh) codeMirrorEditor.refresh();
+            } catch (error) {
+                target.classList.toggle('project-workspace-expanded');
+            }
+        };
 
         function runPythonReadonlyResult(code) {
             const consoleBox = document.getElementById('python-console-output');
