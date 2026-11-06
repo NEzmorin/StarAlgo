@@ -208,7 +208,8 @@ async function handle(request, env) {
 
   if (path === '/api/auth/register' && method === 'POST') {
     const body = await readBody(request);
-    if (env.TURNSTILE_SECRET_KEY) {
+    if (!env.TURNSTILE_SECRET_KEY) fail(503, 'Защита CAPTCHA ещё не настроена. Попробуйте позже');
+    {
       const captchaToken = typeof body.captchaToken === 'string' ? body.captchaToken : '';
       if (!captchaToken) fail(400, 'Подтвердите, что вы не робот');
       const verification = new FormData();
