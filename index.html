@@ -4158,8 +4158,8 @@
                 try {
                     const driveUrl = new URL(rawResourceUrl);
                     if (driveUrl.hostname === 'drive.google.com') {
-                        const pathMatch = driveUrl.pathname.match(/^\\/file\\/d\\/([^/]+)/);
-                        driveFileId = (pathMatch && pathMatch[1]) || driveUrl.searchParams.get('id') || '';
+                        const driveParts = driveUrl.pathname.split('/').filter(Boolean);
+                        driveFileId = (driveParts[0] === 'file' && driveParts[1] === 'd' ? driveParts[2] : '') || driveUrl.searchParams.get('id') || '';
                     }
                 } catch (_) {}
                 const drivePreviewUrl = driveFileId ? 'https://drive.google.com/file/d/' + driveFileId + '/preview' : '';
@@ -4738,8 +4738,8 @@ except Exception as e:
             try {
                 const scratchUrl = new URL(source);
                 if (scratchUrl.hostname === 'scratch.mit.edu' || scratchUrl.hostname === 'www.scratch.mit.edu') {
-                    const projectMatch = scratchUrl.pathname.match(/^\\/projects\\/(\\d+)/);
-                    scratchProjectId = projectMatch ? projectMatch[1] : '';
+                    const scratchParts = scratchUrl.pathname.split('/').filter(Boolean);
+                    scratchProjectId = scratchParts[0] === 'projects' && /^[0-9]+$/.test(scratchParts[1] || '') ? scratchParts[1] : '';
                 }
             } catch (_) {}
             if (scratchProjectId) {
