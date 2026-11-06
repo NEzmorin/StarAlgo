@@ -1,0 +1,17 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "staralgo-api",
+  "main": "worker.js",
+  "compatibility_date": "2026-11-06",
+  "workers_dev": true,
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "staralgo-db",
+      "database_id": "REPLACE_WITH_EXISTING_D1_DATABASE_ID"
+    }
+  ],
+  "vars": {
+    "APP_ORIGIN": "https://REPLACE_WITH_YOUR_VERCEL_DOMAIN"
+  }
+}
