@@ -323,6 +323,53 @@ async function handle(request, env) {
   }
   const user = await authUser(request, env);
 
+  if (path === '/api/avatar/upload' && method === 'POST') {
+    if (!user) fail(401, 'Войдите в аккаунт, чтобы изменить аватарку');
+    if (!env.CLOUDINARY_CLOUD_NAME || !env.CLOUDINARY_API_KEY || !env.CLOUDINARY_API_SECRET) {
+      fail(503, 'Загрузка аватарок ещё не настроена. Администратору нужно подключить Cloudinary');
+    }
+    const declared = Number(request.headers.get('Content-Length') || 0);
+    const maxAvatarBytes = 10 * 1024 * 1024;
+    if (declared > maxAvatarBytes + 65536) fail(413, 'Картинка слишком большая. Максимум — 10 МБ');
+    let form;
+    try { form = await request.formData(); } catch { fail(400, 'Не удалось прочитать файл изображения'); }
+    const file = form.get('file');
+    if (!(file instanceof File) || !file.size) fail(400, 'Выберите изображение');
+    if (file.size > maxAvatarBytes) fail(413, 'Картинка слишком большая. Максимум — 10 МБ');
+    const allowedTypes = new Set(['image/png','image/jpeg','image/webp','image/gif']);
+    if (!allowedTypes.has(file.type)) fail(400, 'Поддерживаются PNG, JPG, WEBP и GIF');
+    const head = new Uint8Array(await file.slice(0, 16).arrayBuffer());
+    const isPng = head.length >= 8 && [137,80,78,71,13,10,26,10].every((v,i)=>head[i]===v);
+    const isJpeg = head.length >= 3 && head[0]===255 && head[1]===216 && head[2]===255;
+    const isGif = head.length >= 6 && String.fromCharCode(...head.slice(0,6)).match(/^GIF8[79]a$/);
+    const isWebp = head.length >= 12 && String.fromCharCode(...head.slice(0,4))==='RIFF' && String.fromCharCode(...head.slice(8,12))==='WEBP';
+    if (!(isPng || isJpeg || isGif || isWebp)) fail(400, 'Файл не похож на PNG, JPG, WEBP или GIF');
+    const timestamp = String(Math.floor(Date.now()/1000));
+    const folder = 'staralgo/avatars';
+    const publicId = 'user-' + String(user.id).replace(/[^A-Za-z0-9_-]/g, '');
+    const params = { folder, overwrite: 'true', public_id: publicId, timestamp };
+    const signatureBase = Object.keys(params).sort().map(key => key + '=' + params[key]).join('&') + env.CLOUDINARY_API_SECRET;
+    const signature = hex(await crypto.subtle.digest('SHA-1', encoder.encode(signatureBase)));
+    const uploadForm = new FormData();
+    uploadForm.set('file', file, file.name || 'avatar');
+    uploadForm.set('api_key', env.CLOUDINARY_API_KEY);
+    uploadForm.set('timestamp', timestamp);
+    uploadForm.set('folder', folder);
+    uploadForm.set('public_id', publicId);
+    uploadForm.set('overwrite', 'true');
+    uploadForm.set('signature', signature);
+    let cloudResponse, cloudData;
+    try {
+      cloudResponse = await fetch('https://api.cloudinary.com/v1_1/' + encodeURIComponent(env.CLOUDINARY_CLOUD_NAME) + '/image/upload', { method: 'POST', body: uploadForm });
+      cloudData = await cloudResponse.json();
+    } catch { fail(502, 'Сервис хранения изображений временно недоступен'); }
+    if (!cloudResponse.ok || !cloudData?.secure_url) {
+      console.error('[StarAlgo Cloudinary upload]', cloudResponse.status, cloudData?.error?.message || 'upload failed');
+      fail(502, 'Не удалось загрузить изображение. Попробуйте ещё раз');
+    }
+    return json({ secure_url: cloudData.secure_url, format: cloudData.format || '', bytes: cloudData.bytes || file.size });
+  }
+
   if (path === '/api/auth/register' && method === 'POST') {
     const body = await readBody(request);
     if (!env.TURNSTILE_SECRET_KEY) fail(503, 'Защита CAPTCHA ещё не настроена. Попробуйте позже');
