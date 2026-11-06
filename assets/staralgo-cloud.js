@@ -588,13 +588,31 @@
       }
     } catch (error) { alert(error.message); }
   };
-  window.handleCoverUpload = function(event) {
-    const file=event.target.files?.[0];
-    if (!file || !activeStarObject || !currentUser || file.size>250000) { if(file) alert('Обложка должна быть меньше 250 КБ.'); return; }
-    if (!file.type.startsWith('image/')) { alert('Нужен файл изображения.'); return; }
-    const reader=new FileReader();
-    reader.onload=async e=>{ activeStarObject.coverUrl=String(e.target.result); await saveProjectNow(); document.getElementById('star-panorama-img').src=activeStarObject.coverUrl; document.getElementById('zoomed-panorama-img').src=activeStarObject.coverUrl; renderZvezdnyFeed(); };
-    reader.readAsDataURL(file);
+  window.saveCoverUrl = async function() {
+    if (!activeStarObject || !currentUser || activeStarObject.author.toLowerCase() !== currentUser.username.toLowerCase()) return;
+    const input = document.getElementById('cover-url-input');
+    const value = String(input?.value || '').trim();
+    if (!value) { alert('Вставь HTTPS-ссылку на обложку с разрешённого сервиса.'); return; }
+    activeStarObject.coverUrl = value;
+    try {
+      if (await saveProjectNow()) {
+        const image = document.getElementById('star-panorama-img');
+        const zoom = document.getElementById('zoomed-panorama-img');
+        if (image) image.src = value;
+        if (zoom) zoom.src = value;
+        renderZvezdnyFeed();
+      }
+    } catch (error) { alert(error.message); }
+  };
+  window.saveProjectMediaUrl = async function() {
+    if (!activeStarObject || !currentUser || activeStarObject.author.toLowerCase() !== currentUser.username.toLowerCase()) return;
+    const input = document.getElementById('project-media-url');
+    const value = String(input?.value || '').trim();
+    if (!value) { alert('Вставь HTTPS-ссылку на изображение или GIF.'); return; }
+    activeStarObject.projectUrl = value;
+    activeStarObject.data = '';
+    try { if (await saveProjectNow()) renderStarRuntime(activeStarObject, false); }
+    catch (error) { alert(error.message); }
   };
   window.handleImageProjectUpload = function(event) {
     const file=event.target.files?.[0];
