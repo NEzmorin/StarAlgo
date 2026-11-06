@@ -4154,10 +4154,18 @@
             } else if (project.category === 'Видео' || project.category === 'Медиа') {
                 const rawResourceUrl = String(project.projectUrl || '').trim();
                 const resourceUrl = window.saEscapeHTML(rawResourceUrl);
-                const driveIdMatch = rawResourceUrl.match(/drive\\.google\\.com\\/(?:file\\/d\\/|open\\?id=)([a-zA-Z0-9_-]+)/);
-                const drivePreviewUrl = driveIdMatch ? 'https://drive.google.com/file/d/' + driveIdMatch[1] + '/preview' : '';
+                let driveFileId = '';
+                try {
+                    const driveUrl = new URL(rawResourceUrl);
+                    if (driveUrl.hostname === 'drive.google.com') {
+                        const pathMatch = driveUrl.pathname.match(/^\\/file\\/d\\/([^/]+)/);
+                        driveFileId = (pathMatch && pathMatch[1]) || driveUrl.searchParams.get('id') || '';
+                    }
+                } catch (_) {}
+                const drivePreviewUrl = driveFileId ? 'https://drive.google.com/file/d/' + driveFileId + '/preview' : '';
                 const isDriveVideo = project.category === 'Видео' && !!drivePreviewUrl;
-                const isVideo = project.category === 'Видео' || /\\.(mp4|webm|ogg|mov|m4v)(?:$|[?#])/i.test(rawResourceUrl);
+                const cleanVideoUrl = rawResourceUrl.toLowerCase().split(/[?#]/)[0];
+                const isVideo = project.category === 'Видео' || ['.mp4','.webm','.ogg','.mov','.m4v'].some(ext => cleanVideoUrl.endsWith(ext));
                 container.innerHTML = isDriveVideo
                     ? `<iframe src="${drivePreviewUrl}" allow="autoplay; fullscreen" allowfullscreen style="width:100%;height:520px;border:2px solid var(--gold-main);border-radius:8px;background:#000;"></iframe>`
                     : isVideo
@@ -4726,9 +4734,16 @@ except Exception as e:
             const iframe = document.getElementById('scratch-player-iframe');
             if (!iframe) return;
             const source = String(sb3Source || '').trim();
-            const scratchProject = source.match(/^https?:\\/\\/(?:www\\.)?scratch\\.mit\\.edu\\/projects\\/(\\d+)(?:\\/|$)/i);
-            if (scratchProject) {
-                iframe.src = 'https://scratch.mit.edu/projects/' + scratchProject[1] + '/embed';
+            let scratchProjectId = '';
+            try {
+                const scratchUrl = new URL(source);
+                if (scratchUrl.hostname === 'scratch.mit.edu' || scratchUrl.hostname === 'www.scratch.mit.edu') {
+                    const projectMatch = scratchUrl.pathname.match(/^\\/projects\\/(\\d+)/);
+                    scratchProjectId = projectMatch ? projectMatch[1] : '';
+                }
+            } catch (_) {}
+            if (scratchProjectId) {
+                iframe.src = 'https://scratch.mit.edu/projects/' + scratchProjectId + '/embed';
                 iframe.removeAttribute('srcdoc');
                 iframe.setAttribute('allowfullscreen', '');
                 return;
