@@ -2657,10 +2657,10 @@
             else if (path === '/moderation') { tab='reports'; title='Ящик жалований'; }
             else if (path === '/settings') { tab='profile'; title='Профиль'; }
             else if (path === '/editor') { tab='proto'; title='Протозвездие'; }
-            else if ((match = path.match(/^\\/user\\/id\\/([^/]+)$/))) { tab='profile'; title='Профиль'; }
-            else if ((match = path.match(/^\\/user\\/([^/]+)$/))) { tab='profile'; title='Профиль'; }
-            else if ((match = path.match(/^\\/project\\/([^/]+)$/))) { tab='star-editor'; title='Звезда'; }
-            else if ((match = path.match(/^\\/news\\/([^/]+)$/))) { tab='dwarf-viewer'; title='Новость'; }
+            else if ((match = path.match(/^\/user\/id\/([^/]+)$/))) { tab='profile'; title='Профиль'; }
+            else if ((match = path.match(/^\/user\/([^/]+)$/))) { tab='profile'; title='Профиль'; }
+            else if ((match = path.match(/^\/project\/([^/]+)$/))) { tab='star-editor'; title='Звезда'; }
+            else if ((match = path.match(/^\/news\/([^/]+)$/))) { tab='dwarf-viewer'; title='Новость'; }
             else if (path === '/search') { tab='main'; title='Поиск пользователей'; }
 
             // Keep route restoration guarded through async API requests so views cannot
