@@ -1730,21 +1730,21 @@
                     <div class="search-title">!Как загружать файлы и картинки!</div>
                     <p class="page-text" style="font-size:1.05rem; margin:0;">Чтобы экономить место и ускорять StarAlgo, не загружайте большие файлы напрямую на сайт. Сначала разместите файл на одном из разрешённых внешних сервисов, затем вставьте прямую HTTPS-ссылку в проект.</p>
                     <p class="page-text resource-guide-links" style="font-size:1.05rem; margin:0;"><strong>Сервисы и для чего они подходят:</strong>
-                        <a href="https://www.image2url.com/" target="_blank" rel="noopener noreferrer">image2url.com</a> — картинки и GIF;
-                        <a href="https://catbox.moe/" target="_blank" rel="noopener noreferrer">catbox.moe</a> — файлы, включая .sb3 (если сервис доступен);
+                        <a href="https://www.image2url.com/" target="_blank" rel="noopener noreferrer">image2url.com</a> — изображения;
+                        <a href="https://catbox.moe/" target="_blank" rel="noopener noreferrer">catbox.moe</a> — файлы, в том числе .sb3 (если сервис работает; не полагайтесь на него как на единственный хостинг);
                         <a href="https://imgbb.com/" target="_blank" rel="noopener noreferrer">imgbb.com</a> /
                         <a href="https://ibb.co/" target="_blank" rel="noopener noreferrer">ibb.co</a> — изображения и GIF;
-                        <a href="https://posty5.com/" target="_blank" rel="noopener noreferrer">posty5.com</a> — HTML и веб-файлы;
-                        <a href="https://pages.github.com/" target="_blank" rel="noopener noreferrer">GitHub Pages</a> — сайты, HTML и прямые файлы проекта;
+                        <a href="https://posty5.com/" target="_blank" rel="noopener noreferrer">posty5.com</a> — одна HTML-страница (не ZIP/многофайловый сайт);
+                        <a href="https://pages.github.com/" target="_blank" rel="noopener noreferrer">GitHub Pages</a> — сайты, HTML и статические файлы, в том числе .sb3;
                         <a href="https://vercel.com/" target="_blank" rel="noopener noreferrer">Vercel</a> — сайты и веб-приложения;
-                        <a href="https://drive.google.com/" target="_blank" rel="noopener noreferrer">Google Drive</a> — видео и файлы через общий доступ (для видео используйте «Предпросмотр»);
+                        <a href="https://drive.google.com/" target="_blank" rel="noopener noreferrer">Google Drive</a> — видео и документы: включи «Доступен всем, у кого есть ссылка», для видео StarAlgo откроет предпросмотр;
                         <a href="https://docs.google.com/" target="_blank" rel="noopener noreferrer">Google Docs</a> — разговорники и документы;
-                        <a href="https://pagedrop.io/" target="_blank" rel="noopener noreferrer">pagedrop.io</a> — размещение файлов и страниц;
-                        <a href="https://boomurl.com/" target="_blank" rel="noopener noreferrer">boomurl.com</a> — ссылки на файлы/ресурсы;
-                        <a href="https://iimg.live/" target="_blank" rel="noopener noreferrer">iimg.live</a> — изображения;
-                        <a href="https://x02.me/" target="_blank" rel="noopener noreferrer">x02.me</a> — внешние файлы и ссылки.
+                        <a href="https://pagedrop.io/" target="_blank" rel="noopener noreferrer">pagedrop.io</a> — файлы/страницы; перед загрузкой проверь ограничения и тип прямой ссылки;
+                        <a href="https://boomurl.com/" target="_blank" rel="noopener noreferrer">boomurl.com</a> — статические сайты и HTML/CSS/JS, не хранилище видео или файлов;
+                        <a href="https://iimg.live/" target="_blank" rel="noopener noreferrer">iimg.live</a> — изображения, GIF и видео MP4/WebM/MOV;
+                        <a href="https://x02.me/" target="_blank" rel="noopener noreferrer">x02.me</a> — изображения, видео MP4/WebM/MOV и другие файлы.
                     </p>
-                    <p class="page-text" style="font-size:1.05rem; margin:0;"><strong>Встроенные файлы:</strong> можно ссылаться на cover.png и emptyprofile.png. Ссылки должны быть HTTPS и вести непосредственно к файлу или опубликованному проекту. Для Scratch можно вставить ссылку на опубликованный проект Scratch (откройте проект на Scratch и нажмите «Поделиться») либо загрузить скачанный .sb3 на GitHub Pages или другой доступный файловый хостинг. Для опубликованных проектов Scratch используется официальный плеер. Для внешнего .sb3 в TurboWarp нужна прямая ссылка на файл и поддержка CORS.</p>
+                    <p class="page-text" style="font-size:1.05rem; margin:0;"><strong>Встроенные файлы:</strong> можно ссылаться на cover.png и emptyprofile.png. Ссылки должны быть HTTPS и вести непосредственно к файлу или опубликованному проекту. Для Scratch можно вставить ссылку на опубликованный проект Scratch (откройте свой проект и нажмите «Поделиться») — он откроется во встроенном Scratch-плеере. Либо скачайте .sb3 из Scratch и разместите файл на GitHub Pages или другом хостинге с прямой ссылкой. Для опубликованных проектов Scratch используется официальный плеер. Для внешнего .sb3 в TurboWarp нужна прямая ссылка на файл и поддержка CORS.</p>
                     <p class="page-text" style="font-size:1.05rem; margin:0; color:var(--gold-bright);">Сайт принимает новые внешние ссылки только с перечисленных доменов. Не вставляйте пароли, приватные документы или ссылки с ограниченным доступом.</p>
                 </div>
 
@@ -4166,12 +4166,14 @@
                 const isDriveVideo = project.category === 'Видео' && !!drivePreviewUrl;
                 const cleanVideoUrl = rawResourceUrl.toLowerCase().split(/[?#]/)[0];
                 const isVideo = project.category === 'Видео' || ['.mp4','.webm','.ogg','.mov','.m4v'].some(ext => cleanVideoUrl.endsWith(ext));
-                container.innerHTML = isDriveVideo
-                    ? `<iframe src="${drivePreviewUrl}" allow="autoplay; fullscreen" allowfullscreen style="width:100%;height:520px;border:2px solid var(--gold-main);border-radius:8px;background:#000;"></iframe>`
-                    : isVideo
-                        ? `<video controls playsinline preload="metadata" style="width:100%; max-height:520px; background:#000; border:2px solid var(--gold-main); border-radius:8px;"><source src="${resourceUrl}">Не удалось воспроизвести файл. Для Google Drive вставьте ссылку общего доступа, для других хостингов — прямую ссылку на видео.</video>`
-                        : `<div style="display:flex; flex-direction:column; gap:10px; align-items:center;"><img src="${resourceUrl}" alt="Изображение или GIF" style="max-width:100%; max-height:520px; object-fit:contain; border:2px solid var(--gold-main); border-radius:8px;"><a class="auth-btn" href="${resourceUrl}" target="_blank" rel="noopener noreferrer">Открыть оригинал</a></div>`;
-                if (!isReadOnly) container.innerHTML += `<div style="display:flex; flex-direction:column; gap:8px;"><input class="form-input" id="project-resource-url" type="url" placeholder="https://..." value="${resourceUrl}"><button class="auth-btn" onclick="saveProjectResourceUrl()">Сохранить ссылку</button></div>`;
+                container.innerHTML = !rawResourceUrl
+                    ? `<div class="empty-placeholder" style="min-height:220px;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;">Добавь ссылку на видео. Подойдут публичная ссылка Google Drive или прямая ссылка MP4 / WebM / MOV с iimg.live или x02.me.</div>`
+                    : isDriveVideo
+                        ? `<iframe src="${drivePreviewUrl}" allow="autoplay; fullscreen" allowfullscreen style="width:100%;height:520px;border:2px solid var(--gold-main);border-radius:8px;background:#000;"></iframe>`
+                        : isVideo
+                            ? `<video controls playsinline preload="metadata" style="width:100%; max-height:520px; background:#000; border:2px solid var(--gold-main); border-radius:8px;"><source src="${resourceUrl}">Не удалось воспроизвести файл. Для Google Drive включи доступ «Всем, у кого есть ссылка»; для других хостингов используй прямую ссылку на видео.</video>`
+                            : `<div style="display:flex; flex-direction:column; gap:10px; align-items:center;"><img src="${resourceUrl}" alt="Изображение или GIF" style="max-width:100%; max-height:520px; object-fit:contain; border:2px solid var(--gold-main); border-radius:8px;"><a class="auth-btn" href="${resourceUrl}" target="_blank" rel="noopener noreferrer">Открыть оригинал</a></div>`;
+                if (!isReadOnly) container.innerHTML += `<div style="display:flex; flex-direction:column; gap:8px;"><input class="form-input" id="project-resource-url" type="url" placeholder="Google Drive: https://drive.google.com/file/d/.../view или прямая ссылка MP4" value="${resourceUrl}"><div style="opacity:.8;">Для Google Drive: Общий доступ → Все, у кого есть ссылка → Просмотр.</div><button class="auth-btn" onclick="saveProjectResourceUrl()">Сохранить ссылку</button></div>`;
             } else if (project.category === 'Scratch') {
                 container.innerHTML = `
                     <div style="display: flex; flex-direction: column; gap: 12px;">
