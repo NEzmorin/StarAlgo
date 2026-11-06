@@ -197,7 +197,8 @@ async function bootstrap(env, user) {
   return { user: current, users, dwarfs, reports };
 }
 async function fetchDriveScratchProject(fileId) {
-  const maxBytes = 50 * 1024 * 1024;
+  // Stream large Scratch archives instead of buffering the whole file in Worker memory.
+  const maxBytes = 500 * 1024 * 1024;
   const urls = [
     'https://drive.usercontent.google.com/download?id=' + encodeURIComponent(fileId) + '&export=download&confirm=t',
     'https://drive.google.com/uc?export=download&id=' + encodeURIComponent(fileId) + '&confirm=t'
@@ -213,50 +214,71 @@ async function fetchDriveScratchProject(fileId) {
     const declaredLength = Number(upstream.headers.get('content-length') || 0);
     if (declaredLength > maxBytes) {
       try { await upstream.body.cancel(); } catch (_) {}
-      return json({ error: 'Файл слишком большой. Максимум — 50 МБ.' }, 413);
+      return json({ error: 'Файл больше допустимого лимита прокси — 500 МБ.' }, 413);
     }
     const reader = upstream.body.getReader();
-    const chunks = [];
-    let total = 0;
-    let tooLarge = false;
+    const prefixChunks = [];
+    let prefixLength = 0;
     try {
-      while (true) {
+      while (prefixLength < 4) {
         const part = await reader.read();
         if (part.done) break;
-        total += part.value.byteLength;
-        if (total > maxBytes) {
-          tooLarge = true;
-          await reader.cancel();
-          break;
-        }
-        chunks.push(part.value);
+        prefixChunks.push(part.value);
+        prefixLength += part.value.byteLength;
       }
     } catch (_) {
+      try { await reader.cancel(); } catch (_) {}
       continue;
     }
-    if (tooLarge) return json({ error: 'Файл слишком большой. Максимум — 50 МБ.' }, 413);
-    if (total < 4) continue;
-    const bytes = new Uint8Array(total);
-    let offset = 0;
-    for (const chunk of chunks) {
-      bytes.set(chunk, offset);
-      offset += chunk.byteLength;
+    const prefix = new Uint8Array(prefixLength);
+    let prefixOffset = 0;
+    for (const chunk of prefixChunks) {
+      prefix.set(chunk, prefixOffset);
+      prefixOffset += chunk.byteLength;
     }
     // Scratch .sb3 files are ZIP archives. Reject Drive's HTML login/confirmation pages.
-    if (bytes[0] !== 0x50 || bytes[1] !== 0x4b ||
-        !((bytes[2] === 0x03 && bytes[3] === 0x04) ||
-          (bytes[2] === 0x05 && bytes[3] === 0x06) ||
-          (bytes[2] === 0x07 && bytes[3] === 0x08))) continue;
-    return new Response(bytes, {
-      status: 200,
-      headers: {
-        'content-type': 'application/zip',
-        'content-length': String(total),
-        'content-disposition': 'inline; filename="project.sb3"',
-        'cache-control': 'public, max-age=60',
-        'x-content-type-options': 'nosniff'
+    if (prefixLength < 4 || prefix[0] !== 0x50 || prefix[1] !== 0x4b ||
+        !((prefix[2] === 0x03 && prefix[3] === 0x04) ||
+          (prefix[2] === 0x05 && prefix[3] === 0x06) ||
+          (prefix[2] === 0x07 && prefix[3] === 0x08))) {
+      try { await reader.cancel(); } catch (_) {}
+      continue;
+    }
+    let total = prefixLength;
+    const body = new ReadableStream({
+      start(controller) {
+        controller.enqueue(prefix);
+      },
+      async pull(controller) {
+        try {
+          const part = await reader.read();
+          if (part.done) {
+            controller.close();
+            return;
+          }
+          total += part.value.byteLength;
+          if (total > maxBytes) {
+            try { await reader.cancel(); } catch (_) {}
+            controller.error(new Error('Scratch archive exceeds 500 MB'));
+            return;
+          }
+          controller.enqueue(part.value);
+        } catch (error) {
+          controller.error(error);
+        }
+      },
+      cancel(reason) {
+        return reader.cancel(reason);
       }
     });
+    const headers = {
+      'content-type': 'application/zip',
+      'content-disposition': 'inline; filename="project.sb3"',
+      'cache-control': 'public, max-age=60',
+      'x-content-type-options': 'nosniff'
+    };
+    if (declaredLength > 0) headers['content-length'] = String(declaredLength);
+    return new Response(body, { status: 200, headers });
   }
   return json({ error: 'Google Drive не отдал открытый .sb3-файл. Проверьте доступ «Все, у кого есть ссылка» и что ссылка ведёт на файл .sb3.' }, 502);
 }
