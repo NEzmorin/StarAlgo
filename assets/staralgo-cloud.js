@@ -654,7 +654,7 @@
     if(!comments.length){box.innerHTML='<div class="empty-placeholder">Пока нет комментариев...</div>';return;}
     box.innerHTML=comments.map(c=>{
       const mine=currentUser && currentUser.username.toLowerCase()===String(c.author).toLowerCase();
-      return `<div class="comment-item${c.parentId?' comment-reply-item':''}" id="comment-${esc(c.id)}"><div class="comment-header-row"><span class="comment-author" onclick="viewUserProfile(decodeURIComponent('${jsName(c.author)}'))">${esc(c.author)}</span><div class="comment-actions-row"><button class="comment-action-btn" onclick="setReplyTo('${jsName(c.id)}',decodeURIComponent('${jsName(c.author)}'))">Ответить</button>${!mine?`<button class="comment-action-btn" style="color:#ff5555;" onclick="openReportModal('comment',decodeURIComponent('${jsName(c.id)}'),'Комментарий','${jsName(c.author)}')">⚠️</button>`:''}${mine?`<button class="comment-action-btn" style="color:#ff5555;" onclick="deleteComment(decodeURIComponent('${jsName(c.id)}'))">Удалить</button>`:''}</div></div><div>${c.replyToUser?`<span style="opacity:.7;font-size:.9rem;">Ответ для @${esc(c.replyToUser)}:</span><br>`:''}${esc(c.text)}</div></div>`;
+      return `<div class="comment-item${c.parentId?' comment-reply-item':''}" id="comment-${esc(c.id)}"><div class="comment-header-row"><span class="comment-author" onclick="viewUserProfile(decodeURIComponent('${jsName(c.author)}'))">${esc(c.author)}</span><div class="comment-actions-row"><button class="comment-action-btn" onclick="setReplyTo('${jsName(c.id)}',decodeURIComponent('${jsName(c.author)}'))">Ответить</button>${!mine?`<button class="comment-action-btn" style="color:#ff5555;" onclick="openReportModal('comment',decodeURIComponent('${jsName(c.id)}'),'Комментарий',decodeURIComponent('${jsName(c.author)}'))">⚠️</button>`:''}${mine?`<button class="comment-action-btn" style="color:#ff5555;" onclick="deleteComment(decodeURIComponent('${jsName(c.id)}'))">Удалить</button>`:''}</div></div><div>${c.replyToUser?`<span style="opacity:.7;font-size:.9rem;">Ответ для @${esc(c.replyToUser)}:</span><br>`:''}${esc(c.text)}</div></div>`;
     }).join('');
   };
   window.renderDwarfCommentsList = function(dwarf) {
@@ -664,7 +664,7 @@
     if(!comments.length){box.innerHTML='<div class="empty-placeholder">Пока нет комментариев...</div>';return;}
     box.innerHTML=comments.map(c=>{
       const mine=currentUser && currentUser.username.toLowerCase()===String(c.author).toLowerCase();
-      return `<div class="comment-item"><div class="comment-header-row"><span class="comment-author" onclick="viewUserProfile(decodeURIComponent('${jsName(c.author)}'))">${esc(c.author)}</span><div class="comment-actions-row">${mine?`<button class="comment-action-btn" style="color:#ff5555;" onclick="deleteDwarfComment(${Number(c.id)})">Удалить</button>`:''}</div></div><div>${esc(c.text)}</div></div>`;
+      return `<div class="comment-item"><div class="comment-header-row"><span class="comment-author" onclick="viewUserProfile(decodeURIComponent('${jsName(c.author)}'))">${esc(c.author)}</span><div class="comment-actions-row">${!mine?`<button class="comment-action-btn" style="color:#ff5555;" onclick="openReportModal('comment',decodeURIComponent('${jsName(c.id)}'),'Комментарий к новости',decodeURIComponent('${jsName(c.author)}'))">⚠️</button>`:''}${mine?`<button class="comment-action-btn" style="color:#ff5555;" onclick="deleteDwarfComment(${Number(c.id)})">Удалить</button>`:''}</div></div><div>${esc(c.text)}</div></div>`;
     }).join('');
   };
   window.renderZvezdnyFeed = function() {
