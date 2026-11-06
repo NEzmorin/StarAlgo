@@ -196,8 +196,82 @@ async function bootstrap(env, user) {
   }
   return { user: current, users, dwarfs, reports };
 }
+async function fetchDriveScratchProject(fileId) {
+  const maxBytes = 50 * 1024 * 1024;
+  const urls = [
+    'https://drive.usercontent.google.com/download?id=' + encodeURIComponent(fileId) + '&export=download&confirm=t',
+    'https://drive.google.com/uc?export=download&id=' + encodeURIComponent(fileId) + '&confirm=t'
+  ];
+  for (const upstreamUrl of urls) {
+    let upstream;
+    try {
+      upstream = await fetch(upstreamUrl, { redirect: 'follow', headers: { 'User-Agent': 'StarAlgo-Scratch-Proxy/1.0' } });
+    } catch (_) {
+      continue;
+    }
+    if (!upstream.ok || !upstream.body) continue;
+    const declaredLength = Number(upstream.headers.get('content-length') || 0);
+    if (declaredLength > maxBytes) {
+      try { await upstream.body.cancel(); } catch (_) {}
+      return json({ error: 'Файл слишком большой. Максимум — 50 МБ.' }, 413);
+    }
+    const reader = upstream.body.getReader();
+    const chunks = [];
+    let total = 0;
+    let tooLarge = false;
+    try {
+      while (true) {
+        const part = await reader.read();
+        if (part.done) break;
+        total += part.value.byteLength;
+        if (total > maxBytes) {
+          tooLarge = true;
+          await reader.cancel();
+          break;
+        }
+        chunks.push(part.value);
+      }
+    } catch (_) {
+      continue;
+    }
+    if (tooLarge) return json({ error: 'Файл слишком большой. Максимум — 50 МБ.' }, 413);
+    if (total < 4) continue;
+    const bytes = new Uint8Array(total);
+    let offset = 0;
+    for (const chunk of chunks) {
+      bytes.set(chunk, offset);
+      offset += chunk.byteLength;
+    }
+    // Scratch .sb3 files are ZIP archives. Reject Drive's HTML login/confirmation pages.
+    if (bytes[0] !== 0x50 || bytes[1] !== 0x4b ||
+        !((bytes[2] === 0x03 && bytes[3] === 0x04) ||
+          (bytes[2] === 0x05 && bytes[3] === 0x06) ||
+          (bytes[2] === 0x07 && bytes[3] === 0x08))) continue;
+    return new Response(bytes, {
+      status: 200,
+      headers: {
+        'content-type': 'application/zip',
+        'content-length': String(total),
+        'content-disposition': 'inline; filename="project.sb3"',
+        'cache-control': 'public, max-age=60',
+        'x-content-type-options': 'nosniff'
+      }
+    });
+  }
+  return json({ error: 'Google Drive не отдал открытый .sb3-файл. Проверьте доступ «Все, у кого есть ссылка» и что ссылка ведёт на файл .sb3.' }, 502);
+}
+
 async function handle(request, env) {
   const url = new URL(request.url), path = url.pathname.replace(/\/+$/, '') || '/', method = request.method;
+  if (path.startsWith('/api/scratch/drive/') && method === 'OPTIONS') return new Response(null, { status: 204, headers: { 'access-control-allow-methods': 'GET,HEAD,OPTIONS', 'access-control-allow-headers': 'Content-Type', 'access-control-max-age': '86400' } });
+  if (path.startsWith('/api/scratch/drive/')) {
+    if (method !== 'GET' && method !== 'HEAD') return json({ error: 'Метод не поддерживается' }, 405);
+    const match = path.match(/^\\/api\\/scratch\\/drive\\/([A-Za-z0-9_-]{10,100})$/);
+    if (!match) return json({ error: 'Некорректный ID файла Google Drive' }, 400);
+    const response = await fetchDriveScratchProject(match[1]);
+    if (method === 'HEAD') return new Response(null, { status: response.status, headers: response.headers });
+    return response;
+  }
   if (method === 'OPTIONS') return new Response(null, { status: 204, headers: { 'access-control-allow-methods': 'GET,POST,PATCH,DELETE,OPTIONS', 'access-control-allow-headers': 'Content-Type,Authorization', 'access-control-max-age': '86400' } });
   if (path === '/api/health' && method === 'GET') return json({ ok: true, service: 'StarAlgo API', time: now() });
   // Safe deployment diagnostic: verifies the Pages D1 binding and required schema.
@@ -653,10 +727,12 @@ async function handle(request, env) {
 export default {
   async fetch(request, env) {
     const origin=request.headers.get('Origin')||'';
-    const configuredOrigin = env.APP_ORIGIN || new URL(request.url).origin;
-    const allowed=!!origin && (configuredOrigin==='*' || origin===configuredOrigin || (env.ALLOW_PAGES_PREVIEWS==='true' && /^https:\/\/[a-z0-9-]+\.pages\.dev$/i.test(origin)));
+    const requestUrl = new URL(request.url);
+    const publicScratchProxy = /^\\/api\\/scratch\\/drive\\/[A-Za-z0-9_-]{10,100}$/.test(requestUrl.pathname) && ['GET','HEAD','OPTIONS'].includes(request.method);
+    const configuredOrigin = env.APP_ORIGIN || requestUrl.origin;
+    const allowed=publicScratchProxy || (!!origin && (configuredOrigin==='*' || origin===configuredOrigin || (env.ALLOW_PAGES_PREVIEWS==='true' && /^https:\/\/[a-z0-9-]+\.pages\.dev$/i.test(origin))));
     if (origin && !allowed) return json({error:'Origin не разрешён'},403);
-    const corsHeaders=allowed?{'access-control-allow-origin':origin,'vary':'Origin'}:{};
+    const corsHeaders=publicScratchProxy?{'access-control-allow-origin':'*','access-control-allow-methods':'GET,HEAD,OPTIONS','access-control-allow-headers':'Content-Type','access-control-max-age':'86400'}:(allowed?{'access-control-allow-origin':origin,'vary':'Origin'}:{});
     try {
       const response=await handle(request,env);
       const out=new Response(response.body,response);
