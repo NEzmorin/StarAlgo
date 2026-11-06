@@ -509,9 +509,10 @@ async function handle(request, env) {
       const t=await userByName(env,targetUsername); if (!t || t.id===user.id || isSingularity(t)) fail(404,'Пользователь не найден');
       targetUserId=t.id; targetName=targetName||t.username;
     } else {
-      const c=await env.DB.prepare('SELECT c.*,p.user_id AS project_owner_id FROM comments c LEFT JOIN projects p ON p.id=c.project_id WHERE c.id=?').bind(targetId).first();
+      const c=await env.DB.prepare('SELECT c.*,p.user_id AS project_owner_id,u.role AS comment_author_role FROM comments c LEFT JOIN projects p ON p.id=c.project_id JOIN users u ON u.id=c.user_id WHERE c.id=?').bind(targetId).first();
       if (!c) fail(404,'Комментарий не найден');
       if (String(c.user_id) === String(user.id)) fail(400,'Нельзя пожаловаться на собственный комментарий');
+      if (c.comment_author_role === '[Сингулярность]') fail(404,'Комментарий не найден');
       if (!c.project_owner_id) fail(404,'Проект с этим комментарием не найден');
       targetUserId=c.user_id;
     }
