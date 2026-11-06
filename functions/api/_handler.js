@@ -334,7 +334,6 @@ async function handle(request, env) {
     const description = typeof body.description === 'string' ? body.description.slice(0,4000) : '';
     const coverUrl = validateProjectResourceUrl(body.coverUrl || '', 'Обложка');
     const projectUrl = validateProjectResourceUrl(body.projectUrl || '', 'Ссылка проекта');
-    if (['Roblox','Картинки','Медиа','Видео','Сайт','Разговорник'].includes(category) && !projectUrl) fail(400,'Для этого типа проекта нужна внешняя ссылка.');
     const payload = { data: typeof body.data === 'string' ? body.data.slice(0,200000) : '', sb3Data: typeof body.sb3Data === 'string' ? body.sb3Data.slice(0,400000) : '', sb3Url: validateProjectResourceUrl(body.sb3Url || '', 'Scratch-файл'), isDummy: false };
     const pid = makeId(), stamp = now();
     await env.DB.prepare(`INSERT INTO projects(id,user_id,name,category,description,published,cover_url,project_url,source_text,payload_json,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`)
