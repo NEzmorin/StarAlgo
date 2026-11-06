@@ -263,7 +263,10 @@
       currentUser = normalizeUser(result.user);
       applyUserSession();
       closeAuthModal();
-      handleUserSearch();
+      const searchInput = document.getElementById('user-search-input');
+      const searchList = document.getElementById('search-results-list');
+      if (searchInput) searchInput.value = '';
+      if (searchList) searchList.innerHTML = '<div class="empty-placeholder">Начните ввод для поиска пользователей...</div>';
       refreshBootstrap({ render: false }).then(() => {
         if (currentUser) applyUserSession();
         renderZvezdnyFeed();
@@ -296,9 +299,7 @@
     if (!q) { list.innerHTML = '<div class="empty-placeholder">Начните ввод для поиска пользователей...</div>'; return; }
     try {
       const result = await api(`/api/users/search?q=${encodeURIComponent(q)}`);
-      const users = (result.users || []).filter(row =>
-        !currentUser || row.username.toLowerCase() !== currentUser.username.toLowerCase()
-      );
+      const users = result.users || [];
       const db = readObjectCache('staralgo_users_db', {});
       users.forEach(row => {
         const key = row.username.toLowerCase();
@@ -456,7 +457,7 @@
     if (!activeStarObject || !confirm('Удалить комментарий?')) return;
     try {
       await api(`/api/comments/${commentId}`,{method:'DELETE'});
-      activeStarObject.comments = (activeStarObject.comments || []).filter(c => Number(c.id) !== Number(commentId));
+      activeStarObject.comments = (activeStarObject.comments || []).filter(c => String(c.id) !== String(commentId));
       activeStarObject.commentsCount = activeStarObject.comments.length;
       updateLocalProject(activeStarObject);
       document.getElementById('star-comments-counter').textContent = activeStarObject.comments.length;
@@ -650,7 +651,7 @@
     if(!comments.length){box.innerHTML='<div class="empty-placeholder">Пока нет комментариев...</div>';return;}
     box.innerHTML=comments.map(c=>{
       const mine=currentUser && currentUser.username.toLowerCase()===String(c.author).toLowerCase();
-      return `<div class="comment-item${c.parentId?' comment-reply-item':''}" id="comment-${Number(c.id)}"><div class="comment-header-row"><span class="comment-author" onclick="viewUserProfile(decodeURIComponent('${jsName(c.author)}'))">${esc(c.author)}</span><div class="comment-actions-row"><button class="comment-action-btn" onclick="setReplyTo(${Number(c.id)},decodeURIComponent('${jsName(c.author)}'))">Ответить</button>${!mine?`<button class="comment-action-btn" style="color:#ff5555;" onclick="openReportModal('comment',${Number(c.id)},'Комментарий','${jsName(c.author)}')">⚠️</button>`:''}${mine?`<button class="comment-action-btn" style="color:#ff5555;" onclick="deleteComment(${Number(c.id)})">Удалить</button>`:''}</div></div><div>${c.replyToUser?`<span style="opacity:.7;font-size:.9rem;">Ответ для @${esc(c.replyToUser)}:</span><br>`:''}${esc(c.text)}</div></div>`;
+      return `<div class="comment-item${c.parentId?' comment-reply-item':''}" id="comment-${esc(c.id)}"><div class="comment-header-row"><span class="comment-author" onclick="viewUserProfile(decodeURIComponent('${jsName(c.author)}'))">${esc(c.author)}</span><div class="comment-actions-row"><button class="comment-action-btn" onclick="setReplyTo('${jsName(c.id)}',decodeURIComponent('${jsName(c.author)}'))">Ответить</button>${!mine?`<button class="comment-action-btn" style="color:#ff5555;" onclick="openReportModal('comment',decodeURIComponent('${jsName(c.id)}'),'Комментарий','${jsName(c.author)}')">⚠️</button>`:''}${mine?`<button class="comment-action-btn" style="color:#ff5555;" onclick="deleteComment(decodeURIComponent('${jsName(c.id)}'))">Удалить</button>`:''}</div></div><div>${c.replyToUser?`<span style="opacity:.7;font-size:.9rem;">Ответ для @${esc(c.replyToUser)}:</span><br>`:''}${esc(c.text)}</div></div>`;
     }).join('');
   };
   window.renderDwarfCommentsList = function(dwarf) {
