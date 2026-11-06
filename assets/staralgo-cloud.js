@@ -49,7 +49,8 @@
       likedBy: Array.isArray(p.likedBy) ? p.likedBy : [],
       coverUrl: p.coverUrl || '',
       data: p.data || '',
-      sb3Data: p.sb3Data || ''
+      sb3Data: p.sb3Data || '',
+      sb3Url: p.sb3Url || ''
     };
   }
   function normalizeUser(u) {
@@ -176,7 +177,8 @@
       coverUrl: snapshot.coverUrl || '',
       projectUrl: snapshot.projectUrl || '',
       data: snapshot.data || '',
-      sb3Data: snapshot.sb3Data || ''
+      sb3Data: snapshot.sb3Data || '',
+      sb3Url: snapshot.sb3Url || ''
     };
     const previous = pendingProjectSave;
     const task = (async () => {
@@ -404,11 +406,13 @@
     const name = document.getElementById('project-name-input').value.trim();
     const category = document.getElementById('project-category-select').value;
     if (!name) { alert('Введите название звезды!'); return; }
+    const projectUrl = String(document.getElementById('project-url-input')?.value || '').trim();
     const defaults = category === 'Python'
       ? '# Нарисуем квадрат черепашкой\nimport turtle\nfor i in range(4):\n    turtle.forward(100)\n    turtle.right(90)\n'
-      : category === 'Roblox' || category === 'Картинки' || category === 'Scratch' ? '' : '// Напишите HTML код здесь';
+      : ['Roblox','Картинки','Медиа','Видео','Сайт','Разговорник','Scratch'].includes(category) ? '' : '// Напишите HTML код здесь';
+    if (['Roblox','Картинки','Медиа','Видео','Сайт','Разговорник'].includes(category) && !projectUrl) { alert('Добавь ссылку на внешний ресурс.'); return; }
     try {
-      await api('/api/projects',{method:'POST',body:jsonBody({name,category,description:'',published:false,data:defaults})});
+      await api('/api/projects',{method:'POST',body:jsonBody({name,category,description:'',published:false,data:defaults,projectUrl})});
       await refreshBootstrap({render:false});
       applyUserSession();
       document.getElementById('stat-projects').textContent = currentUser.projectsList.length;
@@ -566,13 +570,23 @@
       renderZvezdnyFeed();
     } catch (e) { alert(e.message); }
   };
-  window.handleSb3Upload = function(event) {
-    const file = event.target.files?.[0];
-    if (!file || !activeStarObject || !currentUser || file.size > 300000) { if (file) alert('Файл .sb3 должен быть меньше 300 КБ.'); return; }
-    if (activeStarObject.author.toLowerCase() !== currentUser.username.toLowerCase()) return;
-    const reader = new FileReader();
-    reader.onload = async e => { activeStarObject.sb3Data=String(e.target.result); activeStarObject.sb3Name=file.name; renderLocalScratchPlayer(activeStarObject.sb3Data); await saveProjectNow(); };
-    reader.readAsDataURL(file);
+  window.handleSb3Upload = function() {
+    alert('Чтобы не занимать место StarAlgo, сначала загрузи .sb3 на Catbox.moe, затем вставь прямую HTTPS-ссылку в поле «Ссылка на .sb3» ниже.');
+  };
+  window.saveScratchUrl = async function() {
+    if (!activeStarObject || !currentUser || activeStarObject.author.toLowerCase() !== currentUser.username.toLowerCase()) return;
+    const input = document.getElementById('scratch-project-url');
+    const value = String(input?.value || '').trim();
+    if (!value) { alert('Вставь прямую ссылку на .sb3 файл.'); return; }
+    activeStarObject.sb3Url = value;
+    activeStarObject.sb3Data = '';
+    try {
+      if (await saveProjectNow()) {
+        renderLocalScratchPlayer(value);
+        const status = document.getElementById('sb3-status-label');
+        if (status) status.textContent = 'Внешняя ссылка сохранена';
+      }
+    } catch (error) { alert(error.message); }
   };
   window.handleCoverUpload = function(event) {
     const file=event.target.files?.[0];
