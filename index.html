@@ -4833,7 +4833,7 @@ except Exception as e:
                 }
             } catch (_) {}
             if (driveId) {
-                const downloadUrl = 'https://drive.google.com/uc?export=download&id=' + encodeURIComponent(driveId);
+                const downloadUrl = 'https://staralgo-api.nezmorin-official.workers.dev/api/scratch/drive/' + encodeURIComponent(driveId);
                 iframe.src = 'https://turbowarp.org/embed?project_url=' + encodeURIComponent(downloadUrl);
                 iframe.removeAttribute('srcdoc');
                 iframe.setAttribute('allowfullscreen', '');
