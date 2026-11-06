@@ -46,3 +46,5 @@ Then redeploy the Vercel project.
 - Confirm the existing Cloudflare Pages site still works independently.
 
 Never put API tokens, passwords, or other secrets in this repository.
+
+<!-- Deployment trigger check: this commit is intentionally on vercel-migration. -->
