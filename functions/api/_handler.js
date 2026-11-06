@@ -54,7 +54,7 @@ function mapProject(row, includePayload = false) {
 }
 const PROJECT_RESOURCE_HOSTS = [
   'image2url.com','catbox.moe','imgbb.com','ibb.co','posty5.com','github.io',
-  'raw.githubusercontent.com','vercel.app','lh3.googleusercontent.com','docs.google.com',
+  'raw.githubusercontent.com','vercel.app','lh3.googleusercontent.com','drive.google.com','docs.google.com','scratch.mit.edu',
   'pagedrop.io','boomurl.com','iimg.live','x02.me','roblox.com'
 ];
 function isAllowedProjectResourceUrl(value) {
