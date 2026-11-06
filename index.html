@@ -2172,10 +2172,11 @@
                 <textarea class="form-textarea" id="modal-proj-desc" placeholder="Расскажите о вашей звезде..."></textarea>
             </div>
 
-            <div style="display: flex; gap: 10px; margin-top: 5px;">
-                <button class="auth-btn" style="flex: 1;" onclick="document.getElementById('cover-file-input').click()">🖼️ Загрузить обложку (Панораму)</button>
+            <div class="form-group" style="margin-top:10px;">
+                <label>Ссылка на обложку (внешний хостинг):</label>
+                <input type="url" class="form-input" id="cover-url-input" placeholder="https://...">
+                <button class="auth-btn" style="margin-top:8px; width:100%;" onclick="saveCoverUrl()">Сохранить ссылку обложки</button>
             </div>
-            <input type="file" id="cover-file-input" accept="image/*" style="display:none;" onchange="handleCoverUpload(event)">
 
             <div style="display: flex; gap: 15px; margin-top: 10px;">
                 <div style="flex: 1; display: flex; flex-direction: column; gap: 8px;">
@@ -4058,17 +4059,16 @@
                     </div>
                 `;
             } else if (project.category === 'Картинки') {
+                const imageUrl = window.saEscapeHTML(project.projectUrl || project.data || '');
                 container.innerHTML = `
-                    <div style="display: flex; flex-direction: column; gap: 12px; align-items: center;">
-                        <div class="editor-preview-media">
-                            ${project.data ? `<img src="${window.saEscapeHTML(project.data)}" alt="Poster">` : '<span class="empty-placeholder">Картинка не загружена</span>'}
-                        </div>
+                    <div style="display:flex; flex-direction:column; gap:12px; align-items:center;">
+                        <div class="editor-preview-media">${imageUrl ? `<img src="${imageUrl}" alt="Изображение">` : '<span class="empty-placeholder">Картинка не добавлена</span>'}</div>
                         ${!isReadOnly ? `
-                            <button class="auth-btn" onclick="document.getElementById('image-upload-trigger').click()">Загрузить/Заменить картинку</button>
-                            <input type="file" id="image-upload-trigger" accept="image/*" style="display: none;" onchange="handleImageProjectUpload(event)">
+                            <label for="project-media-url">Прямая ссылка на изображение:</label>
+                            <input class="form-input" id="project-media-url" type="url" placeholder="https://..." value="${window.saEscapeHTML(project.projectUrl || '')}">
+                            <button class="auth-btn" onclick="saveProjectMediaUrl()">Сохранить ссылку</button>
                         ` : ''}
-                    </div>
-                `;
+                    </div>`;
             } else if (project.category === 'Сайт' || project.category === 'Разговорник') {
                 const resourceUrl = window.saEscapeHTML(project.projectUrl || '');
                 const label = project.category === 'Сайт' ? 'Открыть сайт' : 'Открыть разговорник';
