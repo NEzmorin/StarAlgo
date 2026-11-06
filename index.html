@@ -1672,7 +1672,7 @@
                 <div class="search-container">
                     <div class="search-title">Поиск пользователей</div>
                     <div class="search-input-row">
-                        <input type="text" id="user-search-input" class="search-input" placeholder="Введите никнейм..." oninput="handleUserSearch()">
+                        <input type="text" id="user-search-input" class="search-input" placeholder="Введите никнейм..." autocomplete="off" autocapitalize="none" spellcheck="false" data-lpignore="true" data-form-type="other" oninput="handleUserSearch()">
                     </div>
                     <div class="search-results-list" id="search-results-list">
                         <div class="empty-placeholder">Начните ввод для поиска пользователей...</div>
@@ -2046,12 +2046,12 @@
             
             <div class="form-group">
                 <label>Никнейм:</label>
-                <input type="text" class="form-input" id="auth-username" autocomplete="off">
+                <input type="text" class="form-input" id="auth-username" autocomplete="username">
             </div>
 
             <div class="form-group">
                 <label>Пароль:</label>
-                <input type="password" class="form-input" id="auth-password">
+                <input type="password" class="form-input" id="auth-password" autocomplete="current-password">
             </div>
 
             <div class="auth-error" id="auth-error">Заполните все поля!</div>
@@ -2498,6 +2498,10 @@
             }
 
             currentTab = tabId;
+            if (!window.__staralgoRestoringRoute) {
+                const route = window.starAlgoRouteForTab ? window.starAlgoRouteForTab(tabId) : '/';
+                if (route && location.pathname !== route) history.pushState({ staralgo: true }, '', route);
+            }
             document.querySelectorAll('.tab-page').forEach(page => page.classList.remove('active'));
             document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
 
@@ -2528,6 +2532,34 @@
 
             updateSidebarVisibility();
         }
+
+        // Shareable routes for existing views; the site's visual design remains unchanged.
+        window.starAlgoRouteForTab = function(tabId) {
+            const routes = { main:'/', hall:'/hall', proto:'/protostars', telescope:'/news', reports:'/moderation', profile: viewingUser ? '/user/' + encodeURIComponent(viewingUser.username) : '/settings', 'star-editor': activeStarObject ? '/project/' + encodeURIComponent(activeStarObject.id) : '/editor', 'dwarf-viewer': activeDwarfObject ? '/news/' + encodeURIComponent(activeDwarfObject.id) : '/news' };
+            return routes[tabId] || '/';
+        };
+        window.restoreRoute = function() {
+            const path = location.pathname;
+            let tab='main', title='Главная', match;
+            if (path==='/hall') {tab='hall';title='Звёздный Зал';}
+            else if (path==='/protostars') {tab='proto';title='Протозвездие';}
+            else if (path==='/news') {tab='telescope';title='Телескоп Новостей';}
+            else if (path==='/moderation') {tab='reports';title='Ящик жалований';}
+            else if (path==='/settings') {tab='profile';title='Профиль';}
+            else if (path==='/editor') {tab='proto';title='Протозвездие';}
+            else if ((match=path.match(/^\\/user\\/([^/]+)$/))) {tab='profile';title='Профиль';}
+            else if ((match=path.match(/^\\/project\\/([^/]+)$/))) {tab='star-editor';title='Звезда';}
+            else if ((match=path.match(/^\\/news\\/([^/]+)$/))) {tab='dwarf-viewer';title='Новость';}
+            else if (path==='/search') {tab='main';title='Поиск пользователей';}
+            window.__staralgoRestoringRoute = true;
+            setTab(null,tab,title);
+            window.__staralgoRestoringRoute = false;
+            if (match && path.startsWith('/user/')) viewUserProfile(decodeURIComponent(match[1]));
+            else if (match && path.startsWith('/project/')) viewPublishedStar('',decodeURIComponent(match[1]));
+            else if (match && path.startsWith('/news/')) viewYellowDwarf(decodeURIComponent(match[1]));
+            else if (path==='/search') document.getElementById('user-search-input')?.focus();
+        };
+        window.addEventListener('popstate', () => window.restoreRoute?.());
 
         function openMyProfile() {
             viewingUser = null;
