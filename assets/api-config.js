@@ -1,5 +1,5 @@
-// StarAlgo API is served by Cloudflare Pages Functions on the same domain.
-// Keep this empty so the browser calls /api/* on the current Pages site.
+// StarAlgo API is hosted on the Cloudflare Worker.
+// The Vercel frontend sends all /api/* requests to this Worker.
 (() => {
-  window.STARALGO_API_BASE = '';
+  window.STARALGO_API_BASE = 'https://staralgo-api.nezmorin-official.workers.dev';
 })();
