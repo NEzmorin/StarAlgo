@@ -4809,9 +4809,15 @@ except Exception as e:
                 }
             } catch (_) {}
             if (scratchProjectId) {
-                iframe.src = 'https://scratch.mit.edu/projects/' + scratchProjectId + '/embed';
+                // TurboWarp's embed player resizes its stage to the iframe dimensions
+                // and provides its own fullscreen control for shared Scratch projects.
+                iframe.src = 'https://turbowarp.org/' + scratchProjectId + '/embed?fullscreen-background=%23080808';
                 iframe.removeAttribute('srcdoc');
                 iframe.setAttribute('allowfullscreen', '');
+                iframe.setAttribute('allowtransparency', 'true');
+                iframe.setAttribute('frameborder', '0');
+                iframe.setAttribute('scrolling', 'no');
+                iframe.style.colorScheme = 'auto';
                 return;
             }
             let driveId = '';
