@@ -236,6 +236,8 @@
       }
     }
     setupSoundEffects();
+    const userSearchInput = document.getElementById('user-search-input');
+    if (userSearchInput) userSearchInput.value = '';
     if (typeof handleUserSearch === 'function') handleUserSearch();
     if (typeof handleStarSearch === 'function') handleStarSearch();
     updateNavVisibility();
