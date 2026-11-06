@@ -522,7 +522,7 @@ async function handle(request, env) {
   }
   if (path === '/api/reports' && method === 'GET') {
     if (!isStaff(user)) fail(403,'Нет доступа');
-    const rows = await env.DB.prepare(`SELECT r.*,u.username reporter,t.username target_owner,
+    const rows = await env.DB.prepare(`SELECT r.*,u.username reporter,t.username target_owner,cpu.username AS comment_parent_owner,
       pc.project_id AS comment_project_id, dc.dwarf_id AS comment_dwarf_id
       FROM reports r
       JOIN users u ON u.id=r.reporter_id
