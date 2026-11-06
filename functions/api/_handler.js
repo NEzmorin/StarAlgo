@@ -52,6 +52,28 @@ function mapProject(row, includePayload = false) {
     isDummy: !!payload.isDummy
   };
 }
+const PROJECT_RESOURCE_HOSTS = [
+  'image2url.com','catbox.moe','imgbb.com','ibb.co','posty5.com','github.io',
+  'raw.githubusercontent.com','vercel.app','lh3.googleusercontent.com','docs.google.com',
+  'pagedrop.io','boomurl.com','iimg.live','x02.me'
+];
+function isAllowedProjectResourceUrl(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return true;
+  if (/^\/?(?:cover|emptyprofile)\.(?:png|jpe?g|gif|webp|svg)$/i.test(raw)) return true;
+  let parsed;
+  try { parsed = new URL(raw); } catch { return false; }
+  if (parsed.protocol !== 'https:' || parsed.username || parsed.password || parsed.port) return false;
+  const host = parsed.hostname.toLowerCase();
+  return PROJECT_RESOURCE_HOSTS.some(domain => host === domain || host.endsWith('.' + domain));
+}
+function validateProjectResourceUrl(value, label) {
+  const raw = typeof value === 'string' ? value.trim() : '';
+  if (raw && !isAllowedProjectResourceUrl(raw)) {
+    fail(400, label + ': разрешены только HTTPS-ссылки на утверждённые файлообменники и встроенные файлы StarAlgo.');
+  }
+  return raw.slice(0, 2048);
+}
 function mapComment(row) {
   // Keep timestamp-based IDs as strings to avoid precision loss in browsers.
   return { id: String(row.id), parentId: row.parent_id ? String(row.parent_id) : null,
@@ -310,8 +332,8 @@ async function handle(request, env) {
     const body = await readBody(request);
     const name = text(body.name,100,'Название'), category = text(body.category,60,'Категория');
     const description = typeof body.description === 'string' ? body.description.slice(0,4000) : '';
-    const coverUrl = typeof body.coverUrl === 'string' ? body.coverUrl.slice(0,350000) : '';
-    const projectUrl = typeof body.projectUrl === 'string' ? body.projectUrl.slice(0,2048) : '';
+    const coverUrl = validateProjectResourceUrl(body.coverUrl || '', 'Обложка');
+    const projectUrl = validateProjectResourceUrl(body.projectUrl || '', 'Ссылка проекта');
     const payload = { data: typeof body.data === 'string' ? body.data.slice(0,200000) : '', sb3Data: typeof body.sb3Data === 'string' ? body.sb3Data.slice(0,400000) : '', isDummy: false };
     const pid = makeId(), stamp = now();
     await env.DB.prepare(`INSERT INTO projects(id,user_id,name,category,description,published,cover_url,project_url,source_text,payload_json,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`)
@@ -335,8 +357,11 @@ async function handle(request, env) {
     const name = body.name === undefined ? row.name : text(body.name,100,'Название');
     const category = body.category === undefined ? row.category : text(body.category,60,'Категория');
     const description = body.description === undefined ? row.description : String(body.description).slice(0,4000);
-    const cover = body.coverUrl === undefined ? row.cover_url : String(body.coverUrl).slice(0,350000);
-    const pUrl = body.projectUrl === undefined ? row.project_url : String(body.projectUrl).slice(0,2048);
+    const coverCandidate = body.coverUrl === undefined ? row.cover_url : String(body.coverUrl);
+    const pUrlCandidate = body.projectUrl === undefined ? row.project_url : String(body.projectUrl);
+    // Preserve legacy embedded images when unchanged; all new/changed resource links must use the allowlist.
+    const cover = coverCandidate === row.cover_url ? row.cover_url : validateProjectResourceUrl(coverCandidate, 'Обложка');
+    const pUrl = pUrlCandidate === row.project_url ? row.project_url : validateProjectResourceUrl(pUrlCandidate, 'Ссылка проекта');
     const payload = parseJson(row.payload_json,{});
     if (body.data !== undefined) payload.data = String(body.data).slice(0,200000);
     if (body.sb3Data !== undefined) payload.sb3Data = String(body.sb3Data).slice(0,400000);
