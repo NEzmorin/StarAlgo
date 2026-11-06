@@ -15,7 +15,7 @@
   function apiUrl(path) { return `${API_ROOT}${path}`; }
   async function api(path, options = {}) {
     const headers = new Headers(options.headers || {});
-    if (options.body !== undefined && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
+    if (options.body !== undefined && !headers.has('Content-Type') && !(options.body instanceof FormData)) headers.set('Content-Type', 'application/json');
     const token = localStorage.getItem(TOKEN_KEY);
     if (token) headers.set('Authorization', `Bearer ${token}`);
     let response;
@@ -381,25 +381,38 @@
       alert(e.message);
     }
   };
-  window.handleAvatarUpload = function(event) {
-    const file = event.target.files?.[0];
+  window.handleAvatarUpload = async function(event) {
+    const input = event.target;
+    const file = input.files?.[0];
     if (!file || !currentUser) return;
-    if (!/^image\/(png|jpeg|webp|gif)$/.test(file.type) || file.size > 250000) {
-      alert('Выбери PNG, JPG, WEBP или GIF размером до 250 КБ.'); event.target.value=''; return;
+    if (!/^image\/(png|jpeg|webp|gif)$/.test(file.type)) {
+      alert('Выбери PNG, JPG, WEBP или GIF.'); input.value=''; return;
     }
-    const reader = new FileReader();
-    reader.onload = async e => {
-      try {
-        const avatarUrl = String(e.target.result);
-        await api('/api/profile',{method:'PATCH',body:jsonBody({bio:currentUser.bio || '',avatarUrl})});
-        currentUser.avatarUrl = avatarUrl;
-        currentUser.avatarHtml = safeImgHtml(avatarUrl);
-        profileSnapshot = JSON.stringify({bio:currentUser.bio || '',avatarUrl});
-        applyAvatarToAll(currentUser.avatarHtml);
-        storeCurrentUserInCache();
-      } catch (err) { alert(err.message); }
-    };
-    reader.readAsDataURL(file);
+    if (file.size > 10 * 1024 * 1024) {
+      alert('Аватарка должна быть не больше 10 МБ.'); input.value=''; return;
+    }
+    const container = document.getElementById('profile-page-avatar');
+    try {
+      const body = new FormData();
+      body.append('file', file, file.name || 'avatar');
+      const uploaded = await api('/api/avatar/upload', { method: 'POST', body });
+      const avatarUrl = String(uploaded.secure_url || '');
+      if (!/^https:\/\//i.test(avatarUrl)) throw new Error('Сервис вернул некорректную ссылку на аватарку');
+      const saved = await api('/api/profile', { method:'PATCH', body:jsonBody({bio:currentUser.bio || '',avatarUrl}) });
+      currentUser.avatarUrl = avatarUrl;
+      currentUser.avatarHtml = safeImgHtml(avatarUrl);
+      if (saved.user) {
+        const normalized = normalizeUser(saved.user);
+        currentUser = { ...currentUser, ...normalized };
+      }
+      profileSnapshot = JSON.stringify({bio:currentUser.bio || '',avatarUrl});
+      applyAvatarToAll(currentUser.avatarHtml);
+      storeCurrentUserInCache();
+    } catch (err) {
+      alert(err.message || 'Не удалось обновить аватарку');
+    } finally {
+      input.value = '';
+    }
   };
   window.submitCreateProject = async function() {
     if (!currentUser) { openAuthModal(); return; }
