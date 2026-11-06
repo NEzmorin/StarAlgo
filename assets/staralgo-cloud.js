@@ -256,9 +256,10 @@
     error.style.display = 'none';
     try {
       const result = await api(authMode === 'register' ? '/api/auth/register' : '/api/auth/login', {
-        method: 'POST', body: jsonBody({ username, password })
+        method: 'POST', body: jsonBody({ username, password, captchaToken: window.starAlgoCaptchaToken || '' })
       });
       localStorage.setItem(TOKEN_KEY, result.token);
+      window.starAlgoCaptchaToken = '';
       // Show the authenticated account immediately; hydrate the rest in the background.
       currentUser = normalizeUser(result.user);
       applyUserSession();
