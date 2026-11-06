@@ -224,12 +224,9 @@
     // Local records from the former demo are deliberately not imported.
     LEGACY_KEYS.forEach(key => localStorage.removeItem(key));
     const token = localStorage.getItem(TOKEN_KEY);
-    if (token) {
-      try { await api('/api/auth/me'); }
-      catch (error) { localStorage.removeItem(TOKEN_KEY); }
-    }
     try {
       await refreshBootstrap({ render: false });
+      if (token && !currentUser) localStorage.removeItem(TOKEN_KEY);
     } catch (error) {
       console.error('StarAlgo API:', error);
       const errorBox = document.getElementById('auth-error');
@@ -262,11 +259,16 @@
         method: 'POST', body: jsonBody({ username, password })
       });
       localStorage.setItem(TOKEN_KEY, result.token);
-      await refreshBootstrap({ render: false });
+      // Show the authenticated account immediately; hydrate the rest in the background.
+      currentUser = normalizeUser(result.user);
       applyUserSession();
       closeAuthModal();
       handleUserSearch();
-      renderZvezdnyFeed();
+      refreshBootstrap({ render: false }).then(() => {
+        if (currentUser) applyUserSession();
+        renderZvezdnyFeed();
+        renderTelescopeFeed();
+      }).catch(err => console.error('StarAlgo background sync:', err));
     } catch (err) {
       error.textContent = err.message;
       error.style.display = 'block';
@@ -294,7 +296,9 @@
     if (!q) { list.innerHTML = '<div class="empty-placeholder">Начните ввод для поиска пользователей...</div>'; return; }
     try {
       const result = await api(`/api/users/search?q=${encodeURIComponent(q)}`);
-      const users = result.users || [];
+      const users = (result.users || []).filter(row =>
+        !currentUser || row.username.toLowerCase() !== currentUser.username.toLowerCase()
+      );
       const db = readObjectCache('staralgo_users_db', {});
       users.forEach(row => {
         const key = row.username.toLowerCase();
