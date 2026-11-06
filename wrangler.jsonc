@@ -12,6 +12,6 @@
     }
   ],
   "vars": {
-    "APP_ORIGIN": "https://REPLACE_WITH_YOUR_VERCEL_DOMAIN"
+    "APP_ORIGIN": "https://staralgo.vercel.app"
   }
 }
