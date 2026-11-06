@@ -4803,8 +4803,8 @@ except Exception as e:
             window.turnstile.render(box, {sitekey:key, callback:window.onStarAlgoCaptchaSuccess, 'expired-callback':window.onStarAlgoCaptchaExpired, theme:'dark'});
         };
     </script>
-    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?onload=starAlgoTurnstileReady&render=explicit" async defer></script>
     <script>window.starAlgoTurnstileReady = function(){ window.refreshStarAlgoCaptcha?.(); };</script>
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?onload=starAlgoTurnstileReady&render=explicit" async defer></script>
     <script src="./assets/api-config.js"></script>
     <script src="./assets/staralgo-cloud.js"></script>
 </body>
