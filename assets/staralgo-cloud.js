@@ -278,6 +278,7 @@
     } catch (err) {
       error.textContent = err.message;
       error.style.display = 'block';
+      if (authMode === 'register') window.refreshStarAlgoCaptcha?.();
     } finally { if (button) button.disabled = false; }
   };
   window.logout = async function() {
