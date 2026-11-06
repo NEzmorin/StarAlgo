@@ -643,8 +643,25 @@
       const result=await api('/api/reports'); const reports=result.reports||[];
       localStorage.setItem('staralgo_reports_db',JSON.stringify(reports));
       if(!reports.length){grid.innerHTML='<div class="empty-placeholder">Жалоб пока нет. Всё спокойно в космосе!</div>';return;}
-      grid.innerHTML=reports.map(r=>`<div class="report-card" id="report-${r.id}"><div class="report-header"><span>Тип: <strong>${String(r.type).toUpperCase()}</strong> | Объект: ${r.targetName||'N/A'}</span><span>От: ${r.reporter}</span></div><div><strong>Причина:</strong> ${r.reason}</div><div style="display:flex;gap:8px;margin-top:5px;">${r.type==='project'?`<button class="auth-btn" onclick="viewPublishedStar('${r.targetOwner}',${r.targetId})">Перейти</button>`:''}<button class="auth-btn" style="color:#ff5555;border-color:#ff5555;" onclick="resolveReport(${r.id},'${r.type}',${r.targetId},'${r.targetOwner}')">Обработать</button><button class="auth-btn" onclick="dismissReport(${r.id})">Отклонить</button></div></div>`).join('');
+      grid.innerHTML=reports.map(r=>`<div class="report-card" id="report-${r.id}"><div class="report-header"><span>Тип: <strong>${String(r.type).toUpperCase()}</strong> | Объект: ${esc(r.targetName||'N/A')}</span><span>От: ${esc(r.reporter)}</span></div><div><strong>Причина:</strong> ${esc(r.reason)}</div><div style="display:flex;gap:8px;margin-top:5px;"><button class="auth-btn" onclick="openReportTarget('${r.type}','${r.targetId}','${jsName(r.targetOwner||'')}','${r.targetParentType||''}','${r.targetParentId||''}','${jsName(r.targetParentOwner||'')}')">Перейти к объекту</button><button class="auth-btn" style="color:#ff5555;border-color:#ff5555;" onclick="resolveReport('${r.id}','${r.type}','${r.targetId}','${jsName(r.targetOwner||'')}')">Обработать</button><button class="auth-btn" onclick="dismissReport('${r.id}')">Отклонить</button></div></div>`).join('');
     } catch(e){grid.innerHTML=`<div class="empty-placeholder">${e.message}</div>`;}
+  };
+  window.openReportTarget = async function(type,targetId,targetOwnerEncoded,parentType,parentId,parentOwnerEncoded) {
+    const owner=decodeURIComponent(targetOwnerEncoded||'');
+    const parentOwner=decodeURIComponent(parentOwnerEncoded||'');
+    try {
+      if(type==='project') { await viewPublishedStar(owner,targetId); return; }
+      if(type==='user') { await viewUserProfile(owner); return; }
+      if(type==='comment') {
+        if(parentType==='dwarf') {
+          await viewYellowDwarf(parentId);
+          requestAnimationFrame(()=>document.getElementById('dwarf-comment-'+CSS.escape(String(targetId)))?.scrollIntoView({behavior:'smooth',block:'center'}));
+        } else if(parentType==='project') {
+          await viewPublishedStar(parentOwner,parentId);
+          requestAnimationFrame(()=>document.getElementById('comment-'+CSS.escape(String(targetId)))?.scrollIntoView({behavior:'smooth',block:'center'}));
+        } else alert('Не удалось определить публикацию, к которой относится комментарий.');
+      }
+    } catch(e) { alert(e.message); }
   };
   window.dismissReport = async function(reportId) {
     try { await api(`/api/reports/${reportId}`,{method:'DELETE'}); renderReportsInbox(); }
@@ -668,7 +685,7 @@
     if(!comments.length){box.innerHTML='<div class="empty-placeholder">Пока нет комментариев...</div>';return;}
     box.innerHTML=comments.map(c=>{
       const mine=currentUser && currentUser.username.toLowerCase()===String(c.author).toLowerCase();
-      return `<div class="comment-item${c.parentId?' comment-reply-item':''}" id="comment-${esc(c.id)}"><div class="comment-header-row"><span class="comment-author" onclick="viewUserProfile(decodeURIComponent('${jsName(c.author)}'))">${esc(c.author)}</span><div class="comment-actions-row"><button class="comment-action-btn" onclick="setReplyTo('${jsName(c.id)}',decodeURIComponent('${jsName(c.author)}'))">Ответить</button>${!mine?`<button class="comment-action-btn" style="color:#ff5555;" onclick="openReportModal('comment',decodeURIComponent('${jsName(c.id)}'),'Комментарий',decodeURIComponent('${jsName(c.author)}'))">⚠️</button>`:''}${mine?`<button class="comment-action-btn" style="color:#ff5555;" onclick="deleteComment(decodeURIComponent('${jsName(c.id)}'))">Удалить</button>`:''}</div></div><div>${c.replyToUser?`<span style="opacity:.7;font-size:.9rem;">Ответ для @${esc(c.replyToUser)}:</span><br>`:''}${esc(c.text)}</div></div>`;
+      return `<div class="comment-item${c.parentId?' comment-reply-item':''}" id="comment-${esc(c.id)}"><div class="comment-header-row"><span class="comment-author" onclick="viewUserProfile(decodeURIComponent('${jsName(c.author)}'))">${esc(c.author)}</span><div class="comment-actions-row"><button class="comment-action-btn" onclick="setReplyTo('${jsName(c.id)}',decodeURIComponent('${jsName(c.author)}'))">Ответить</button>${!mine?`<button class="comment-action-btn" style="color:#ff5555;" onclick="openReportModal('comment',decodeURIComponent('${jsName(c.id)}'),'Комментарий',decodeURIComponent('${jsName(c.author)}'),'project',${Number(project.id)})">⚠️</button>`:''}${mine?`<button class="comment-action-btn" style="color:#ff5555;" onclick="deleteComment(decodeURIComponent('${jsName(c.id)}'))">Удалить</button>`:''}</div></div><div>${c.replyToUser?`<span style="opacity:.7;font-size:.9rem;">Ответ для @${esc(c.replyToUser)}:</span><br>`:''}${esc(c.text)}</div></div>`;
     }).join('');
   };
   window.renderDwarfCommentsList = function(dwarf) {
@@ -678,7 +695,7 @@
     if(!comments.length){box.innerHTML='<div class="empty-placeholder">Пока нет комментариев...</div>';return;}
     box.innerHTML=comments.map(c=>{
       const mine=currentUser && currentUser.username.toLowerCase()===String(c.author).toLowerCase();
-      return `<div class="comment-item"><div class="comment-header-row"><span class="comment-author" onclick="viewUserProfile(decodeURIComponent('${jsName(c.author)}'))">${esc(c.author)}</span><div class="comment-actions-row">${!mine?`<button class="comment-action-btn" style="color:#ff5555;" onclick="openReportModal('comment',decodeURIComponent('${jsName(c.id)}'),'Комментарий к новости',decodeURIComponent('${jsName(c.author)}'))">⚠️</button>`:''}${mine?`<button class="comment-action-btn" style="color:#ff5555;" onclick="deleteDwarfComment(${Number(c.id)})">Удалить</button>`:''}</div></div><div>${esc(c.text)}</div></div>`;
+      return `<div class="comment-item" id="dwarf-comment-${esc(c.id)}"><div class="comment-header-row"><span class="comment-author" onclick="viewUserProfile(decodeURIComponent('${jsName(c.author)}'))">${esc(c.author)}</span><div class="comment-actions-row">${!mine?`<button class="comment-action-btn" style="color:#ff5555;" onclick="openReportModal('comment',decodeURIComponent('${jsName(c.id)}'),'Комментарий к новости',decodeURIComponent('${jsName(c.author)}'),'dwarf',${Number(dwarf.id)})">⚠️</button>`:''}${mine?`<button class="comment-action-btn" style="color:#ff5555;" onclick="deleteDwarfComment(${Number(c.id)})">Удалить</button>`:''}</div></div><div>${esc(c.text)}</div></div>`;
     }).join('');
   };
   window.renderZvezdnyFeed = function() {
@@ -719,7 +736,7 @@
     const dwarfs=readObjectCache('staralgo_yellow_dwarfs_db',[]).slice().sort((a,b)=>(b.date||0)-(a.date||0));
     if(!dwarfs.length){grid.innerHTML='<div class="empty-placeholder">Новости (Жёлтые Карлики) пока отсутствуют...</div>';return;}
     const db=readObjectCache('staralgo_users_db',{});
-    grid.innerHTML=dwarfs.map(d=>`<div class="dwarf-banner-card" onclick="viewYellowDwarf(${Number(d.id)})"><img src="${esc(d.coverUrl||generateYellowDwarfPanorama(d.name+d.id))}" class="dwarf-cover-large" alt="Cover"><div style="display:flex;justify-content:space-between;align-items:center;"><div class="feed-star-title" style="font-size:1.8rem;">${esc(d.name)}</div>${currentUser&&currentUser.username.toLowerCase()===String(d.author).toLowerCase()?`<button class="auth-btn" style="color:#ff5555;border-color:#ff5555;" onclick="event.stopPropagation();deleteYellowDwarf(${Number(d.id)})">🗑 Удалить</button>`:''}</div><div class="feed-star-author">Автор: ${esc(d.author)}${db[String(d.author).toLowerCase()]?.isSupernova?' ⭐':''} [Жёлтый Карлик]</div><div class="feed-star-desc" style="font-size:1.2rem;">${esc(d.description)}</div><div style="display:flex;justify-content:space-between;font-size:1.1rem;color:var(--gold-bright);margin-top:8px;border-top:1px dashed rgba(212,178,54,.3);padding-top:8px;"><span>❤️ ${Number(d.likes||0)} лайков</span><span>💬 ${Number(d.commentsCount||0)} комментариев</span><span>📅 ${new Date(d.date).toLocaleDateString()}</span></div></div>`).join('');
+    grid.innerHTML=dwarfs.map(d=>`<div class="dwarf-banner-card" onclick="viewYellowDwarf(${Number(d.id)})"><img src="${esc(d.coverUrl||generateYellowDwarfPanorama(d.name+d.id))}" class="dwarf-cover-large" alt="Cover"><div style="display:flex;justify-content:space-between;align-items:center;"><div class="feed-star-title" style="font-size:1.8rem;">${esc(d.name)}</div>${currentUser&&(currentUser.username.toLowerCase()===String(d.author).toLowerCase()||['[Сингулярность]','[Администратор]','[Модератор]'].includes(currentUser.role))?`<button class="auth-btn" style="color:#ff5555;border-color:#ff5555;" onclick="event.stopPropagation();deleteYellowDwarf(${Number(d.id)})">🗑 Удалить</button>`:''}</div><div class="feed-star-author">Автор: ${esc(d.author)}${db[String(d.author).toLowerCase()]?.isSupernova?' ⭐':''} [Жёлтый Карлик]</div><div class="feed-star-desc" style="font-size:1.2rem;">${esc(d.description)}</div><div style="display:flex;justify-content:space-between;font-size:1.1rem;color:var(--gold-bright);margin-top:8px;border-top:1px dashed rgba(212,178,54,.3);padding-top:8px;"><span>❤️ ${Number(d.likes||0)} лайков</span><span>💬 ${Number(d.commentsCount||0)} комментариев</span><span>📅 ${new Date(d.date).toLocaleDateString()}</span></div></div>`).join('');
   };
   window.handleDwarfCoverUpload = function(event) {
     const file=event.target.files?.[0]; if(!file)return;
