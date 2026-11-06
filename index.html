@@ -2621,7 +2621,11 @@
             if (event && event.currentTarget) {
                 event.currentTarget.classList.add('active');
             } else {
-                const navBtn = document.querySelector('nav button');
+                const navTabId = tabId === 'star-editor'
+                    ? (starOpenSource === 'hall' ? 'hall' : 'proto')
+                    : tabId === 'dwarf-viewer' ? 'telescope' : tabId;
+                const navBtn = Array.from(document.querySelectorAll('#main-nav .nav-item'))
+                    .find(button => (button.getAttribute('onclick') || '').includes("'" + navTabId + "'"));
                 if (navBtn) navBtn.classList.add('active');
             }
 
