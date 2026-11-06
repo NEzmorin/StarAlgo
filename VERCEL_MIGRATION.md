@@ -48,3 +48,6 @@ Then redeploy the Vercel project.
 Never put API tokens, passwords, or other secrets in this repository.
 
 <!-- Deployment trigger check: this commit is intentionally on vercel-migration. -->
+
+
+<!-- Cloudflare Worker Git connection trigger: 2026-11-06. -->
