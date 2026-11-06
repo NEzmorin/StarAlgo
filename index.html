@@ -1662,12 +1662,15 @@
             <!-- Главная -->
             <div id="tab-main" class="tab-page active">
                 <h1 class="page-title">О сайте</h1>
-                <p class="page-text">Staralgo это фан проект по алгоритмике созданный из за проблем с его аналогом AlgoVive! Сам проект создан НЕзморином и Никролом В данной версии имеется:
- 
-1.Рабочая регистрация и профили
-2.Загрузка проектов (ещё с проблемами) 
-3.Селебрити (у нас сверхновые) Администрация и т д.(короче то что есть на алговив но лучше)
-Мы будем признательны при поддержке! Также вступайте в дискорд сервер: (ссылка на север). Спасибо за посещение сайта удачи!</p>
+                <p class="page-text">StarAlgo — фан-проект по алгоритмике, созданный из-за проблем с его аналогом AlgoVive. Проект создан НЕзморином и Никролом. Здесь есть профили, Scratch и другие проекты сообщества, публикации и обсуждения. Спасибо за посещение!</p>
+
+                <div class="search-container" style="max-width: 900px;">
+                    <div class="search-title">!Как загружать файлы и картинки!</div>
+                    <p class="page-text" style="font-size:1.05rem; margin:0;">Чтобы экономить место и ускорять StarAlgo, не загружайте большие файлы напрямую на сайт. Сначала разместите файл на одном из разрешённых внешних сервисов, затем вставьте прямую HTTPS-ссылку в проект.</p>
+                    <p class="page-text" style="font-size:1.05rem; margin:0;"><strong>Разрешённые сервисы:</strong> image2url.com, catbox.moe (в том числе .sb3), imgbb.com / ibb.co, posty5.com (HTML), GitHub Pages (*.github.io), Vercel (*.vercel.app), Google Drive (прямая ссылка lh3.googleusercontent.com), Google Docs (разговорники), pagedrop.io, boomurl.com, iimg.live и x02.me.</p>
+                    <p class="page-text" style="font-size:1.05rem; margin:0;"><strong>Встроенные файлы:</strong> можно ссылаться на cover.png и emptyprofile.png. Ссылки должны быть HTTPS и вести непосредственно к файлу или опубликованному проекту. Для Scratch загружайте .sb3 на Catbox и используйте прямую ссылку на файл.</p>
+                    <p class="page-text" style="font-size:1.05rem; margin:0; color:var(--gold-bright);">Сайт принимает новые внешние ссылки только с перечисленных доменов. Не вставляйте пароли, приватные документы или ссылки с ограниченным доступом.</p>
+                </div>
 
                 <div class="search-container">
                     <div class="search-title">Поиск пользователей</div>
@@ -2132,7 +2135,16 @@
                     <option value="Python">Python</option>
                     <option value="HTML">HTML</option>
                     <option value="Картинки">Картинки</option>
+                    <option value="Медиа">Медиа (фото / GIF)</option>
+                    <option value="Видео">Видео</option>
+                    <option value="Сайт">Сайт</option>
+                    <option value="Разговорник">Разговорник (Google Docs)</option>
                 </select>
+            </div>
+            <div class="form-group" style="margin-top:10px;">
+                <label>Внешняя ссылка (Roblox, сайт, видео, медиа или разговорник):</label>
+                <input type="url" class="form-input" id="project-url-input" placeholder="https://...">
+                <div style="font-size:0.95rem; opacity:0.75; margin-top:5px;">Вставь ссылку с одного из разрешённых сервисов из справки выше.</div>
             </div>
 
             <div class="modal-actions" style="margin-top: 12px;">
@@ -4061,10 +4073,11 @@
                 container.innerHTML = `
                     <div style="display: flex; flex-direction: column; gap: 12px;">
                         ${!isReadOnly ? `
-                            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-                                <button class="auth-btn" onclick="document.getElementById('sb3-file-input').click()">📁 Выбрать .sb3 файл</button>
-                                <input type="file" id="sb3-file-input" accept=".sb3" style="display:none;" onchange="handleSb3Upload(event)">
-                                <span style="opacity: 0.8; color: var(--gold-bright);" id="sb3-status-label">${project.sb3Name ? 'Файл: ' + project.sb3Name : 'Файл сохранен'}</span>
+                            <div style="display:flex; flex-direction:column; gap:8px;">
+                                <label for="scratch-project-url">Ссылка на внешний .sb3 файл (например, Catbox):</label>
+                                <input class="form-input" id="scratch-project-url" type="url" placeholder="https://.../project.sb3" value="${window.saEscapeHTML(project.sb3Url || '')}">
+                                <button class="auth-btn" onclick="saveScratchUrl()">Сохранить ссылку и запустить Scratch</button>
+                                <span style="opacity:0.8; color:var(--gold-bright);" id="sb3-status-label">${project.sb3Url ? 'Внешняя ссылка сохранена' : 'Загрузи .sb3 на Catbox и вставь прямую ссылку'}</span>
                             </div>
                         ` : ''}
                         <div class="editor-preview-media" style="background: #111;">
@@ -4072,7 +4085,7 @@
                         </div>
                     </div>
                 `;
-                renderLocalScratchPlayer(project.sb3Data);
+                renderLocalScratchPlayer(project.sb3Url || project.sb3Data);
             } else if (project.category === 'HTML') {
                 if (isReadOnly) {
                     container.innerHTML = `
@@ -4593,20 +4606,18 @@ except Exception as e:
             reader.readAsDataURL(file);
         }
 
-        function renderLocalScratchPlayer(sb3DataUrl) {
+        function renderLocalScratchPlayer(sb3Source) {
             const iframe = document.getElementById('scratch-player-iframe');
             if (!iframe) return;
-
-            iframe.srcdoc = `<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"></head>
-<body style="background:#0c0b08; color:#d4b236; font-family:sans-serif; display:flex; flex-direction:column; align-items:center; justify-content:center; height:90vh; margin:0;">
-    <div style="border:2px solid #d4b236; padding:20px; border-radius:10px; text-align:center;">
-        <h2>⭐ Скреч-звезда сохранена!</h2>
-        <p style="margin-top:10px; color:#f5d65c;">Проект находится в вашем локальном протозвездии.</p>
-    </div>
-</body>
-</html>`;
+            const source = String(sb3Source || '');
+            if (/^https:\/\//i.test(source)) {
+                iframe.src = 'https://turbowarp.org/embed?project_url=' + encodeURIComponent(source);
+                iframe.removeAttribute('srcdoc');
+                iframe.setAttribute('allowfullscreen', '');
+                return;
+            }
+            iframe.removeAttribute('src');
+            iframe.srcdoc = `<!DOCTYPE html><html><body style="background:#0c0b08;color:#d4b236;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:90vh;margin:0;text-align:center"><div style="border:2px solid #d4b236;padding:20px;border-radius:10px"><h2>Scratch-проект</h2><p>Старый файл хранился внутри StarAlgo и не может быть воспроизведён этим плеером. Загрузите .sb3 на Catbox и добавьте прямую ссылку в редакторе.</p></div></body></html>`;
         }
 
         function handleCoverUpload(event) {
