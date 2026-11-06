@@ -68,7 +68,7 @@
       likes: Number(u.likes || 0),
       projects: Number(u.projects || 0),
       avatarUrl,
-      avatarHtml: u.avatarHtml || safeImgHtml(avatarUrl),
+      avatarHtml: safeImgHtml(avatarUrl),
       bio: u.bio || '',
       projectsList: (u.projectsList || []).map(normalizeProject),
       vacuumList: (u.vacuumList || []).map(normalizeProject),
@@ -343,14 +343,41 @@
   };
   window.toggleFollowUser = async function() {
     if (!currentUser || !viewingUser) { openAuthModal(); return; }
+    if (String(currentUser.id)===String(viewingUser.id)) return;
+    const target=viewingUser, me=currentUser;
+    const meKey=me.username.toLowerCase(), targetKey=target.username.toLowerCase();
+    const wasFollowing=(me.followingList||[]).includes(targetKey);
+    const previousFollowers=target.followersList||[];
+    me.followingList=Array.isArray(me.followingList)?me.followingList.slice():[];
+    target.followersList=Array.isArray(target.followersList)?target.followersList.slice():[];
+    if(wasFollowing){
+      me.followingList=me.followingList.filter(x=>String(x).toLowerCase()!==targetKey);
+      target.followersList=target.followersList.filter(x=>String(x).toLowerCase()!==meKey);
+    } else {
+      me.followingList.push(targetKey);
+      if(!target.followersList.some(x=>String(x).toLowerCase()===meKey)) target.followersList.push(meKey);
+    }
+    renderProfileData(target);
+    storeCurrentUserInCache();
     try {
-      await api('/api/follows',{method:'POST',body:jsonBody({username:viewingUser.username})});
-      await refreshBootstrap({render:false});
-      const result = await api(`/api/users/${encodeURIComponent(viewingUser.username)}`);
-      viewingUser = normalizeUser(result.user);
-      renderProfileData(viewingUser);
-      applyUserSession();
-    } catch (e) { alert(e.message); }
+      const result=await api('/api/follows',{method:'POST',body:jsonBody({userId:target.id})});
+      const isFollowing=!!result.following;
+      if(isFollowing!==!wasFollowing){
+        me.followingList=me.followingList.filter(x=>String(x).toLowerCase()!==targetKey);
+        target.followersList=target.followersList.filter(x=>String(x).toLowerCase()!==meKey);
+        if(isFollowing){me.followingList.push(targetKey);target.followersList.push(meKey);}
+      }
+      target.followersList=target.followersList.filter(x=>String(x).toLowerCase()!==meKey);
+      if(isFollowing) target.followersList.push(meKey);
+      renderProfileData(target);
+      storeCurrentUserInCache();
+    } catch(e) {
+      me.followingList=wasFollowing?[...new Set([...(me.followingList||[]),targetKey])]:me.followingList.filter(x=>String(x).toLowerCase()!==targetKey);
+      target.followersList=previousFollowers;
+      renderProfileData(target);
+      storeCurrentUserInCache();
+      alert(e.message);
+    }
   };
   window.handleAvatarUpload = function(event) {
     const file = event.target.files?.[0];
@@ -668,10 +695,18 @@
     catch(e){alert(e.message);}
   };
   window.resolveReport = async function(reportId,type,targetId,targetOwner) {
-    if(!confirm('Подтвердить отправку проекта в Вакуум?'))return;
-    if(type!=='project'){alert('Автоматическое действие для этого типа жалобы пока не настроено.');return;}
-    try { await api(`/api/admin/reports/${reportId}`,{method:'POST',body:jsonBody({action:'delete-project'})}); await refreshBootstrap(); renderReportsInbox(); }
-    catch(e){alert(e.message);}
+    const action=type==='project'?'delete-project':type==='comment'?'delete-comment':'resolve-user';
+    const promptText=type==='project'?'Отправить проект в Вакуум?':type==='comment'?'Удалить этот комментарий и закрыть жалобу?':'Отметить жалобу на пользователя как обработанную?';
+    if(!confirm(promptText))return;
+    try {
+      await api(`/api/admin/reports/${reportId}`,{method:'POST',body:jsonBody({action})});
+      await refreshBootstrap({render:false});
+      renderReportsInbox();
+      if(type==='comment' && activeDwarfObject) {
+        const d=await api(`/api/dwarfs/${activeDwarfObject.id}`);
+        activeDwarfObject=d.dwarf; renderDwarfCommentsList(activeDwarfObject);
+      }
+    } catch(e){alert(e.message);}
   };
   const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
   window.saEscapeHTML = esc;
@@ -685,7 +720,7 @@
     if(!comments.length){box.innerHTML='<div class="empty-placeholder">Пока нет комментариев...</div>';return;}
     box.innerHTML=comments.map(c=>{
       const mine=currentUser && currentUser.username.toLowerCase()===String(c.author).toLowerCase();
-      return `<div class="comment-item${c.parentId?' comment-reply-item':''}" id="comment-${esc(c.id)}"><div class="comment-header-row"><span class="comment-author" onclick="viewUserProfile(decodeURIComponent('${jsName(c.author)}'))">${esc(c.author)}</span><div class="comment-actions-row"><button class="comment-action-btn" onclick="setReplyTo('${jsName(c.id)}',decodeURIComponent('${jsName(c.author)}'))">Ответить</button>${!mine?`<button class="comment-action-btn" style="color:#ff5555;" onclick="openReportModal('comment',decodeURIComponent('${jsName(c.id)}'),'Комментарий',decodeURIComponent('${jsName(c.author)}'),'project',${Number(project.id)})">⚠️</button>`:''}${mine?`<button class="comment-action-btn" style="color:#ff5555;" onclick="deleteComment(decodeURIComponent('${jsName(c.id)}'))">Удалить</button>`:''}</div></div><div>${c.replyToUser?`<span style="opacity:.7;font-size:.9rem;">Ответ для @${esc(c.replyToUser)}:</span><br>`:''}${esc(c.text)}</div></div>`;
+      return `<div class="comment-item${c.parentId?' comment-reply-item':''}" id="comment-${esc(c.id)}"><div class="comment-header-row"><span class="comment-author" onclick="viewUserProfile(decodeURIComponent('${jsName(c.author)}'))">${esc(c.author)}</span><div class="comment-actions-row"><button class="comment-action-btn" onclick="setReplyTo('${jsName(c.id)}',decodeURIComponent('${jsName(c.author)}'))">Ответить</button>${!mine?`<button class="comment-action-btn" style="color:#ff5555;" onclick="openReportModal('comment',decodeURIComponent('${jsName(c.id)}'),'Комментарий',decodeURIComponent('${jsName(c.author)}'),'project',${Number(project.id)})">⚠️</button>`:''}${(mine||(currentUser&&['[Сингулярность]','[Администратор]','[Модератор]'].includes(currentUser.role)))?`<button class="comment-action-btn" style="color:#ff5555;" onclick="deleteComment(decodeURIComponent('${jsName(c.id)}'))">Удалить</button>`:''}</div></div><div>${c.replyToUser?`<span style="opacity:.7;font-size:.9rem;">Ответ для @${esc(c.replyToUser)}:</span><br>`:''}${esc(c.text)}</div></div>`;
     }).join('');
   };
   window.renderDwarfCommentsList = function(dwarf) {
@@ -695,7 +730,7 @@
     if(!comments.length){box.innerHTML='<div class="empty-placeholder">Пока нет комментариев...</div>';return;}
     box.innerHTML=comments.map(c=>{
       const mine=currentUser && currentUser.username.toLowerCase()===String(c.author).toLowerCase();
-      return `<div class="comment-item" id="dwarf-comment-${esc(c.id)}"><div class="comment-header-row"><span class="comment-author" onclick="viewUserProfile(decodeURIComponent('${jsName(c.author)}'))">${esc(c.author)}</span><div class="comment-actions-row">${!mine?`<button class="comment-action-btn" style="color:#ff5555;" onclick="openReportModal('comment',decodeURIComponent('${jsName(c.id)}'),'Комментарий к новости',decodeURIComponent('${jsName(c.author)}'),'dwarf',${Number(dwarf.id)})">⚠️</button>`:''}${mine?`<button class="comment-action-btn" style="color:#ff5555;" onclick="deleteDwarfComment(${Number(c.id)})">Удалить</button>`:''}</div></div><div>${esc(c.text)}</div></div>`;
+      return `<div class="comment-item" id="dwarf-comment-${esc(c.id)}"><div class="comment-header-row"><span class="comment-author" onclick="viewUserProfile(decodeURIComponent('${jsName(c.author)}'))">${esc(c.author)}</span><div class="comment-actions-row">${!mine?`<button class="comment-action-btn" style="color:#ff5555;" onclick="openReportModal('comment',decodeURIComponent('${jsName(c.id)}'),'Комментарий к новости',decodeURIComponent('${jsName(c.author)}'),'dwarf',${Number(dwarf.id)})">⚠️</button>`:''}${(mine||(currentUser&&['[Сингулярность]','[Администратор]','[Модератор]'].includes(currentUser.role)))?`<button class="comment-action-btn" style="color:#ff5555;" onclick="deleteDwarfComment('${jsName(c.id)}')">Удалить</button>`:''}</div></div><div>${esc(c.text)}</div></div>`;
     }).join('');
   };
   window.renderZvezdnyFeed = function() {
