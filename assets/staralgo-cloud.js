@@ -410,14 +410,28 @@
     const defaults = category === 'Python'
       ? '# Нарисуем квадрат черепашкой\nimport turtle\nfor i in range(4):\n    turtle.forward(100)\n    turtle.right(90)\n'
       : ['Roblox','Картинки','Медиа','Видео','Сайт','Разговорник','Scratch'].includes(category) ? '' : '// Напишите HTML код здесь';
+    const submitButton = document.querySelector('#project-modal .modal-actions .auth-btn');
+    if (submitButton) { submitButton.disabled = true; submitButton.dataset.oldLabel = submitButton.textContent; submitButton.textContent = 'Создаём…'; }
     try {
-      await api('/api/projects',{method:'POST',body:jsonBody({name,category,description:'',published:false,data:defaults,projectUrl})});
-      await refreshBootstrap({render:false});
-      applyUserSession();
+      const createdResult = await api('/api/projects',{method:'POST',body:jsonBody({name,category,description:'',published:false,data:defaults,projectUrl})});
+      const createdProject = normalizeProject(createdResult.project);
+      currentUser.projectsList = currentUser.projectsList || [];
+      currentUser.projectsList.unshift(createdProject);
       document.getElementById('stat-projects').textContent = currentUser.projectsList.length;
       closeCreateProjectModal();
       switchProtoSection(null,'stars');
-    } catch (e) { alert(e.message); }
+      // Refresh account data after the modal has already closed; don't make the user wait for bootstrap.
+      refreshBootstrap({render:false}).then(() => {
+        applyUserSession();
+        const stat = document.getElementById('stat-projects');
+        if (stat) stat.textContent = currentUser.projectsList.length;
+        if (typeof renderProtoStars === 'function') renderProtoStars();
+      }).catch(() => {});
+    } catch (e) {
+      alert(e.message);
+    } finally {
+      if (submitButton) { submitButton.disabled = false; submitButton.textContent = submitButton.dataset.oldLabel || 'Создать'; }
+    }
   };
   window.openStarEditor = async function(projectId) {
     if (!currentUser) { openAuthModal(); return; }
