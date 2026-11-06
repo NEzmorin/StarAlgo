@@ -287,7 +287,9 @@ async function handle(request, env) {
   const userMatch = path.match(/^\/api\/users\/(.+)$/);
   if (userMatch && method === 'GET' && userMatch[1] !== 'search') {
     let name; try { name = decodeURIComponent(userMatch[1]); } catch { fail(400,'Некорректное имя'); }
-    const profile = await userByName(env,name);
+    const profile = name.startsWith('id/')
+      ? await env.DB.prepare('SELECT * FROM users WHERE id=?').bind(name.slice(3)).first()
+      : await userByName(env,name);
     if (!profile) fail(404,'Пользователь не найден');
     return json({ user: await getProfile(env,profile,user) });
   }
