@@ -48,7 +48,7 @@ function mapProject(row, includePayload = false) {
     commentsCount: Number(row.comments_count || 0), comments: row.comments_data || [],
     likedBy: row.liked_by || [], date: Number(row.created_at),
     deletedAt: row.deleted_at ? Number(row.deleted_at) : null,
-    data: payload.data ?? row.source_text ?? '', sb3Data: payload.sb3Data || '',
+    data: payload.data ?? row.source_text ?? '', sb3Data: payload.sb3Data || '', sb3Url: payload.sb3Url || '',
     isDummy: !!payload.isDummy
   };
 }
@@ -334,7 +334,7 @@ async function handle(request, env) {
     const description = typeof body.description === 'string' ? body.description.slice(0,4000) : '';
     const coverUrl = validateProjectResourceUrl(body.coverUrl || '', 'Обложка');
     const projectUrl = validateProjectResourceUrl(body.projectUrl || '', 'Ссылка проекта');
-    const payload = { data: typeof body.data === 'string' ? body.data.slice(0,200000) : '', sb3Data: typeof body.sb3Data === 'string' ? body.sb3Data.slice(0,400000) : '', isDummy: false };
+    const payload = { data: typeof body.data === 'string' ? body.data.slice(0,200000) : '', sb3Data: typeof body.sb3Data === 'string' ? body.sb3Data.slice(0,400000) : '', sb3Url: validateProjectResourceUrl(body.sb3Url || '', 'Scratch-файл'), isDummy: false };
     const pid = makeId(), stamp = now();
     await env.DB.prepare(`INSERT INTO projects(id,user_id,name,category,description,published,cover_url,project_url,source_text,payload_json,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`)
       .bind(pid,user.id,name,category,description,body.published ? 1 : 0,coverUrl,projectUrl,payload.data,JSON.stringify(payload),stamp,stamp).run();
@@ -365,6 +365,7 @@ async function handle(request, env) {
     const payload = parseJson(row.payload_json,{});
     if (body.data !== undefined) payload.data = String(body.data).slice(0,200000);
     if (body.sb3Data !== undefined) payload.sb3Data = String(body.sb3Data).slice(0,400000);
+    if (body.sb3Url !== undefined) payload.sb3Url = validateProjectResourceUrl(body.sb3Url, 'Scratch-файл');
     await env.DB.prepare(`UPDATE projects SET name=?,category=?,description=?,published=?,cover_url=?,project_url=?,source_text=?,payload_json=?,updated_at=? WHERE id=?`)
       .bind(name,category,description,body.published === undefined ? row.published : (body.published ? 1 : 0),cover,pUrl,payload.data || '',JSON.stringify(payload),now(),row.id).run();
     await refreshRank(env,user.id);
