@@ -362,7 +362,6 @@ async function handle(request, env) {
     // Preserve legacy embedded images when unchanged; all new/changed resource links must use the allowlist.
     const cover = coverCandidate === row.cover_url ? row.cover_url : validateProjectResourceUrl(coverCandidate, 'Обложка');
     const pUrl = pUrlCandidate === row.project_url ? row.project_url : validateProjectResourceUrl(pUrlCandidate, 'Ссылка проекта');
-    if (category !== row.category && ['Roblox','Картинки','Медиа','Видео','Сайт','Разговорник'].includes(category) && !pUrl) fail(400,'Для этого типа проекта нужна внешняя ссылка.');
     const payload = parseJson(row.payload_json,{});
     if (body.data !== undefined) payload.data = String(body.data).slice(0,200000);
     if (body.sb3Data !== undefined) payload.sb3Data = String(body.sb3Data).slice(0,400000);
