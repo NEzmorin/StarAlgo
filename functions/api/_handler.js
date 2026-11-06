@@ -459,7 +459,7 @@ async function handle(request, env) {
     if (!row) fail(404,'Новость не найдена');
     const comments = await env.DB.prepare('SELECT c.*,u.username FROM dwarf_comments c JOIN users u ON u.id=c.user_id WHERE c.dwarf_id=? ORDER BY c.created_at').bind(row.id).all();
     const liked = !!user && !!await env.DB.prepare('SELECT 1 FROM dwarf_likes WHERE dwarf_id=? AND user_id=?').bind(row.id,user.id).first();
-    return json({dwarf:{id:Number(row.id),name:row.title,description:row.body,coverUrl:row.image_url||'',author:row.author,date:Number(row.created_at),likes:Number(row.likes_count),liked,comments:comments.results.map(c=>({id:Number(c.id),author:c.username,text:c.body,date:Number(c.created_at)}))}});
+    return json({dwarf:{id:Number(row.id),name:row.title,description:row.body,coverUrl:row.image_url||'',author:row.author,date:Number(row.created_at),likes:Number(row.likes_count),liked,comments:comments.results.map(c=>({id:String(c.id),author:c.username,text:c.body,date:Number(c.created_at)}))}});
   }
   if (dwarfMatch && method === 'DELETE') {
     const result = await env.DB.prepare('DELETE FROM yellow_dwarfs WHERE id=? AND (author_id=? OR ? IN (SELECT id FROM users WHERE role IN (\'[Сингулярность]\',\'[Администратор]\',\'[Модератор]\')) )').bind(dwarfMatch[1],user.id,user.id).run();
@@ -481,7 +481,7 @@ async function handle(request, env) {
     const exists = await env.DB.prepare('SELECT id FROM yellow_dwarfs WHERE id=?').bind(dwarfComments[1]).first();
     if (!exists) fail(404,'Новость не найдена');
     const rows = await env.DB.prepare('SELECT c.*,u.username FROM dwarf_comments c JOIN users u ON u.id=c.user_id WHERE c.dwarf_id=? ORDER BY c.created_at').bind(dwarfComments[1]).all();
-    return json({comments:rows.results.map(c=>({id:Number(c.id),author:c.username,text:c.body,date:Number(c.created_at)}))});
+    return json({comments:rows.results.map(c=>({id:String(c.id),author:c.username,text:c.body,date:Number(c.created_at)}))});
   }
   if (dwarfComments && method === 'POST') {
     const exists = await env.DB.prepare('SELECT id FROM yellow_dwarfs WHERE id=?').bind(dwarfComments[1]).first();
