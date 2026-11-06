@@ -604,6 +604,15 @@
       }
     } catch (error) { alert(error.message); }
   };
+  window.saveProjectResourceUrl = async function() {
+    if (!activeStarObject || !currentUser || activeStarObject.author.toLowerCase() !== currentUser.username.toLowerCase()) return;
+    const input = document.getElementById('project-resource-url');
+    const value = String(input?.value || '').trim();
+    if (!value) { alert('Вставь HTTPS-ссылку на внешний ресурс.'); return; }
+    activeStarObject.projectUrl = value;
+    try { if (await saveProjectNow()) renderStarRuntime(activeStarObject, false); }
+    catch (error) { alert(error.message); }
+  };
   window.saveProjectMediaUrl = async function() {
     if (!activeStarObject || !currentUser || activeStarObject.author.toLowerCase() !== currentUser.username.toLowerCase()) return;
     const input = document.getElementById('project-media-url');
