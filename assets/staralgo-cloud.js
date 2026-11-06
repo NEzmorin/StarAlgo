@@ -636,7 +636,7 @@
   };
   window.deleteDwarfComment = async function(commentId) {
     if(!activeDwarfObject)return;
-    try { await api(`/api/dwarf-comments/${commentId}`,{method:'DELETE'}); activeDwarfObject.comments=activeDwarfObject.comments.filter(c=>Number(c.id)!==Number(commentId)); activeDwarfObject.commentsCount=activeDwarfObject.comments.length; renderDwarfCommentsList(activeDwarfObject); renderTelescopeFeed(); }
+    try { await api(`/api/dwarf-comments/${commentId}`,{method:'DELETE'}); activeDwarfObject.comments=activeDwarfObject.comments.filter(c=>String(c.id)!==String(commentId)); activeDwarfObject.commentsCount=activeDwarfObject.comments.length; renderDwarfCommentsList(activeDwarfObject); renderTelescopeFeed(); }
     catch(e){alert(e.message);}
   };
   window.openNotificationsModal = async function() {
