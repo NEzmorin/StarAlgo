@@ -1724,6 +1724,9 @@
                     <button class="sub-filter-pill" onclick="setHallCategory(event, 'Картинки')">Картинки</button>
                     <button class="sub-filter-pill" onclick="setHallCategory(event, 'Roblox')">Roblox</button>
                     <button class="sub-filter-pill" onclick="setHallCategory(event, 'HTML')">HTML</button>
+                    <button class="sub-filter-pill" onclick="setHallCategory(event, 'Медиа')">Медиа</button>
+                    <button class="sub-filter-pill" onclick="setHallCategory(event, 'Видео')">Видео</button>
+                    <button class="sub-filter-pill" onclick="setHallCategory(event, 'Сайт')">Сайты</button>
                 </div>
 
                 <div class="zvezdny-feed-grid" id="zvezdny-feed-grid">
@@ -4745,6 +4748,8 @@ except Exception as e:
             }
             document.getElementById('modal-proj-name').value = activeStarObject.name;
             document.getElementById('modal-proj-desc').value = activeStarObject.description || '';
+            const coverInput = document.getElementById('cover-url-input');
+            if (coverInput) coverInput.value = activeStarObject.coverUrl || '';
             updatePublishButtonState(activeStarObject.published);
             document.getElementById('publish-modal').classList.add('open');
         }
