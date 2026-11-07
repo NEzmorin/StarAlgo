@@ -963,10 +963,14 @@
 
         /* Code editors and runtime previews get a usable workspace size. */
         #editor-runtime-container .CodeMirror {
-            height: 420px;
-            min-height: 320px;
+            height: 520px;
+            min-height: 380px;
             font-size: 15px;
+            line-height: 1.5;
         }
+        #editor-runtime-container .CodeMirror-lines { padding: 12px 0; }
+        #editor-runtime-container .CodeMirror pre { padding: 0 8px; }
+        #editor-runtime-container .CodeMirror-gutters { background: #17140b; border-right: 1px solid rgba(212,178,54,.35); }
         #editor-runtime-container .editor-preview-media {
             width: 100%;
             min-height: 420px;
@@ -1038,7 +1042,7 @@
             max-height: none;
         }
         @media (max-width: 700px) {
-            #editor-runtime-container .CodeMirror { height: 360px; }
+            #editor-runtime-container .CodeMirror { height: 420px; }
             #editor-runtime-container .editor-preview-media { height: 360px; min-height: 360px; }
         }
 
@@ -4430,9 +4434,8 @@
                         </div>
                         <div style="display: grid; grid-template-columns: 1fr; gap: 12px;">
                             <textarea id="html-code-textarea">${window.saEscapeHTML(project.data || '')}</textarea>
-                            <button class="auth-btn" onclick="runHtmlSandbox()">Запустить / Обновить превью</button>
                             <div style="color: var(--gold-bright); margin-top: 5px;">Живое превью</div>
-                            <div id="html-preview-status" style="font-size:.9rem;opacity:.75;">Предпросмотр отключён до запуска.</div>
+                            <div id="html-preview-status" style="font-size:.9rem;opacity:.75;">Автосохранение включено. Внешние сайты, запросы, фреймы и формы отключены.</div>
                             <iframe sandbox="allow-scripts" id="html-preview-frame" style="width: 100%; height: 420px; background: #fff; border: 2px solid var(--gold-main); border-radius: 8px;"></iframe>
                         </div>
                     `;
@@ -4442,13 +4445,21 @@
                             theme: 'dracula',
                             lineNumbers: true,
                             readOnly: false,
-                            indentUnit: 4
+                            indentUnit: 4,
+                            tabSize: 4,
+                            indentWithTabs: false,
+                            lineWrapping: false,
+                            matchBrackets: true
                         });
                         codeMirrorEditor.on('change', () => {
                             project.data = codeMirrorEditor.getValue();
                             saveActiveStarChanges();
                         });
-                        codeMirrorEditor.setOption('extraKeys', {'Ctrl-Enter': runHtmlSandbox, 'Cmd-Enter': runHtmlSandbox});
+                        codeMirrorEditor.setOption('extraKeys', {
+                            'Ctrl-Enter': runHtmlSandbox, 'Cmd-Enter': runHtmlSandbox,
+                            'Ctrl-S': () => saveActiveStarChanges(), 'Cmd-S': () => saveActiveStarChanges()
+                        });
+                        codeMirrorEditor.focus();
                     }, 50);
                 }
             } else if (project.category === 'Python') {
@@ -4465,12 +4476,11 @@
                     container.innerHTML = `
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
                             <div style="color: var(--gold-bright);">Python Редактор · изолированная среда</div>
-                            
+                            <button class="auth-btn" type="button" onclick="runPythonWithTurtle()">▶ Запустить (Ctrl + Enter)</button>
                         </div>
                         <div style="display: grid; grid-template-columns: 1fr; gap: 12px;">
                             <textarea id="python-code-textarea">${window.saEscapeHTML(project.data || '')}</textarea>
-                            <button class="auth-btn" onclick="runPythonWithTurtle()">Запустить скрипт</button>
-                            <div style="color: var(--gold-bright);">Графика (Turtle / Терминал)</div>
+                            <div style="color: var(--gold-bright);">Графика Turtle и вывод консоли · сетевые запросы отключены</div>
                             <div id="turtle-graphics-canvas-container" style="width: 100%; height: 320px; background: #ffffff; border: 2px solid var(--gold-main); border-radius: 6px; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center;">
                                 <span style="color: #000; font-size: 1rem;" id="turtle-placeholder">Графика turtle...</span>
                             </div>
@@ -4483,13 +4493,21 @@
                             theme: 'dracula',
                             lineNumbers: true,
                             readOnly: false,
-                            indentUnit: 4
+                            indentUnit: 4,
+                            tabSize: 4,
+                            indentWithTabs: false,
+                            lineWrapping: false,
+                            matchBrackets: true
                         });
                         codeMirrorEditor.on('change', () => {
                             project.data = codeMirrorEditor.getValue();
                             saveActiveStarChanges();
                         });
-                        codeMirrorEditor.setOption('extraKeys', {'Ctrl-Enter': runPythonWithTurtle, 'Cmd-Enter': runPythonWithTurtle});
+                        codeMirrorEditor.setOption('extraKeys', {
+                            'Ctrl-Enter': runPythonWithTurtle, 'Cmd-Enter': runPythonWithTurtle,
+                            'Ctrl-S': () => saveActiveStarChanges(), 'Cmd-S': () => saveActiveStarChanges()
+                        });
+                        codeMirrorEditor.focus();
                     }, 50);
                 }
             }
@@ -4497,7 +4515,7 @@
             if (['HTML','Python'].includes(project.category) && !isReadOnly) {
                 const driveAttachment = document.createElement('div');
                 driveAttachment.style.cssText = 'display:flex;flex-direction:column;gap:8px;margin-top:14px;padding:12px;border:1px solid var(--gold-main);border-radius:8px;';
-                driveAttachment.innerHTML = '<label for="project-resource-url">Дополнительный файл на Google Drive (необязательно):</label><input class="form-input" id="project-resource-url" type="url" placeholder="https://drive.google.com/file/d/ID/view" value="' + window.saEscapeHTML(project.projectUrl || '') + '"><div style="opacity:.8;">Открой общий доступ по ссылке. Файл откроется рядом с редактором, но не заменит выполнение кода.</div><button class="auth-btn" type="button" onclick="saveProjectResourceUrl()">Сохранить ссылку на файл</button>';
+                driveAttachment.innerHTML = '<label for="project-resource-url">Дополнительный файл с файлообменника (необязательно):</label><input class="form-input" id="project-resource-url" type="url" placeholder="Прямая HTTPS-ссылка на файл" value="' + window.saEscapeHTML(project.projectUrl || '') + '"><div style="opacity:.8;">Сохрани здесь ссылку на файл с разрешённого файлообменника. Песочница HTML/Python не загружает и не исполняет этот файл автоматически.</div><button class="auth-btn" type="button" onclick="saveProjectResourceUrl()">Сохранить ссылку на файл</button>';
                 container.appendChild(driveAttachment);
             }
 
