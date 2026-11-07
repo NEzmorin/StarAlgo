@@ -822,6 +822,24 @@
     try{await api('/api/support/'+encodeURIComponent(id)+'/confirm',{method:'POST',body:jsonBody({resolved,message})});await loadMySupportTickets();if(typeof renderReportsInbox==='function')renderReportsInbox();}
     catch(e){alert(e.message);}
   };
+  window.openChangePassword = function(){document.getElementById('change-password-modal')?.classList.add('open');};
+  window.closeChangePassword = function(){document.getElementById('change-password-modal')?.classList.remove('open');};
+  window.submitPasswordChange = async function(){
+    const current=document.getElementById('change-password-current')?.value||'';
+    const next=document.getElementById('change-password-new')?.value||'';
+    const confirmNext=document.getElementById('change-password-confirm')?.value||'';
+    const error=document.getElementById('change-password-error');
+    if(next.length<8){error.textContent='Новый пароль должен содержать минимум 8 символов.';error.style.display='block';return;}
+    if(next!==confirmNext){error.textContent='Новые пароли не совпадают.';error.style.display='block';return;}
+    const button=document.getElementById('change-password-submit');if(button)button.disabled=true;
+    try{
+      const result=await api('/api/auth/change-password',{method:'POST',body:jsonBody({currentPassword:current,newPassword:next})});
+      ['change-password-current','change-password-new','change-password-confirm'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+      closeChangePassword();
+      alert('Пароль изменён. Остальные устройства отключены. Аккаунт на этом устройстве останется активным.');
+    }catch(e){error.textContent=e.message;error.style.display='block';}
+    finally{if(button)button.disabled=false;}
+  };
   window.replySupportTicket = async function(id){
     const input=document.getElementById('support-reply-'+String(id));
     const message=input?.value.trim()||'';if(!message){alert('Напишите ответ пользователю.');return;}
@@ -849,8 +867,8 @@
           <div class="report-header"><strong>🛟 ТЕХПОДДЕРЖКА · ${esc(r.targetName)}</strong><span>От: ${esc(r.reporter)}</span></div>
           <div style="margin:8px 0;">${(r.messages||[]).map(m=>`<p><strong>${esc(m.username)}:</strong> ${esc(m.body)}</p>`).join('')}</div>
           <div style="opacity:.8;margin:6px 0;">Статус: ${r.status==='waiting_user'?'Ожидает пользователя':'Открыто'}</div>
-          ${r.type==='support_guest'?'<div style="opacity:.75;margin-top:10px;">Гость отправил обращение без аккаунта. Ответить можно только на обращение, связанное с зарегистрированным аккаунтом.</div>':`<textarea id="support-reply-${r.id}" class="form-textarea" rows="3" maxlength="4000" placeholder="Напишите ответ пользователю..."></textarea>
-          <button class="auth-btn" style="margin-top:7px;" onclick="replySupportTicket('${r.id}')">Решено — отправить ответ</button>`}
+          <textarea id="support-reply-${r.id}" class="form-textarea" rows="3" maxlength="4000" placeholder="Напишите ответ пользователю..."></textarea>
+          <button class="auth-btn" style="margin-top:7px;" onclick="replySupportTicket('${r.id}')">Отправить ответ</button>
         </div>`;
         return `<div class="report-card" id="report-${r.id}"><div class="report-header"><span>Тип: <strong>${String(r.type).toUpperCase()}</strong> | Объект: ${esc(r.targetName||'N/A')}</span><span>От: ${esc(r.reporter)}</span></div><div><strong>Причина:</strong> ${esc(r.reason)}</div><div style="display:flex;gap:8px;margin-top:5px;"><button class="auth-btn" onclick="openReportTarget('${r.type}','${r.targetId}','${jsName(r.targetOwner||'')}','${r.targetParentType||''}','${r.targetParentId||''}','${jsName(r.targetParentOwner||'')}')">Перейти к объекту</button><button class="auth-btn" style="color:#ff5555;border-color:#ff5555;" onclick="resolveReport('${r.id}','${r.type}','${r.targetId}','${jsName(r.targetOwner||'')}')">Обработать</button><button class="auth-btn" onclick="dismissReport('${r.id}')">Отклонить</button></div></div>`;
       }).join('');
