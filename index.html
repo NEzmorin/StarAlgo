@@ -4465,7 +4465,8 @@
             } else if (project.category === 'Python') {
                 if (isReadOnly) {
                     container.innerHTML = `
-                        <div style="color: var(--gold-bright);">Результат Python (Turtle / Терминал)</div>
+                        <div style="color: var(--gold-bright);">Результат Python · изолированная среда</div>
+                        <div style="font-size:.9rem;opacity:.75;">Python исполняется в отдельном Worker без доступа к сети и странице.</div>
                         <div id="turtle-graphics-canvas-container" style="width: 100%; height: 200px; background: #ffffff; border: 2px solid var(--gold-main); border-radius: 6px; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center;">
                             <span style="color: #000; font-size: 1rem;" id="turtle-placeholder">Запуск результата...</span>
                         </div>
@@ -4484,6 +4485,7 @@
                         <div style="display: grid; grid-template-columns: 1fr; gap: 12px;">
                             <textarea id="python-code-textarea">${window.saEscapeHTML(project.data || '')}</textarea>
                             <div style="color: var(--gold-bright);">Графика Turtle и вывод консоли · сетевые запросы отключены</div>
+                            <div style="font-size:.9rem;opacity:.75;line-height:1.45;">Python 3 в браузере (Brython). Доступны поддерживаемые стандартные модули и базовые команды Turtle. Интернет, файловая система и доступ к странице StarAlgo отключены.</div>
                             <div id="turtle-graphics-canvas-container" style="width: 100%; height: 320px; background: #ffffff; border: 2px solid var(--gold-main); border-radius: 6px; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center;">
                                 <span style="color: #000; font-size: 1rem;" id="turtle-placeholder">Графика turtle...</span>
                             </div>
