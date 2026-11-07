@@ -3091,6 +3091,10 @@
         function renderProfileData(user) {
             checkAndUpdateUserRole(user);
             document.getElementById('pp-username').textContent = user.username + (user.isSupernova ? ' ⭐' : '');
+            const originalName=document.getElementById('pp-original-username');
+            if(originalName) originalName.textContent='Первоначальный ник: '+(user.originalUsername||user.username);
+            const accountActions=document.getElementById('profile-account-actions');
+            if(accountActions) accountActions.style.display=currentUser && String(currentUser.id)===String(user.id)?'flex':'none';
             const projects = user.projectsList || [];
             document.getElementById('pp-stat-projects').textContent = projects.length;
             document.getElementById('pp-stat-awards').textContent = user.awards || 0;
@@ -3175,6 +3179,17 @@
             }
 
             renderAdminControlsOnProfile(user);
+            const adminPanel=document.getElementById('admin-controls-panel');
+            if(adminPanel && currentUser && String(currentUser.id)!==String(user.id)){
+              if(currentUser.role==='[Администратор]' || currentUser.role==='[Сингулярность]'){
+                const resetBtn=document.createElement('button');resetBtn.className='auth-btn';resetBtn.textContent='Сбросить пароль (сгенерировать)';
+                resetBtn.onclick=()=>adminResetUserPassword(user.id);adminPanel.appendChild(resetBtn);
+              }
+              if(currentUser.role==='[Сингулярность]'){
+                const setBtn=document.createElement('button');setBtn.className='auth-btn';setBtn.textContent='Задать пароль вручную';
+                setBtn.onclick=()=>singularitySetUserPassword(user.id);adminPanel.appendChild(setBtn);
+              }
+            }
             renderProfileStarsCategories(projects);
 
             const editBtn = document.getElementById('bio-edit-btn');
