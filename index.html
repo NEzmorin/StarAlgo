@@ -440,6 +440,45 @@
             margin-top: 20px;
         }
 
+        /* Компактная памятка справа от описания главной страницы. */
+        .upload-guide-card {
+            float: right;
+            width: min(43%, 520px);
+            max-width: 520px !important;
+            margin: 0 0 22px 24px;
+            padding: 14px;
+            gap: 9px;
+        }
+        .upload-guide-card .page-text {
+            max-width: none;
+            font-size: .98rem !important;
+            margin: 0;
+        }
+        .upload-guide-card .search-title { font-size: 1.35rem; }
+        @media (max-width: 900px) {
+            .upload-guide-card {
+                float: none;
+                width: 100%;
+                max-width: 100% !important;
+                margin: 16px 0;
+                box-sizing: border-box;
+            }
+        }
+        .project-upload-hint {
+            border: 1px dashed rgba(212,178,54,.65);
+            background: rgba(212,178,54,.07);
+            border-radius: 9px;
+            padding: 10px 12px;
+            line-height: 1.4;
+            color: var(--gold-main);
+            font-size: 1rem;
+        }
+        .project-upload-hint a {
+            color: var(--gold-bright);
+            font-weight: 700;
+            text-decoration: underline;
+        }
+
         .resource-guide-links a {
             color: #ffd84d !important;
             font-weight: 700;
@@ -1748,7 +1787,7 @@
                 <h1 class="page-title">О сайте</h1>
                 <p class="page-text">StarAlgo — фан-проект по алгоритмике, созданный из-за проблем с его аналогом AlgoVive. Проект создан НЕзморином и Никролом. Здесь есть профили, Scratch и другие проекты сообщества, публикации и обсуждения. Спасибо за посещение!</p>
 
-                <div class="search-container" style="max-width: 900px;">
+                <div class="search-container upload-guide-card" style="max-width: 900px;">
                     <div class="search-title">!Как загружать файлы и картинки!</div>
                     <p class="page-text" style="font-size:1.05rem; margin:0;">Чтобы экономить место и ускорять StarAlgo, не загружайте большие файлы напрямую на сайт. Сначала разместите файл на одном из разрешённых внешних сервисов, затем вставьте прямую HTTPS-ссылку в проект.</p>
                     <p class="page-text resource-guide-links" style="font-size:1.05rem; margin:0;"><strong>Сервисы и для чего они подходят:</strong>
@@ -2230,7 +2269,7 @@
 
             <div class="form-group">
                 <label>Категория (основа):</label>
-                <select class="form-select" id="project-category-select">
+                <select class="form-select" id="project-category-select" onchange="updateProjectUploadHint()">
                     <option value="Roblox">Roblox</option>
                     <option value="Scratch">Scratch</option>
                     <option value="Python">Python</option>
@@ -2241,6 +2280,9 @@
                     <option value="Сайт">Сайт</option>
                     <option value="Разговорник">Разговорник (Google Docs)</option>
                 </select>
+            </div>
+            <div class="project-upload-hint" id="project-upload-hint">
+                Выберите категорию — подскажем, где удобнее разместить файлы проекта.
             </div>
             <div class="modal-actions" style="margin-top: 12px;">
                 <button class="auth-btn" onclick="submitCreateProject()">Создать</button>
@@ -3551,9 +3593,27 @@
             resultsList.innerHTML = html;
         }
 
+        function updateProjectUploadHint() {
+            const category = document.getElementById('project-category-select')?.value || 'Scratch';
+            const hints = {
+                Scratch: 'Для Scratch проще всего вставить ссылку на опубликованный проект Scratch. Для файла .sb3 подойдут Google Drive (доступ «Все, у кого есть ссылка») или GitHub Pages. <a href="https://scratch.mit.edu/" target="_blank" rel="noopener noreferrer">Scratch</a> · <a href="https://drive.google.com/" target="_blank" rel="noopener noreferrer">Google Drive</a> · <a href="https://pages.github.com/" target="_blank" rel="noopener noreferrer">GitHub Pages</a>',
+                HTML: 'Для одной HTML-страницы подойдёт Posty5; для полноценного сайта с несколькими файлами — GitHub Pages или Vercel. <a href="https://posty5.com/" target="_blank" rel="noopener noreferrer">Posty5</a> · <a href="https://pages.github.com/" target="_blank" rel="noopener noreferrer">GitHub Pages</a> · <a href="https://vercel.com/" target="_blank" rel="noopener noreferrer">Vercel</a>',
+                Сайт: 'Для сайта с несколькими файлами используйте GitHub Pages или Vercel. После публикации вставьте ссылку на сайт. <a href="https://pages.github.com/" target="_blank" rel="noopener noreferrer">GitHub Pages</a> · <a href="https://vercel.com/" target="_blank" rel="noopener noreferrer">Vercel</a>',
+                Python: 'Код Python можно написать прямо во встроенном редакторе StarAlgo. Если нужны дополнительные файлы, разместите их на GitHub или другом файловом хостинге и добавьте ссылку в описание проекта.',
+                Roblox: 'Для Roblox укажите ссылку на опубликованный опыт или страницу проекта Roblox. <a href="https://create.roblox.com/" target="_blank" rel="noopener noreferrer">Roblox Creator Hub</a>',
+                Картинки: 'Для изображений и GIF используйте хостинг изображений. <a href="https://imgbb.com/" target="_blank" rel="noopener noreferrer">ImgBB</a> · <a href="https://iimg.live/" target="_blank" rel="noopener noreferrer">iimg.live</a>',
+                Медиа: 'Для фото, GIF и видео можно использовать iimg.live или x02.me. Проверьте, что сервис выдаёт прямую HTTPS-ссылку. <a href="https://iimg.live/" target="_blank" rel="noopener noreferrer">iimg.live</a> · <a href="https://x02.me/" target="_blank" rel="noopener noreferrer">x02.me</a>',
+                Видео: 'Загрузите видео на хостинг, который выдаёт ссылку на файл или воспроизводимую страницу. Можно попробовать <a href="https://iimg.live/" target="_blank" rel="noopener noreferrer">iimg.live</a> или <a href="https://x02.me/" target="_blank" rel="noopener noreferrer">x02.me</a>.',
+                Разговорник: 'Создайте документ в Google Docs, включите доступ по ссылке и вставьте ссылку на документ. <a href="https://docs.google.com/" target="_blank" rel="noopener noreferrer">Google Docs</a>'
+            };
+            const hint = document.getElementById('project-upload-hint');
+            if (hint) hint.innerHTML = hints[category] || 'Выберите подходящий внешний хостинг и вставьте прямую HTTPS-ссылку в настройки проекта.';
+        }
+
         function openCreateProjectModal() {
             document.getElementById('project-modal').classList.add('open');
             document.getElementById('project-name-input').value = '';
+            updateProjectUploadHint();
         }
 
         function closeCreateProjectModal() {
