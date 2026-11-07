@@ -942,11 +942,18 @@
 
         .editor-split-layout {
             display: grid;
-            grid-template-columns: 1fr 400px;
+            grid-template-columns: minmax(0, 1fr) minmax(460px, 520px);
             gap: 20px;
             align-items: start;
         }
 
+        .editor-preview-box:has(#editor-runtime-container.image-project-preview) {
+            background: transparent;
+            border: 0;
+            border-radius: 0;
+            padding: 0;
+            box-shadow: none;
+        }
         .editor-preview-box {
             background: var(--card-bg);
             border: 2px solid var(--gold-main);
