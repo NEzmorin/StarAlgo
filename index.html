@@ -1055,6 +1055,52 @@
             gap: 16px;
             box-shadow: inset 0 0 15px rgba(212, 178, 54, 0.1);
         }
+        /* В карточке звезды информация об авторе и метаданные без отдельной рамки. */
+        .star-editor-container .editor-sidebar-box {
+            background: transparent;
+            border: 0;
+            border-radius: 0;
+            padding: 8px 0 8px 4px;
+            box-shadow: none;
+        }
+        .editor-preview-box#editor-runtime-container.image-project-preview {
+            width: fit-content;
+            max-width: 100%;
+            justify-self: start;
+            align-self: start;
+            padding: 10px;
+        }
+        #editor-runtime-container.image-project-preview .editor-preview-media {
+            width: auto;
+            min-width: 0;
+            min-height: 0;
+            height: auto;
+            max-height: none;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+        }
+        #editor-runtime-container.image-project-preview .editor-preview-media img {
+            display: block;
+            width: auto;
+            height: auto;
+            max-width: 100%;
+            max-height: 78vh;
+            object-fit: contain;
+            margin: 0;
+        }
+        #editor-runtime-container.image-project-preview .editor-preview-media iframe {
+            width: min(100%, 900px);
+            height: min(78vh, 720px);
+            min-height: 0;
+        }
+        .star-editor-container .editor-split-layout {
+            grid-template-columns: minmax(0, 1fr) minmax(360px, 520px);
+        }
+        @media (max-width: 900px) {
+            .star-editor-container .editor-split-layout { grid-template-columns: 1fr; }
+            .editor-preview-box#editor-runtime-container.image-project-preview { justify-self: stretch; width: auto; }
+        }
 
         .author-info-block {
             display: flex;
@@ -2317,9 +2363,10 @@
             </div>
 
             <div class="form-group" style="margin-top:10px;">
-                <label>Ссылка на обложку (внешний хостинг):</label>
-                <input type="url" class="form-input" id="cover-url-input" placeholder="https://...">
-                <button class="auth-btn" style="margin-top:8px; width:100%;" onclick="saveCoverUrl()">Сохранить ссылку обложки</button>
+                <label>ПАНОРАМА ЗВЕЗДЫ</label>
+                <input type="file" id="panorama-file-input" accept="image/png,image/jpeg,image/webp,image/gif" style="display:none;" onchange="handlePanoramaUpload(event)">
+                <button type="button" class="auth-btn" style="width:100%;" onclick="document.getElementById('panorama-file-input').click()">🖼️ Загрузить панораму с устройства</button>
+                <small style="display:block; margin-top:6px; opacity:.7;">Изображение или GIF загрузится в Cloudinary, а ссылка сохранится автоматически.</small>
             </div>
 
             <div style="display: flex; gap: 15px; margin-top: 10px;">
@@ -4302,9 +4349,6 @@
                             </div>
                         ` : ''}
                         <div id="scratch-fullscreen-stage" style="position:relative;width:100%;height:min(72vh,760px);min-height:480px;background:#080808;border:2px solid var(--gold-main);border-radius:10px;overflow:hidden;">
-                            <div class="scratch-stage-toolbar" style="position:absolute;top:10px;right:10px;z-index:5;">
-                                <button type="button" class="auth-btn" onclick="toggleScratchFullscreen()">⛶ Играть на весь экран</button>
-                            </div>
                             <iframe id="scratch-player-iframe" allow="fullscreen; autoplay; clipboard-read; clipboard-write" allowfullscreen style="display:block;width:100%;height:100%;min-height:480px;border:0;"></iframe>
                         </div>
                     </div>
