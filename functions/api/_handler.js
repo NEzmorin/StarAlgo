@@ -513,7 +513,7 @@ async function handle(request, env) {
     const salt=b64(crypto.getRandomValues(new Uint8Array(16))),iterations=100000;
     const hash=await passwordHash(body.newPassword,salt,iterations);
     await env.DB.prepare('UPDATE users SET password_hash=?,password_salt=?,password_iterations=?,updated_at=? WHERE id=?').bind(hash,salt,iterations,now(),user.id).run();
-    const token=(request.headers.get('Authorization')||'').replace(/^Bearer\\s+/i,'');
+    const token=(request.headers.get('Authorization')||'').replace(/^Bearer\s+/i,'');
     const tokenHash=token?await digest(token):'';
     const revoked=await env.DB.prepare('DELETE FROM sessions WHERE user_id=? AND token_hash!=?').bind(user.id,tokenHash).run();
     return json({ok:true,revoked:Number(revoked.meta.changes||0)});
