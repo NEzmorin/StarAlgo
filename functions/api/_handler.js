@@ -324,9 +324,9 @@ async function handle(request, env) {
   const user = await authUser(request, env);
 
   if (path === '/api/avatar/upload' && method === 'POST') {
-    if (!user) fail(401, 'Войдите в аккаунт, чтобы изменить аватарку');
+    if (!user) fail(401, 'Войдите в аккаунт, чтобы загружать изображения');
     if (!env.CLOUDINARY_CLOUD_NAME || !env.CLOUDINARY_API_KEY || !env.CLOUDINARY_API_SECRET) {
-      fail(503, 'Загрузка аватарок ещё не настроена. Администратору нужно подключить Cloudinary');
+      fail(503, 'Загрузка изображений ещё не настроена. Администратору нужно подключить Cloudinary');
     }
     const declared = Number(request.headers.get('Content-Length') || 0);
     const maxAvatarBytes = 10 * 1024 * 1024;
@@ -345,8 +345,10 @@ async function handle(request, env) {
     const isWebp = head.length >= 12 && String.fromCharCode(...head.slice(0,4))==='RIFF' && String.fromCharCode(...head.slice(8,12))==='WEBP';
     if (!(isPng || isJpeg || isGif || isWebp)) fail(400, 'Файл не похож на PNG, JPG, WEBP или GIF');
     const timestamp = String(Math.floor(Date.now()/1000));
-    const folder = 'staralgo/avatars';
-    const publicId = 'user-' + String(user.id).replace(/[^A-Za-z0-9_-]/g, '');
+    const purpose = String(form.get('purpose') || 'avatar');
+    if (!['avatar','panorama'].includes(purpose)) fail(400, 'Неизвестный тип изображения');
+    const folder = purpose === 'panorama' ? 'staralgo/panoramas' : 'staralgo/avatars';
+    const publicId = purpose === 'avatar' ? 'user-' + String(user.id).replace(/[^A-Za-z0-9_-]/g, '') : 'user-' + String(user.id).replace(/[^A-Za-z0-9_-]/g, '') + '-' + crypto.randomUUID();
     const params = { folder, overwrite: 'true', public_id: publicId, timestamp };
     const signatureBase = Object.keys(params).sort().map(key => key + '=' + params[key]).join('&') + env.CLOUDINARY_API_SECRET;
     const signature = hex(await crypto.subtle.digest('SHA-1', encoder.encode(signatureBase)));
