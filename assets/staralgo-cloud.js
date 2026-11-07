@@ -822,6 +822,28 @@
     try{await api('/api/support/'+encodeURIComponent(id)+'/confirm',{method:'POST',body:jsonBody({resolved,message})});await loadMySupportTickets();if(typeof renderReportsInbox==='function')renderReportsInbox();}
     catch(e){alert(e.message);}
   };
+  window.changeProfileUsername = async function(){
+    const value=prompt('Введите новый ник (3–24 символа):',currentUser?.username||'');
+    if(value===null)return;
+    try{
+      const result=await api('/api/account/username',{method:'POST',body:jsonBody({username:value})});
+      alert('Ник изменён. Старый ник сохранён в профиле как первоначальный.');
+      await refreshBootstrap();
+      if(typeof viewUserProfile==='function')await viewUserProfile('id/'+currentUser.id);
+    }catch(e){alert('Не удалось сменить ник: '+e.message);}
+  };
+  window.adminResetUserPassword = async function(id){
+    if(!confirm('Сгенерировать временный пароль и завершить все текущие сессии пользователя?'))return;
+    try{await api('/api/admin/users/'+encodeURIComponent(id)+'/password',{method:'POST',body:jsonBody({})});alert('Временный пароль отправлен пользователю в уведомления. Вы его не увидите.');}
+    catch(e){alert(e.message);}
+  };
+  window.singularitySetUserPassword = async function(id){
+    const password=prompt('Введите новый пароль (минимум 8 символов). Он будет отправлен пользователю приватным уведомлением:');
+    if(password===null)return;
+    if(password.length<8){alert('Минимум 8 символов');return;}
+    try{await api('/api/singularity/users/'+encodeURIComponent(id)+'/password',{method:'POST',body:jsonBody({password})});alert('Пароль изменён, все прежние сессии завершены.');}
+    catch(e){alert(e.message);}
+  };
   window.openChangePassword = function(){document.getElementById('change-password-modal')?.classList.add('open');};
   window.closeChangePassword = function(){document.getElementById('change-password-modal')?.classList.remove('open');};
   window.submitPasswordChange = async function(){
