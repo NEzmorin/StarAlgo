@@ -1084,34 +1084,34 @@
   };
   window.generateDummyProjects = function(){alert('Тестовые заглушки отключены в серверной версии.');};
   window.deleteAllDummyProjects = function(){alert('Тестовые заглушки отключены в серверной версии.');};
-  window.runPythonReadonlyResult = function(code) {
+  window.runPythonSandbox = function(code) {
     const canvasBox=document.getElementById('turtle-graphics-canvas-container');
     const outputBox=document.getElementById('python-console-output');
     if(!canvasBox||!outputBox)return;
     canvasBox.innerHTML='';
     const frame=document.createElement('iframe');
-    frame.title='Изолированный запуск Python';
+    frame.title='Изолированная среда Python';
     frame.setAttribute('sandbox','allow-scripts');
-    frame.style.cssText='width:100%;height:100%;min-height:190px;border:0;background:#fff;';
+    frame.setAttribute('referrerpolicy','no-referrer');
+    frame.style.cssText='display:block;width:100%;height:100%;min-height:300px;border:0;background:#fff;';
     canvasBox.appendChild(frame);
-    outputBox.textContent='Python выполняется в изолированном окне.';
+    outputBox.textContent='Python запускается в изолированной среде. Сеть и внешние сайты заблокированы.';
+    outputBox.style.color='#d4b236';
+    const runToken='sa-python-'+Date.now()+'-'+Math.random().toString(36).slice(2);
+    let finished=false;
+    const onMessage=event=>{
+      if(event.source!==frame.contentWindow||!event.data||event.data.type!=='staralgo-python-output'||event.data.token!==runToken)return;
+      finished=true;
+      outputBox.textContent=String(event.data.output||'').slice(0,50000)||(event.data.ok?'Скрипт выполнен успешно!':'Выполнение завершено с ошибкой.');
+      outputBox.style.color=event.data.ok?'#55ff55':'#ff5555';
+      window.removeEventListener('message',onMessage);
+    };
+    window.addEventListener('message',onMessage);
     const encoded=btoa(unescape(encodeURIComponent(String(code||''))));
-    frame.srcdoc=`<!doctype html><html><head><meta charset="utf-8"><script src="https://cdnjs.cloudflare.com/ajax/libs/brython/3.11.1/brython.min.js"><\/script><script src="https://cdnjs.cloudflare.com/ajax/libs/brython/3.11.1/brython_stdlib.js"><\/script><style>body{margin:0;font:13px monospace;background:#fff;color:#111}canvas{max-width:100%;height:150px}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style></head><body onload="brython()"><canvas id="turtle-canvas" width="400" height="150"></canvas><pre id="python-output"></pre><script type="text/python">
-import base64, sys, io
-from browser import document
-class Output(io.StringIO):
-    def write(self, value):
-        document["python-output"].text += value
-        return len(value)
-sys.stdout = Output()
-sys.stderr = sys.stdout
-try:
-    source = base64.b64decode("${encoded}").decode("utf-8")
-    exec(source)
-except Exception as error:
-    print("Ошибка:", error)
-<\/script></body></html>`;
+    const policy="default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; media-src data: blob:; connect-src 'none'; frame-src 'none'; child-src 'none'; worker-src 'none'; object-src 'none'; form-action 'none'; base-uri 'none'; navigate-to 'none'";
+    frame.srcdoc='<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="'+policy+'"><meta name="referrer" content="no-referrer"><style>html,body{margin:0;min-height:100%;font:13px monospace;background:#fff;color:#111}#turtle-canvas{display:block;max-width:100%;height:220px;background:#fff}#python-output{box-sizing:border-box;margin:0;padding:10px;min-height:44px;white-space:pre-wrap;overflow-wrap:anywhere;border-top:1px solid #ddd}</style><script src="https://cdnjs.cloudflare.com/ajax/libs/brython/3.11.1/brython.min.js"><\/script><script src="https://cdnjs.cloudflare.com/ajax/libs/brython/3.11.1/brython_stdlib.js"><\/script></head><body onload="brython({debug:0})"><canvas id="turtle-canvas" width="640" height="360"></canvas><pre id="python-output"></pre><script>window.__starAlgoSend=function(output,ok){parent.postMessage({type:"staralgo-python-output",token:'+JSON.stringify(runToken)+',output:String(output||"").slice(0,50000),ok:!!ok},"*")};<\/script><script type="text/python">\nimport base64, sys, io\nfrom browser import document, window\nclass StarAlgoOutput(io.StringIO):\n    def write(self, value):\n        value = str(value)\n        current = document["python-output"].text\n        document["python-output"].text = (current + value)[-50000:]\n        return len(value)\nsys.stdout = StarAlgoOutput()\nsys.stderr = sys.stdout\nok = True\ntry:\n    source = base64.b64decode("'+encoded+'").decode("utf-8")\n    exec(compile(source, "<StarAlgo Python>", "exec"), {"__name__": "__main__"})\nexcept BaseException as error:\n    ok = False\n    print(type(error).__name__ + ": " + str(error))\nfinally:\n    window.__starAlgoSend(document["python-output"].text, ok)\n<\/script></body></html>';
   };
+  window.runPythonReadonlyResult = window.runPythonSandbox;
   window.addEventListener('beforeunload', () => { if (projectSaveTimer) clearTimeout(projectSaveTimer); });
 
   const start = () => window.initApp().then(() => window.restoreRoute?.());
