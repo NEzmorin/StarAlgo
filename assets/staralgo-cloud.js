@@ -836,6 +836,13 @@
       }
     } catch(e) { alert(e.message); }
   };
+  window.revokeUserSessions = async function(userId,username){
+    if(!confirm('Завершить все активные сессии аккаунта '+username+'? Пользователю придётся войти снова.'))return;
+    try{
+      const result=await api('/api/admin/users/'+encodeURIComponent(userId)+'/revoke-sessions',{method:'POST',body:jsonBody({})});
+      alert('Готово. Завершено сессий: '+result.revoked);
+    }catch(e){alert(e.message);}
+  };
   window.dismissReport = async function(reportId) {
     try { await api(`/api/reports/${reportId}`,{method:'DELETE'}); renderReportsInbox(); }
     catch(e){alert(e.message);}
