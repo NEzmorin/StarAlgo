@@ -845,7 +845,7 @@
       localStorage.setItem('staralgo_reports_db',JSON.stringify(reports));
       if(!reports.length){grid.innerHTML='<div class="empty-placeholder">Жалоб пока нет. Всё спокойно в космосе!</div>';return;}
       grid.innerHTML=reports.map(r=>{
-        if(r.type==='support') return `<div class="report-card" id="report-${r.id}" style="border-color:var(--gold-bright);">
+        if(r.type==='support'||r.type==='support_guest') return `<div class="report-card" id="report-${r.id}" style="border-color:var(--gold-bright);">
           <div class="report-header"><strong>🛟 ТЕХПОДДЕРЖКА · ${esc(r.targetName)}</strong><span>От: ${esc(r.reporter)}</span></div>
           <div style="margin:8px 0;">${(r.messages||[]).map(m=>`<p><strong>${esc(m.username)}:</strong> ${esc(m.body)}</p>`).join('')}</div>
           <div style="opacity:.8;margin:6px 0;">Статус: ${r.status==='waiting_user'?'Ожидает пользователя':'Открыто'}</div>
