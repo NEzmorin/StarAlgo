@@ -360,6 +360,25 @@ async function handle(request, env) {
     await env.DB.prepare("INSERT INTO guest_support_messages(id,ticket_id,sender_name,sender_role,body,created_at) VALUES(?,?,?,'Гость',?,?)").bind(makeId(),id,guestName,message,stamp).run();
     return json({id,accessKey},201);
   }
+  const guestConfirm=path.match(/^\/api\/support\/guest\/([\\w-]+)\/confirm$/);
+  if(guestConfirm && method==='POST'){
+    await ensureSupportSchema(env);
+    const body=await readBody(request), key=String(body.key||'');
+    if(!/^[A-Za-z0-9]{20,80}$/.test(key)) fail(400,'Некорректный ключ обращения');
+    const ticket=await env.DB.prepare('SELECT * FROM guest_support_tickets WHERE id=? AND access_key=?').bind(guestConfirm[1],key).first();
+    if(!ticket) fail(404,'Обращение не найдено');
+    if(ticket.status!=='waiting_user') fail(409,'Сначала дождитесь ответа техподдержки');
+    const stamp=now();
+    if(body.resolved===true){
+      await env.DB.prepare("UPDATE guest_support_tickets SET status='resolved',updated_at=? WHERE id=?").bind(stamp,ticket.id).run();
+      await env.DB.prepare("INSERT INTO guest_support_messages(id,ticket_id,sender_name,sender_role,body,created_at) VALUES(?,?,'Гость','Гость','Пользователь подтвердил: проблема решена.',?)").bind(makeId(),ticket.id,stamp).run();
+    }else{
+      const note=text(body.message||'Проблема не решена, прошу продолжить помощь.',1000,'Комментарий',true);
+      await env.DB.prepare("UPDATE guest_support_tickets SET status='open',updated_at=? WHERE id=?").bind(stamp,ticket.id).run();
+      await env.DB.prepare("INSERT INTO guest_support_messages(id,ticket_id,sender_name,sender_role,body,created_at) VALUES(?,?,'Гость','Гость',?,?)").bind(makeId(),ticket.id,note||'Проблема не решена, прошу продолжить помощь.',stamp).run();
+    }
+    return json({ok:true});
+  }
   if (path === '/api/support/guest' && method === 'GET') {
     await ensureSupportSchema(env);
     const key=url.searchParams.get('key')||'';
