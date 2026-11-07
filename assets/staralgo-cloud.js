@@ -1131,7 +1131,8 @@
     frame.srcdoc=htmlDoc;
   };
   window.stopPythonSandbox = function() {
-    if (activePythonSandboxCleanup) activePythonSandboxCleanup();
+    if (!activePythonSandboxCleanup) return;
+    activePythonSandboxCleanup();
     const output=document.getElementById('python-console-output');
     if(output) { output.textContent='Выполнение остановлено пользователем.'; output.style.color='#ff5555'; }
   };
