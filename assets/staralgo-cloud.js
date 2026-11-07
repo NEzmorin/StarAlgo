@@ -4,6 +4,7 @@
 
   const API_ROOT = String(window.STARALGO_API_BASE || '').replace(/\/+$/, '');
   const TOKEN_KEY = 'staralgo_auth_token';
+  let activePythonSandboxCleanup = null;
   const LEGACY_KEYS = [
     'staralgo_users_db', 'staralgo_yellow_dwarfs_db', 'staralgo_reports_db'
   ];
@@ -1088,6 +1089,7 @@
     const canvasBox=document.getElementById('turtle-graphics-canvas-container');
     const outputBox=document.getElementById('python-console-output');
     if(!canvasBox||!outputBox)return;
+    if(activePythonSandboxCleanup) activePythonSandboxCleanup();
     canvasBox.innerHTML='';
     const frame=document.createElement('iframe');
     frame.title='Изолированная среда Python';
@@ -1095,21 +1097,35 @@
     frame.setAttribute('referrerpolicy','no-referrer');
     frame.style.cssText='display:block;width:100%;height:100%;min-height:300px;border:0;background:#fff;';
     canvasBox.appendChild(frame);
-    outputBox.textContent='Python запускается в изолированной среде. Сеть и внешние сайты заблокированы.';
+    outputBox.textContent='Python запускается в отдельной песочнице. Сеть и внешние сайты заблокированы.';
     outputBox.style.color='#d4b236';
     const runToken='sa-python-'+Date.now()+'-'+Math.random().toString(36).slice(2);
-    let finished=false;
+    let finished=false, timeoutId=0;
+    const cleanup=removeFrame=>{
+      if(timeoutId) window.clearTimeout(timeoutId);
+      window.removeEventListener('message',onMessage);
+      if(removeFrame && frame.parentNode) frame.remove();
+      if(activePythonSandboxCleanup===stopRun) activePythonSandboxCleanup=null;
+    };
+    const stopRun=()=>cleanup(true);
     const onMessage=event=>{
       if(event.source!==frame.contentWindow||!event.data||event.data.type!=='staralgo-python-output'||event.data.token!==runToken)return;
       finished=true;
       outputBox.textContent=String(event.data.output||'').slice(0,50000)||(event.data.ok?'Скрипт выполнен успешно!':'Выполнение завершено с ошибкой.');
       outputBox.style.color=event.data.ok?'#55ff55':'#ff5555';
-      window.removeEventListener('message',onMessage);
+      cleanup(false);
     };
+    activePythonSandboxCleanup=stopRun;
     window.addEventListener('message',onMessage);
+    timeoutId=window.setTimeout(()=>{
+      if(finished)return;
+      outputBox.textContent='Остановлено: превышено ограничение времени выполнения (15 секунд). Проверьте цикл или сложные вычисления.';
+      outputBox.style.color='#ff5555';
+      stopRun();
+    },15000);
     const encoded=btoa(unescape(encodeURIComponent(String(code||''))));
-    const policy="default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; media-src data: blob:; connect-src 'none'; frame-src 'none'; child-src 'none'; worker-src 'none'; object-src 'none'; form-action 'none'; base-uri 'none'; navigate-to 'none'";
-    frame.srcdoc='<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="'+policy+'"><meta name="referrer" content="no-referrer"><style>html,body{margin:0;min-height:100%;font:13px monospace;background:#fff;color:#111}#turtle-canvas{display:block;max-width:100%;height:220px;background:#fff}#python-output{box-sizing:border-box;margin:0;padding:10px;min-height:44px;white-space:pre-wrap;overflow-wrap:anywhere;border-top:1px solid #ddd}</style><script src="https://cdnjs.cloudflare.com/ajax/libs/brython/3.11.1/brython.min.js"><\/script><script src="https://cdnjs.cloudflare.com/ajax/libs/brython/3.11.1/brython_stdlib.js"><\/script></head><body onload="brython({debug:0})"><canvas id="turtle-canvas" width="640" height="360"></canvas><pre id="python-output"></pre><script>window.__starAlgoSend=function(output,ok){parent.postMessage({type:"staralgo-python-output",token:'+JSON.stringify(runToken)+',output:String(output||"").slice(0,50000),ok:!!ok},"*")};<\/script><script type="text/python">\nimport base64, sys, io\nfrom browser import document, window\nclass StarAlgoOutput(io.StringIO):\n    def write(self, value):\n        value = str(value)\n        current = document["python-output"].text\n        document["python-output"].text = (current + value)[-50000:]\n        return len(value)\nsys.stdout = StarAlgoOutput()\nsys.stderr = sys.stdout\nok = True\ntry:\n    source = base64.b64decode("'+encoded+'").decode("utf-8")\n    exec(compile(source, "<StarAlgo Python>", "exec"), {"__name__": "__main__"})\nexcept BaseException as error:\n    ok = False\n    print(type(error).__name__ + ": " + str(error))\nfinally:\n    window.__starAlgoSend(document["python-output"].text, ok)\n<\/script></body></html>';
+    const policy="default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com/ajax/libs/brython/3.11.1/brython.min.js https://cdnjs.cloudflare.com/ajax/libs/brython/3.11.1/brython_stdlib.js; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; media-src data: blob:; connect-src 'none'; frame-src 'none'; child-src 'none'; worker-src 'none'; object-src 'none'; form-action 'none'; base-uri 'none'; navigate-to 'none'";
+    frame.srcdoc='<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="'+policy+'"><meta name="referrer" content="no-referrer"><style>html,body{margin:0;min-height:100%;font:13px monospace;background:#fff;color:#111}#turtle-div{box-sizing:border-box;width:100%;min-height:280px;height:100%;overflow:auto;background:#fff}#turtle-div svg{max-width:100%;height:auto}#python-output{box-sizing:border-box;margin:0;padding:10px;min-height:44px;white-space:pre-wrap;overflow-wrap:anywhere;border-top:1px solid #ddd}</style><script src="https://cdnjs.cloudflare.com/ajax/libs/brython/3.11.1/brython.min.js"><\/script><script src="https://cdnjs.cloudflare.com/ajax/libs/brython/3.11.1/brython_stdlib.js"><\/script></head><body onload="brython({debug:0})"><div id="turtle-div"></div><pre id="python-output"></pre><script>window.__starAlgoSend=function(output,ok){parent.postMessage({type:"staralgo-python-output",token:'+JSON.stringify(runToken)+',output:String(output||"").slice(0,50000),ok:!!ok},"*")};<\/script><script type="text/python">\\nimport base64, sys, io\\nfrom browser import document, window\\nimport turtle\\nturtle.set_defaults(turtle_canvas_wrapper=document["turtle-div"])\\nclass StarAlgoOutput(io.StringIO):\\n    def write(self, value):\\n        value = str(value)\\n        current = document["python-output"].text\\n        document["python-output"].text = (current + value)[-50000:]\\n        return len(value)\\nsys.stdout = StarAlgoOutput()\\nsys.stderr = sys.stdout\\nok = True\\ntry:\\n    source = base64.b64decode("'+encoded+'").decode("utf-8")\\n    exec(compile(source, "<StarAlgo Python>", "exec"), {"__name__": "__main__"})\\nexcept BaseException as error:\\n    ok = False\\n    print(type(error).__name__ + ": " + str(error))\\nfinally:\\n    window.__starAlgoSend(document["python-output"].text, ok)\\n<\\/script></body></html>';
   };
   window.runPythonReadonlyResult = window.runPythonSandbox;
   window.addEventListener('beforeunload', () => { if (projectSaveTimer) clearTimeout(projectSaveTimer); });
