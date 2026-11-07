@@ -1109,7 +1109,7 @@
     };
     const stopRun = () => cleanup();
     const onMessage = event => {
-      if (event.source !== frame.contentWindow || !event.data || event.data.type !== 'staralgo-python-output' || event.data.token !== token) return;
+      if (!event.data || event.data.type !== 'staralgo-python-output' || event.data.token !== token) return;
       outputBox.textContent = String(event.data.output || '').slice(0, 50000);
       outputBox.style.color = event.data.ok ? '#55ff55' : '#ff5555';
       if (timeoutId) window.clearTimeout(timeoutId);
