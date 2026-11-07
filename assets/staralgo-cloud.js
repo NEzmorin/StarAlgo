@@ -754,6 +754,49 @@
       alert('Жалоба отправлена модераторам.'); closeReportModal();
     } catch(e){alert(e.message);}
   };
+  window.openSupportModal = async function() {
+    if(!currentUser){openAuthModal();return;}
+    document.getElementById('support-modal').classList.add('open');
+    await loadMySupportTickets();
+  };
+  window.closeSupportModal = function(){document.getElementById('support-modal')?.classList.remove('open');};
+  window.submitSupportTicket = async function(){
+    const subject=document.getElementById('support-subject')?.value.trim()||'Обращение в техподдержку';
+    const message=document.getElementById('support-message')?.value.trim()||'';
+    if(!message){alert('Опишите проблему перед отправкой.');return;}
+    try{
+      await api('/api/support',{method:'POST',body:jsonBody({subject,message})});
+      document.getElementById('support-subject').value='';
+      document.getElementById('support-message').value='';
+      alert('Обращение отправлено. Ответ появится здесь.');
+      await loadMySupportTickets();
+    }catch(e){alert(e.message);}
+  };
+  window.loadMySupportTickets = async function(){
+    const box=document.getElementById('my-support-tickets');if(!box)return;
+    try{
+      const result=await api('/api/support');
+      const tickets=result.tickets||[];
+      if(!tickets.length){box.innerHTML='<div class="empty-placeholder">Обращений пока нет.</div>';return;}
+      box.innerHTML=tickets.map(t=>`<div class="report-card" style="margin:8px 0;">
+        <div class="report-header"><strong>${esc(t.subject)}</strong><span>${t.status==='waiting_user'?'Ожидает вашего ответа':t.status==='resolved'?'Решено':'В работе'}</span></div>
+        <div style="max-height:180px;overflow:auto;margin:8px 0;">${t.messages.map(m=>`<p><strong>${esc(m.username)}:</strong> ${esc(m.body)}</p>`).join('')}</div>
+        ${t.status==='waiting_user'?`<div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="auth-btn" onclick="confirmSupportResolved('${t.id}',true)">Да, проблема решена</button><button class="auth-btn" onclick="confirmSupportResolved('${t.id}',false)">Нет, проблема осталась</button></div>`:''}
+      </div>`).join('');
+    }catch(e){box.innerHTML='<div class="empty-placeholder">'+esc(e.message)+'</div>';}
+  };
+  window.confirmSupportResolved = async function(id,resolved){
+    let message='';
+    if(!resolved){message=prompt('Что осталось нерешённым?')||'';if(!message.trim())return;}
+    try{await api('/api/support/'+encodeURIComponent(id)+'/confirm',{method:'POST',body:jsonBody({resolved,message})});await loadMySupportTickets();if(typeof renderReportsInbox==='function')renderReportsInbox();}
+    catch(e){alert(e.message);}
+  };
+  window.replySupportTicket = async function(id){
+    const input=document.getElementById('support-reply-'+CSS.escape(String(id)));
+    const message=input?.value.trim()||'';if(!message){alert('Напишите ответ пользователю.');return;}
+    try{await api('/api/support/'+encodeURIComponent(id)+'/reply',{method:'POST',body:jsonBody({message})});renderReportsInbox();}
+    catch(e){alert(e.message);}
+  };
   window.renderReportsInbox = async function() {
     const grid=document.getElementById('reports-grid-container');
     if(!grid)return;
@@ -764,7 +807,16 @@
       const result=await api('/api/reports'); const reports=result.reports||[];
       localStorage.setItem('staralgo_reports_db',JSON.stringify(reports));
       if(!reports.length){grid.innerHTML='<div class="empty-placeholder">Жалоб пока нет. Всё спокойно в космосе!</div>';return;}
-      grid.innerHTML=reports.map(r=>`<div class="report-card" id="report-${r.id}"><div class="report-header"><span>Тип: <strong>${String(r.type).toUpperCase()}</strong> | Объект: ${esc(r.targetName||'N/A')}</span><span>От: ${esc(r.reporter)}</span></div><div><strong>Причина:</strong> ${esc(r.reason)}</div><div style="display:flex;gap:8px;margin-top:5px;"><button class="auth-btn" onclick="openReportTarget('${r.type}','${r.targetId}','${jsName(r.targetOwner||'')}','${r.targetParentType||''}','${r.targetParentId||''}','${jsName(r.targetParentOwner||'')}')">Перейти к объекту</button><button class="auth-btn" style="color:#ff5555;border-color:#ff5555;" onclick="resolveReport('${r.id}','${r.type}','${r.targetId}','${jsName(r.targetOwner||'')}')">Обработать</button><button class="auth-btn" onclick="dismissReport('${r.id}')">Отклонить</button></div></div>`).join('');
+      grid.innerHTML=reports.map(r=>{
+        if(r.type==='support') return `<div class="report-card" id="report-${r.id}" style="border-color:var(--gold-bright);">
+          <div class="report-header"><strong>🛟 ТЕХПОДДЕРЖКА · ${esc(r.targetName)}</strong><span>От: ${esc(r.reporter)}</span></div>
+          <div style="margin:8px 0;">${(r.messages||[]).map(m=>`<p><strong>${esc(m.username)}:</strong> ${esc(m.body)}</p>`).join('')}</div>
+          <div style="opacity:.8;margin:6px 0;">Статус: ${r.status==='waiting_user'?'Ожидает пользователя':'Открыто'}</div>
+          <textarea id="support-reply-${r.id}" class="form-textarea" rows="3" maxlength="4000" placeholder="Напишите ответ пользователю..."></textarea>
+          <button class="auth-btn" style="margin-top:7px;" onclick="replySupportTicket('${r.id}')">Отправить ответ</button>
+        </div>`;
+        return `<div class="report-card" id="report-${r.id}"><div class="report-header"><span>Тип: <strong>${String(r.type).toUpperCase()}</strong> | Объект: ${esc(r.targetName||'N/A')}</span><span>От: ${esc(r.reporter)}</span></div><div><strong>Причина:</strong> ${esc(r.reason)}</div><div style="display:flex;gap:8px;margin-top:5px;"><button class="auth-btn" onclick="openReportTarget('${r.type}','${r.targetId}','${jsName(r.targetOwner||'')}','${r.targetParentType||''}','${r.targetParentId||''}','${jsName(r.targetParentOwner||'')}')">Перейти к объекту</button><button class="auth-btn" style="color:#ff5555;border-color:#ff5555;" onclick="resolveReport('${r.id}','${r.type}','${r.targetId}','${jsName(r.targetOwner||'')}')">Обработать</button><button class="auth-btn" onclick="dismissReport('${r.id}')">Отклонить</button></div></div>`;
+      }).join('');
     } catch(e){grid.innerHTML=`<div class="empty-placeholder">${e.message}</div>`;}
   };
   window.openReportTarget = async function(type,targetId,targetOwnerEncoded,parentType,parentId,parentOwnerEncoded) {
