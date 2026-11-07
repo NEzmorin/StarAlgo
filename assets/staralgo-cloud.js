@@ -630,12 +630,12 @@
       if (!/^https:\/\//i.test(url)) throw new Error('Сервис вернул некорректную ссылку на панораму');
       activeStarObject.coverUrl = url;
       if (await saveProjectNow()) {
-        const field = document.getElementById('cover-url-input');
-        if (field) field.value = url;
         const image = document.getElementById('star-panorama-img');
         const zoom = document.getElementById('zoomed-panorama-img');
         if (image) image.src = url;
         if (zoom) zoom.src = url;
+        const status = document.getElementById('panorama-upload-status');
+        if (status) status.textContent = 'Панорама загружена и сохранена';
         renderZvezdnyFeed();
       }
     } catch (error) { alert(error.message || 'Не удалось загрузить панораму'); }
