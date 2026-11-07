@@ -296,6 +296,17 @@ async function ensureSupportSchema(env) {
   )`).run();
   await env.DB.prepare('CREATE INDEX IF NOT EXISTS support_tickets_status_idx ON support_tickets(status,updated_at DESC)').run();
   await env.DB.prepare('CREATE INDEX IF NOT EXISTS support_messages_ticket_idx ON support_messages(ticket_id,created_at)').run();
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS guest_support_tickets (
+    id TEXT PRIMARY KEY, access_key TEXT NOT NULL, guest_name TEXT NOT NULL,
+    subject TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'open',
+    created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL
+  )`).run();
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS guest_support_messages (
+    id TEXT PRIMARY KEY, ticket_id TEXT NOT NULL REFERENCES guest_support_tickets(id) ON DELETE CASCADE,
+    sender_name TEXT NOT NULL, sender_role TEXT NOT NULL, body TEXT NOT NULL, created_at INTEGER NOT NULL
+  )`).run();
+  await env.DB.prepare('CREATE INDEX IF NOT EXISTS guest_support_key_idx ON guest_support_tickets(access_key)').run();
+  await env.DB.prepare('CREATE INDEX IF NOT EXISTS guest_support_messages_idx ON guest_support_messages(ticket_id,created_at)').run();
 }
 async function handle(request, env) {
   const url = new URL(request.url), path = url.pathname.replace(/\/+$/, '') || '/', method = request.method;
@@ -335,6 +346,33 @@ async function handle(request, env) {
       return json({ ok: false, dbBinding: !!env.DB, error: 'D1 diagnostic query failed' }, 500);
     }
   }
+
+  // Anonymous technical support: the random access key lets the visitor read replies without an account.
+  if (path === '/api/support/guest' && method === 'POST') {
+    await ensureSupportSchema(env);
+    const body=await readBody(request);
+    const guestName=text(body.name || 'Гость',60,'Имя');
+    const subject=text(body.subject || 'Обращение в техподдержку',120,'Тема');
+    const message=text(body.message,4000,'Сообщение');
+    const id=makeId(), accessKey=b64(crypto.getRandomValues(new Uint8Array(24))).replace(/[^A-Za-z0-9]/g,'');
+    const stamp=now();
+    await env.DB.prepare("INSERT INTO guest_support_tickets(id,access_key,guest_name,subject,status,created_at,updated_at) VALUES(?,?,?,?,'open',?,?)").bind(id,accessKey,guestName,subject,stamp,stamp).run();
+    await env.DB.prepare("INSERT INTO guest_support_messages(id,ticket_id,sender_name,sender_role,body,created_at) VALUES(?,?,?,'Гость',?,?)").bind(makeId(),id,guestName,message,stamp).run();
+    return json({id,accessKey},201);
+  }
+  if (path === '/api/support/guest' && method === 'GET') {
+    await ensureSupportSchema(env);
+    const key=url.searchParams.get('key')||'';
+    if(!/^[A-Za-z0-9]{20,80}$/.test(key)) fail(400,'Некорректный ключ обращения');
+    const tickets=await env.DB.prepare('SELECT * FROM guest_support_tickets WHERE access_key=? ORDER BY updated_at DESC LIMIT 20').bind(key).all();
+    const result=[];
+    for(const t of tickets.results){
+      const msgs=await env.DB.prepare('SELECT * FROM guest_support_messages WHERE ticket_id=? ORDER BY created_at').bind(t.id).all();
+      result.push({id:t.id,subject:t.subject,status:t.status,username:t.guest_name,createdAt:Number(t.created_at),messages:msgs.results.map(m=>({username:m.sender_name,role:m.sender_role,body:m.body,date:Number(m.created_at)}))});
+    }
+    return json({tickets:result});
+  }
+
   const user = await authUser(request, env);
 
   if (path === '/api/avatar/upload' && method === 'POST') {
@@ -481,9 +519,17 @@ async function handle(request, env) {
     await ensureSupportSchema(env);
     if(!isStaff(user)) fail(403,'Отвечать на обращения может только команда модерации');
     const body=await readBody(request), message=text(body.message,4000,'Ответ');
-    const ticket=await env.DB.prepare('SELECT * FROM support_tickets WHERE id=?').bind(supportReply[1]).first();
-    if(!ticket) fail(404,'Обращение не найдено');
+    const rawId=supportReply[1], isGuest=rawId.startsWith('guest-'), ticketId=isGuest?rawId.slice(6):rawId;
     const stamp=now();
+    if(isGuest){
+      const ticket=await env.DB.prepare('SELECT * FROM guest_support_tickets WHERE id=?').bind(ticketId).first();
+      if(!ticket) fail(404,'Обращение не найдено');
+      await env.DB.prepare("INSERT INTO guest_support_messages(id,ticket_id,sender_name,sender_role,body,created_at) VALUES(?,?,?,'Техподдержка',?,?)").bind(makeId(),ticket.id,user.username,message,stamp).run();
+      await env.DB.prepare("UPDATE guest_support_tickets SET status='waiting_user',updated_at=? WHERE id=?").bind(stamp,ticket.id).run();
+      return json({ok:true});
+    }
+    const ticket=await env.DB.prepare('SELECT * FROM support_tickets WHERE id=?').bind(ticketId).first();
+    if(!ticket) fail(404,'Обращение не найдено');
     await env.DB.prepare('INSERT INTO support_messages(id,ticket_id,sender_id,sender_role,body,created_at) VALUES(?,?,?,?,?,?)').bind(makeId(),ticket.id,user.id,user.role,message,stamp).run();
     await env.DB.prepare("UPDATE support_tickets SET status='waiting_user',updated_at=? WHERE id=?").bind(stamp,ticket.id).run();
     await addNotification(env,ticket.user_id,user.id,'support_reply','Техподдержка ответила на ваше обращение: '+ticket.subject,{linkType:'support',ticketId:ticket.id});
@@ -791,6 +837,11 @@ async function handle(request, env) {
     for(const t of supportRows.results){
       const messages=await env.DB.prepare('SELECT m.*,u.username FROM support_messages m JOIN users u ON u.id=m.sender_id WHERE m.ticket_id=? ORDER BY m.created_at ASC').bind(t.id).all();
       supportItems.push({id:String(t.id),type:'support',targetName:t.subject,targetId:String(t.id),reporter:t.username,reason:messages.results.map(m=>m.username+': '+m.body).join('\\n'),date:Number(t.created_at),status:t.status,messages:messages.results.map(m=>({username:m.username,body:m.body,date:Number(m.created_at)}))});
+    }
+    const guestRows=await env.DB.prepare("SELECT * FROM guest_support_tickets WHERE status!='resolved' ORDER BY updated_at DESC LIMIT 100").all();
+    for(const t of guestRows.results){
+      const messages=await env.DB.prepare('SELECT * FROM guest_support_messages WHERE ticket_id=? ORDER BY created_at').bind(t.id).all();
+      supportItems.push({id:'guest-'+String(t.id),type:'support_guest',targetName:t.subject,targetId:String(t.id),reporter:t.guest_name,reason:messages.results.map(m=>m.sender_name+': '+m.body).join('\\n'),date:Number(t.created_at),status:t.status,messages:messages.results.map(m=>({username:m.sender_name,body:m.body,date:Number(m.created_at)}))});
     }
     const standard=rows.results.map(r=>({
       id:String(r.id),type:r.target_type,targetId:String(r.target_id),targetName:r.target_name,
