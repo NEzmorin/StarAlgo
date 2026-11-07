@@ -1041,6 +1041,45 @@
             height: 68vh;
             max-height: none;
         }
+        /* Fullscreen workspace: give the preview and console the available viewport. */
+        #editor-runtime-container:fullscreen {
+            box-sizing: border-box;
+            width: 100vw !important;
+            height: 100vh !important;
+            min-height: 100vh !important;
+            padding: 16px !important;
+            gap: 10px !important;
+            overflow: hidden !important;
+        }
+        #editor-runtime-container:fullscreen #turtle-graphics-canvas-container {
+            flex: 1 1 58vh !important;
+            height: auto !important;
+            min-height: 220px !important;
+            max-height: none !important;
+        }
+        #editor-runtime-container:fullscreen #turtle-graphics-canvas-container iframe {
+            width: 100% !important;
+            height: 100% !important;
+            min-height: 0 !important;
+        }
+        #editor-runtime-container:fullscreen .console-box {
+            flex: 0 0 22vh;
+            height: 22vh !important;
+            min-height: 120px !important;
+            max-height: 30vh;
+            overflow: auto;
+        }
+        #editor-runtime-container:fullscreen #html-preview-frame {
+            flex: 1 1 auto;
+            width: 100% !important;
+            height: auto !important;
+            min-height: 0 !important;
+        }
+        #editor-runtime-container:fullscreen .CodeMirror {
+            flex: 0 0 32vh;
+            height: 32vh !important;
+            min-height: 180px;
+        }
         @media (max-width: 700px) {
             #editor-runtime-container .CodeMirror { height: 420px; }
             #editor-runtime-container .editor-preview-media { height: 360px; min-height: 360px; }
