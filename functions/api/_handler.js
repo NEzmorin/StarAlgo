@@ -468,7 +468,7 @@ async function handle(request, env) {
   if (path === '/api/support' && method === 'GET') {
     await ensureSupportSchema(env);
     const rows=await env.DB.prepare(`SELECT t.*,u.username FROM support_tickets t JOIN users u ON u.id=t.user_id
-      WHERE ${isStaff(user)?'1=1':'t.user_id=?'} ORDER BY t.updated_at DESC LIMIT 100`).bind(...(isStaff(user)?[]:[user.id])).all();
+      WHERE t.user_id=? ORDER BY t.updated_at DESC LIMIT 100`).bind(user.id).all();
     const tickets=[];
     for(const row of rows.results){
       const msgs=await env.DB.prepare(`SELECT m.*,u.username FROM support_messages m JOIN users u ON u.id=m.sender_id WHERE m.ticket_id=? ORDER BY m.created_at ASC`).bind(row.id).all();
