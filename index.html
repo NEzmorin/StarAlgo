@@ -4476,7 +4476,10 @@
                     container.innerHTML = `
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
                             <div style="color: var(--gold-bright);">Python Редактор · изолированная среда</div>
-                            <button class="auth-btn" type="button" onclick="runPythonWithTurtle()">▶ Запустить (Ctrl + Enter)</button>
+                            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                                <button class="auth-btn" type="button" onclick="runPythonWithTurtle()">▶ Запустить (Ctrl + Enter)</button>
+                                <button class="auth-btn" type="button" onclick="stopPythonSandbox()">■ Остановить</button>
+                            </div>
                         </div>
                         <div style="display: grid; grid-template-columns: 1fr; gap: 12px;">
                             <textarea id="python-code-textarea">${window.saEscapeHTML(project.data || '')}</textarea>
