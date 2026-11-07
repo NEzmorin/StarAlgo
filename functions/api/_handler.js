@@ -308,6 +308,12 @@ async function ensureSupportSchema(env) {
   await env.DB.prepare('CREATE INDEX IF NOT EXISTS guest_support_key_idx ON guest_support_tickets(access_key)').run();
   await env.DB.prepare('CREATE INDEX IF NOT EXISTS guest_support_messages_idx ON guest_support_messages(ticket_id,created_at)').run();
 }
+async function ensureIdentityColumns(env) {
+  const columns=await env.DB.prepare('PRAGMA table_info(users)').all();
+  const names=new Set((columns.results||[]).map(x=>x.name));
+  if(!names.has('original_username')) await env.DB.prepare('ALTER TABLE users ADD COLUMN original_username TEXT').run();
+  await env.DB.prepare("UPDATE users SET original_username=username WHERE original_username IS NULL OR original_username=''").run();
+}
 async function handle(request, env) {
   const url = new URL(request.url), path = url.pathname.replace(/\/+$/, '') || '/', method = request.method;
   if (path.startsWith('/api/scratch/drive/') && method === 'OPTIONS') return new Response(null, { status: 204, headers: { 'access-control-allow-methods': 'GET,HEAD,OPTIONS', 'access-control-allow-headers': 'Content-Type', 'access-control-max-age': '86400' } });
@@ -504,6 +510,46 @@ async function handle(request, env) {
     return json({ user: publicUser(found), ...(await createSession(found.id, env)) });
   }
   if (path === '/api/auth/me' && method === 'GET') return user ? json({ user: publicUser(user) }) : json({ error:'Не авторизован' },401);
+  if(path==='/api/account/username' && method==='POST'){
+    if(!user) fail(401,'Войдите в аккаунт');
+    const body=await readBody(request), next=text(body.username,24,'Ник');
+    if(!/^[A-Za-z0-9_А-Яа-яЁё-]{3,24}$/.test(next)) fail(400,'Ник: 3–24 символа, буквы, цифры, _ или -');
+    const existing=await userByName(env,next);
+    if(existing && existing.id!==user.id) fail(409,'Этот ник уже занят');
+    const old=user.username;
+    await env.DB.prepare('UPDATE users SET username=?,username_norm=?,updated_at=? WHERE id=?').bind(next,next.toLowerCase(),now(),user.id).run();
+    return json({ok:true,oldUsername:old,user:publicUser(await env.DB.prepare('SELECT * FROM users WHERE id=?').bind(user.id).first())});
+  }
+  const adminReset=path.match(/^\/api\/admin\/users\/([^/]+)\/password$/);
+  if(adminReset && method==='POST'){
+    if(!isAdmin(user)) fail(403,'Недостаточно прав');
+    const target=await env.DB.prepare('SELECT * FROM users WHERE id=?').bind(adminReset[1]).first();
+    if(!target) fail(404,'Пользователь не найден');
+    if(isSingularity(target)) fail(403,'Пароль Сингулярности может менять только она сама');
+    const generated='SA-'+Array.from(crypto.getRandomValues(new Uint8Array(18)),b=>(b%36).toString(36)).join('')+'!';
+    const salt=b64(crypto.getRandomValues(new Uint8Array(16))),iterations=100000;
+    const hash=await passwordHash(generated,salt,iterations);
+    await env.DB.prepare('UPDATE users SET password_hash=?,password_salt=?,password_iterations=?,updated_at=? WHERE id=?').bind(hash,salt,iterations,now(),target.id).run();
+    await env.DB.prepare('DELETE FROM sessions WHERE user_id=?').bind(target.id).run();
+    const encryptedForRecipient={temporaryPassword:generated,forcePasswordChange:true};
+    await addNotification(env,target.id,user.id,'password_reset','Администратор сбросил пароль. Скопируйте временный пароль и сразу смените его в профиле.',encryptedForRecipient);
+    return json({ok:true,notified:true});
+  }
+  const singularityPassword=path.match(/^\/api\/singularity\/users\/([^/]+)\/password$/);
+  if(singularityPassword && method==='POST'){
+    if(!isSingularity(user)) fail(403,'Только Сингулярность может выполнять это действие');
+    const target=await env.DB.prepare('SELECT * FROM users WHERE id=?').bind(singularityPassword[1]).first();
+    if(!target) fail(404,'Пользователь не найден');
+    const body=await readBody(request), chosen=text(body.password,256,'Пароль');
+    if(chosen.length<8) fail(400,'Пароль должен содержать минимум 8 символов');
+    const salt=b64(crypto.getRandomValues(new Uint8Array(16))),iterations=100000;
+    const hash=await passwordHash(chosen,salt,iterations);
+    await env.DB.prepare('UPDATE users SET password_hash=?,password_salt=?,password_iterations=?,updated_at=? WHERE id=?').bind(hash,salt,iterations,now(),target.id).run();
+    await env.DB.prepare('DELETE FROM sessions WHERE user_id=?').bind(target.id).run();
+    await addNotification(env,target.id,user.id,'password_reset','Сингулярность изменила пароль вашего аккаунта. Если вы этого не ожидали, обратитесь в техподдержку.',{forcePasswordChange:true});
+    return json({ok:true});
+  }
+
   if (path === '/api/auth/change-password' && method === 'POST') {
     if(!user) fail(401,'Сначала войдите в аккаунт');
     const body=await readBody(request);
