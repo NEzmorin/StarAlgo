@@ -754,36 +754,40 @@
       alert('Жалоба отправлена модераторам.'); closeReportModal();
     } catch(e){alert(e.message);}
   };
+  const GUEST_SUPPORT_KEY='staralgo_guest_support_key';
   window.openSupportModal = async function() {
-    if(!currentUser){openAuthModal();return;}
-    document.getElementById('support-modal').classList.add('open');
+    document.getElementById('support-modal')?.classList.add('open');
     await loadMySupportTickets();
   };
   window.closeSupportModal = function(){document.getElementById('support-modal')?.classList.remove('open');};
   window.submitSupportTicket = async function(){
     const subject=document.getElementById('support-subject')?.value.trim()||'Обращение в техподдержку';
     const message=document.getElementById('support-message')?.value.trim()||'';
+    const name=document.getElementById('support-guest-name')?.value.trim()||'Гость';
     if(!message){alert('Опишите проблему перед отправкой.');return;}
     try{
-      await api('/api/support',{method:'POST',body:jsonBody({subject,message})});
+      const result=await api('/api/support/guest',{method:'POST',body:jsonBody({name,subject,message})});
+      localStorage.setItem(GUEST_SUPPORT_KEY,result.accessKey);
       document.getElementById('support-subject').value='';
       document.getElementById('support-message').value='';
-      alert('Обращение отправлено. Ответ появится здесь.');
+      alert('Обращение отправлено! Сохраните доступ в этом браузере, чтобы прочитать ответ.');
       await loadMySupportTickets();
-    }catch(e){alert(e.message);}
+    }catch(e){alert('Не удалось отправить обращение: '+e.message);}
   };
   window.loadMySupportTickets = async function(){
     const box=document.getElementById('my-support-tickets');if(!box)return;
+    const key=localStorage.getItem(GUEST_SUPPORT_KEY);
+    if(!key){box.innerHTML='<div class="empty-placeholder">Отправьте обращение — ответы появятся здесь. Аккаунт не нужен.</div>';return;}
     try{
-      const result=await api('/api/support');
+      const result=await api('/api/support/guest?key='+encodeURIComponent(key));
       const tickets=result.tickets||[];
       if(!tickets.length){box.innerHTML='<div class="empty-placeholder">Обращений пока нет.</div>';return;}
       box.innerHTML=tickets.map(t=>`<div class="report-card" style="margin:8px 0;">
         <div class="report-header"><strong>${esc(t.subject)}</strong><span>${t.status==='waiting_user'?'Ожидает вашего ответа':t.status==='resolved'?'Решено':'В работе'}</span></div>
-        <div style="max-height:180px;overflow:auto;margin:8px 0;">${t.messages.map(m=>`<p><strong>${esc(m.username)}:</strong> ${esc(m.body)}</p>`).join('')}</div>
-        ${t.status==='waiting_user'?`<div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="auth-btn" onclick="confirmSupportResolved('${t.id}',true)">Да, проблема решена</button><button class="auth-btn" onclick="confirmSupportResolved('${t.id}',false)">Нет, проблема осталась</button></div>`:''}
+        <div style="max-height:220px;overflow:auto;margin:8px 0;">${t.messages.map(m=>`<p><strong>${esc(m.username)}:</strong> ${esc(m.body)}</p>`).join('')}</div>
+        ${t.status==='waiting_user'?'<div style="opacity:.8;">Ответьте команде через форму ниже или подтвердите решение после того, как проблема действительно решена.</div>':''}
       </div>`).join('');
-    }catch(e){box.innerHTML='<div class="empty-placeholder">'+esc(e.message)+'</div>';}
+    }catch(e){box.innerHTML='<div class="empty-placeholder">Не удалось загрузить переписку: '+esc(e.message)+'</div>';}
   };
   window.confirmSupportResolved = async function(id,resolved){
     let message='';
