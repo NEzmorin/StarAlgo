@@ -222,6 +222,11 @@
     window.__staralgoCloudInitialized = true;
     updateRealTime();
     setInterval(updateRealTime, 1000);
+    // Revalidate sessions frequently so an admin kick is reflected in already-open tabs.
+    setInterval(() => window.checkStarAlgoSession(), 4000);
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) window.checkStarAlgoSession();
+    });
     // Local records from the former demo are deliberately not imported.
     LEGACY_KEYS.forEach(key => localStorage.removeItem(key));
     const token = localStorage.getItem(TOKEN_KEY);
@@ -309,6 +314,21 @@
     if (header) header.style.display = 'none';
     if (['profile','proto','star-editor','reports','dwarf-viewer'].includes(currentTab)) setTab(null,'main','Главная');
     updateNavVisibility();
+  };
+  let sessionCheckRunning=false;
+  window.checkStarAlgoSession = async function(){
+    if(sessionCheckRunning)return;
+    const token=localStorage.getItem(TOKEN_KEY);if(!token)return;
+    sessionCheckRunning=true;
+    try{
+      const response=await fetch(apiUrl('/api/auth/me'),{headers:{Authorization:'Bearer '+token},cache:'no-store'});
+      if(response.status===401){
+        localStorage.removeItem(TOKEN_KEY);
+        await window.logout();
+        alert('Ваша сессия завершена администратором. Войдите снова, если это ваш аккаунт.');
+      }
+    }catch(_){}
+    finally{sessionCheckRunning=false;}
   };
   window.handleUserSearch = async function() {
     const input = document.getElementById('user-search-input');
