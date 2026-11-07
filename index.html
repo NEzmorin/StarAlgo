@@ -1790,6 +1790,7 @@
                 <div class="user-header-text">
                     <div class="name" id="header-user-name">Никнейм</div>
                     <div class="role" id="header-user-role">[Начинающий]</div>
+                    <button class="logout-btn" onclick="event.stopPropagation(); openChangePassword();">Сменить пароль</button>
                     <button class="logout-btn" onclick="event.stopPropagation(); logout();">Выйти</button>
                 </div>
                 <div class="star-avatar-small" id="header-avatar-container" title="Перейти в профиль">
@@ -2262,6 +2263,20 @@
             <div class="modal-actions">
                 <button class="auth-btn" id="modal-submit-btn" onclick="handleAuthSubmit()">Зарегистрироваться</button>
                 <button class="auth-btn" onclick="closeAuthModal()">Отмена</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="change-password-modal">
+        <div class="modal-box">
+            <div class="modal-title">Смена пароля</div>
+            <div class="form-group"><label>Текущий пароль</label><input id="change-password-current" class="form-input" type="password" autocomplete="current-password"></div>
+            <div class="form-group"><label>Новый пароль (минимум 8 символов)</label><input id="change-password-new" class="form-input" type="password" autocomplete="new-password"></div>
+            <div class="form-group"><label>Повторите новый пароль</label><input id="change-password-confirm" class="form-input" type="password" autocomplete="new-password"></div>
+            <div class="auth-error" id="change-password-error" style="display:none;"></div>
+            <div class="modal-actions">
+                <button class="auth-btn" id="change-password-submit" onclick="submitPasswordChange()">Изменить пароль</button>
+                <button class="auth-btn" onclick="closeChangePassword()">Отмена</button>
             </div>
         </div>
     </div>
