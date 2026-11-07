@@ -1130,6 +1130,11 @@
     const htmlDoc='<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="'+policy+'"><meta name="referrer" content="no-referrer"><style>html,body{margin:0;min-height:100%;font:13px monospace;background:#fff;color:#111}#turtle-div{box-sizing:border-box;width:100%;min-height:280px;height:100%;overflow:auto;background:#fff}#python-output{box-sizing:border-box;margin:0;padding:10px;min-height:44px;white-space:pre-wrap;overflow-wrap:anywhere;border-top:1px solid #ddd}</style><script src="https://cdnjs.cloudflare.com/ajax/libs/brython/3.11.1/brython.min.js"><\/script><script src="https://cdnjs.cloudflare.com/ajax/libs/brython/3.11.1/brython_stdlib.js"><\/script></head><body onload="brython({debug:0})"><div id="turtle-div"></div><pre id="python-output"></pre><script>window.__starAlgoSend=function(output,ok){parent.postMessage({type:"staralgo-python-output",token:'+JSON.stringify(runToken)+',output:String(output||"").slice(0,50000),ok:!!ok},"*")};<\/script><script type="text/python" class="webworker" id="staralgo-python-worker">'+workerSource+'<\/script><script type="text/python">'+sourcePython+'<\/script></body></html>';
     frame.srcdoc=htmlDoc;
   };
+  window.stopPythonSandbox = function() {
+    if (activePythonSandboxCleanup) activePythonSandboxCleanup();
+    const output=document.getElementById('python-console-output');
+    if(output) { output.textContent='Выполнение остановлено пользователем.'; output.style.color='#ff5555'; }
+  };
   window.runPythonReadonlyResult = window.runPythonSandbox;
   window.addEventListener('beforeunload', () => { if (projectSaveTimer) clearTimeout(projectSaveTimer); });
 
