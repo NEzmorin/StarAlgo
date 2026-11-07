@@ -3217,6 +3217,9 @@
             if (cIsSing || cIsAdmin) {
                 html += `<button class="auth-btn" style="font-size:0.9rem; padding:4px 8px; color:#ff5555; border-color:#ff5555;" onclick="deleteUserAccount('${targetUser.username}')">Удалить</button>`;
             }
+            if (cIsSing || cIsAdmin) {
+                html += `<button class="auth-btn" style="font-size:0.9rem;padding:4px 8px;" onclick="revokeUserSessions('${targetUser.id}','${targetUser.username}')">Выгнать со всех устройств</button>`;
+            }
 
             html += `</div>`;
             panel.innerHTML = html;
