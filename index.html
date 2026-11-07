@@ -2099,6 +2099,11 @@
                         <div class="profile-page-info">
                             <div class="profile-page-name-row">
                                 <div class="profile-page-name" id="pp-username">Никнейм</div>
+                                <div id="pp-original-username" style="font-size:.85rem;opacity:.65;margin-top:3px;"></div>
+                                <div id="profile-account-actions" style="display:none;gap:8px;flex-wrap:wrap;margin-top:10px;">
+                                  <button class="auth-btn" onclick="changeProfileUsername()">Сменить ник</button>
+                                  <button class="auth-btn" onclick="openChangePassword()">Сменить пароль</button>
+                                </div>
                                 <button class="follow-btn" id="follow-action-btn" onclick="toggleFollowUser()" style="display: none;">➕ Подписаться</button>
                                 <span class="friend-badge" id="friend-status-badge" style="display: none;">🤝 ДРУЗЬЯ</span>
                                 <button class="auth-btn" id="report-profile-btn" onclick="openReportModal('user', null, viewingUser?.username, viewingUser?.username)" style="display: none; border-color: #ff5555; color: #ff5555;">⚠️ Пожаловаться</button>
