@@ -30,7 +30,7 @@ function text(v, max, label, allowEmpty = false) {
 function parseJson(value, fallback = {}) { try { return JSON.parse(value || ''); } catch { return fallback; } }
 function publicUser(row) {
   return {
-    id: row.id, username: row.username, role: row.role || '[Начинающий]',
+    id: row.id, username: row.username, originalUsername: row.original_username || row.username, role: row.role || '[Начинающий]',
     isSupernova: !!row.is_supernova, isTester: !!row.is_tester,
     isBanned: !!row.is_banned, banUntil: row.ban_until || null,
     reputation: Number(row.reputation ?? 6), awards: Number(row.awards || 0),
@@ -85,7 +85,7 @@ function mapNotification(row) {
   return { id: Number(row.id), kind: row.kind || '', actor: row.actor || 'Система', text: row.text || '',
     linkType: p.linkType || '', targetUser: p.targetUser || '', targetAuthor: p.targetAuthor || '',
     targetStarId: p.targetStarId ? Number(p.targetStarId) : 0,
-    date: Number(row.created_at), read: !!row.read_at };
+    date: Number(row.created_at), read: !!row.read_at, temporaryPassword: p.temporaryPassword || '' };
 }
 async function authUser(request, env) {
   const token = (request.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
