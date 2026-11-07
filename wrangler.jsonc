@@ -1,0 +1,22 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "staralgo-api",
+  "main": "worker.js",
+  "compatibility_date": "2026-11-06",
+  "workers_dev": true,
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "staralgo-db",
+      "database_id": "000ce601-434d-4436-8de8-6b1975009edb"
+    }
+  ],
+  "vars": {
+    "APP_ORIGIN": "https://staralgo.vercel.app"
+  },
+  "triggers": {
+    "crons": [
+      "0 4 * * *"
+    ]
+  }
+}

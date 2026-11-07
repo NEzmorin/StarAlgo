@@ -5,8 +5,7 @@
   const API_ROOT = String(window.STARALGO_API_BASE || '').replace(/\/+$/, '');
   const TOKEN_KEY = 'staralgo_auth_token';
   const LEGACY_KEYS = [
-    'staralgo_users_db', 'staralgo_current_session',
-    'staralgo_yellow_dwarfs_db', 'staralgo_reports_db'
+    'staralgo_users_db', 'staralgo_yellow_dwarfs_db', 'staralgo_reports_db'
   ];
   let profileSnapshot = '';
   let pendingProjectSave = null;
@@ -16,7 +15,7 @@
   function apiUrl(path) { return `${API_ROOT}${path}`; }
   async function api(path, options = {}) {
     const headers = new Headers(options.headers || {});
-    if (options.body !== undefined && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
+    if (options.body !== undefined && !headers.has('Content-Type') && !(options.body instanceof FormData)) headers.set('Content-Type', 'application/json');
     const token = localStorage.getItem(TOKEN_KEY);
     if (token) headers.set('Authorization', `Bearer ${token}`);
     let response;
@@ -50,7 +49,8 @@
       likedBy: Array.isArray(p.likedBy) ? p.likedBy : [],
       coverUrl: p.coverUrl || '',
       data: p.data || '',
-      sb3Data: p.sb3Data || ''
+      sb3Data: p.sb3Data || '',
+      sb3Url: p.sb3Url || ''
     };
   }
   function normalizeUser(u) {
@@ -69,7 +69,7 @@
       likes: Number(u.likes || 0),
       projects: Number(u.projects || 0),
       avatarUrl,
-      avatarHtml: u.avatarHtml || safeImgHtml(avatarUrl),
+      avatarHtml: safeImgHtml(avatarUrl),
       bio: u.bio || '',
       projectsList: (u.projectsList || []).map(normalizeProject),
       vacuumList: (u.vacuumList || []).map(normalizeProject),
@@ -177,7 +177,8 @@
       coverUrl: snapshot.coverUrl || '',
       projectUrl: snapshot.projectUrl || '',
       data: snapshot.data || '',
-      sb3Data: snapshot.sb3Data || ''
+      sb3Data: snapshot.sb3Data || '',
+      sb3Url: snapshot.sb3Url || ''
     };
     const previous = pendingProjectSave;
     const task = (async () => {
@@ -221,15 +222,25 @@
     window.__staralgoCloudInitialized = true;
     updateRealTime();
     setInterval(updateRealTime, 1000);
+    // Revalidate sessions frequently so an admin kick is reflected in already-open tabs.
+    setInterval(() => window.checkStarAlgoSession(), 4000);
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) window.checkStarAlgoSession();
+    });
     // Local records from the former demo are deliberately not imported.
     LEGACY_KEYS.forEach(key => localStorage.removeItem(key));
     const token = localStorage.getItem(TOKEN_KEY);
+    // Restore the last server-confirmed profile immediately while the token is revalidated.
     if (token) {
-      try { await api('/api/auth/me'); }
-      catch (error) { localStorage.removeItem(TOKEN_KEY); }
+      const cachedSession = readObjectCache('staralgo_current_session', null);
+      if (cachedSession) {
+        currentUser = normalizeUser(cachedSession);
+        applyUserSession();
+      }
     }
     try {
       await refreshBootstrap({ render: false });
+      if (token && !currentUser) localStorage.removeItem(TOKEN_KEY);
     } catch (error) {
       console.error('StarAlgo API:', error);
       const errorBox = document.getElementById('auth-error');
@@ -239,6 +250,8 @@
       }
     }
     setupSoundEffects();
+    const userSearchInput = document.getElementById('user-search-input');
+    if (userSearchInput) userSearchInput.value = '';
     if (typeof handleUserSearch === 'function') handleUserSearch();
     if (typeof handleStarSearch === 'function') handleStarSearch();
     updateNavVisibility();
@@ -246,6 +259,12 @@
     renderTelescopeFeed();
     renderReportsInbox();
     if (currentUser) applyUserSession();
+    else {
+      const auth = document.getElementById('auth-btn');
+      const header = document.getElementById('user-header-profile');
+      if (auth) auth.style.display = 'block';
+      if (header) header.style.display = 'none';
+    }
   };
   window.handleAuthSubmit = async function() {
     const username = document.getElementById('auth-username').value.trim();
@@ -259,17 +278,27 @@
     error.style.display = 'none';
     try {
       const result = await api(authMode === 'register' ? '/api/auth/register' : '/api/auth/login', {
-        method: 'POST', body: jsonBody({ username, password })
+        method: 'POST', body: jsonBody({ username, password, captchaToken: window.starAlgoCaptchaToken || '' })
       });
       localStorage.setItem(TOKEN_KEY, result.token);
-      await refreshBootstrap({ render: false });
+      window.starAlgoCaptchaToken = '';
+      // Show the authenticated account immediately; hydrate the rest in the background.
+      currentUser = normalizeUser(result.user);
       applyUserSession();
       closeAuthModal();
-      handleUserSearch();
-      renderZvezdnyFeed();
+      const searchInput = document.getElementById('user-search-input');
+      const searchList = document.getElementById('search-results-list');
+      if (searchInput) searchInput.value = '';
+      if (searchList) searchList.innerHTML = '<div class="empty-placeholder">Начните ввод для поиска пользователей...</div>';
+      refreshBootstrap({ render: false }).then(() => {
+        if (currentUser) applyUserSession();
+        renderZvezdnyFeed();
+        renderTelescopeFeed();
+      }).catch(err => console.error('StarAlgo background sync:', err));
     } catch (err) {
       error.textContent = err.message;
       error.style.display = 'block';
+      if (authMode === 'register') window.refreshStarAlgoCaptcha?.();
     } finally { if (button) button.disabled = false; }
   };
   window.logout = async function() {
@@ -285,6 +314,21 @@
     if (header) header.style.display = 'none';
     if (['profile','proto','star-editor','reports','dwarf-viewer'].includes(currentTab)) setTab(null,'main','Главная');
     updateNavVisibility();
+  };
+  let sessionCheckRunning=false;
+  window.checkStarAlgoSession = async function(){
+    if(sessionCheckRunning)return;
+    const token=localStorage.getItem(TOKEN_KEY);if(!token)return;
+    sessionCheckRunning=true;
+    try{
+      const response=await fetch(apiUrl('/api/auth/me'),{headers:{Authorization:'Bearer '+token},cache:'no-store'});
+      if(response.status===401){
+        localStorage.removeItem(TOKEN_KEY);
+        await window.logout();
+        alert('Ваша сессия завершена администратором. Войдите снова, если это ваш аккаунт.');
+      }
+    }catch(_){}
+    finally{sessionCheckRunning=false;}
   };
   window.handleUserSearch = async function() {
     const input = document.getElementById('user-search-input');
@@ -321,51 +365,106 @@
   };
   window.toggleFollowUser = async function() {
     if (!currentUser || !viewingUser) { openAuthModal(); return; }
-    try {
-      await api('/api/follows',{method:'POST',body:jsonBody({username:viewingUser.username})});
-      await refreshBootstrap({render:false});
-      const result = await api(`/api/users/${encodeURIComponent(viewingUser.username)}`);
-      viewingUser = normalizeUser(result.user);
-      renderProfileData(viewingUser);
-      applyUserSession();
-    } catch (e) { alert(e.message); }
-  };
-  window.handleAvatarUpload = function(event) {
-    const file = event.target.files?.[0];
-    if (!file || !currentUser) return;
-    if (!/^image\/(png|jpeg|webp|gif)$/.test(file.type) || file.size > 250000) {
-      alert('Выбери PNG, JPG, WEBP или GIF размером до 250 КБ.'); event.target.value=''; return;
+    if (String(currentUser.id)===String(viewingUser.id)) return;
+    const target=viewingUser, me=currentUser;
+    const meKey=me.username.toLowerCase(), targetKey=target.username.toLowerCase();
+    const wasFollowing=(me.followingList||[]).includes(targetKey);
+    const previousFollowers=target.followersList||[];
+    me.followingList=Array.isArray(me.followingList)?me.followingList.slice():[];
+    target.followersList=Array.isArray(target.followersList)?target.followersList.slice():[];
+    if(wasFollowing){
+      me.followingList=me.followingList.filter(x=>String(x).toLowerCase()!==targetKey);
+      target.followersList=target.followersList.filter(x=>String(x).toLowerCase()!==meKey);
+    } else {
+      me.followingList.push(targetKey);
+      if(!target.followersList.some(x=>String(x).toLowerCase()===meKey)) target.followersList.push(meKey);
     }
-    const reader = new FileReader();
-    reader.onload = async e => {
-      try {
-        const avatarUrl = String(e.target.result);
-        await api('/api/profile',{method:'PATCH',body:jsonBody({bio:currentUser.bio || '',avatarUrl})});
-        currentUser.avatarUrl = avatarUrl;
-        currentUser.avatarHtml = safeImgHtml(avatarUrl);
-        profileSnapshot = JSON.stringify({bio:currentUser.bio || '',avatarUrl});
-        applyAvatarToAll(currentUser.avatarHtml);
-        storeCurrentUserInCache();
-      } catch (err) { alert(err.message); }
-    };
-    reader.readAsDataURL(file);
+    renderProfileData(target);
+    storeCurrentUserInCache();
+    try {
+      const result=await api('/api/follows',{method:'POST',body:jsonBody({userId:target.id})});
+      const isFollowing=!!result.following;
+      if(isFollowing!==!wasFollowing){
+        me.followingList=me.followingList.filter(x=>String(x).toLowerCase()!==targetKey);
+        target.followersList=target.followersList.filter(x=>String(x).toLowerCase()!==meKey);
+        if(isFollowing){me.followingList.push(targetKey);target.followersList.push(meKey);}
+      }
+      target.followersList=target.followersList.filter(x=>String(x).toLowerCase()!==meKey);
+      if(isFollowing) target.followersList.push(meKey);
+      renderProfileData(target);
+      storeCurrentUserInCache();
+    } catch(e) {
+      me.followingList=wasFollowing?[...new Set([...(me.followingList||[]),targetKey])]:me.followingList.filter(x=>String(x).toLowerCase()!==targetKey);
+      target.followersList=previousFollowers;
+      renderProfileData(target);
+      storeCurrentUserInCache();
+      alert(e.message);
+    }
+  };
+  window.handleAvatarUpload = async function(event) {
+    const input = event.target;
+    const file = input.files?.[0];
+    if (!file || !currentUser) return;
+    if (!/^image\/(png|jpeg|webp|gif)$/.test(file.type)) {
+      alert('Выбери PNG, JPG, WEBP или GIF.'); input.value=''; return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      alert('Аватарка должна быть не больше 10 МБ.'); input.value=''; return;
+    }
+    const container = document.getElementById('profile-page-avatar');
+    try {
+      const body = new FormData();
+      body.append('file', file, file.name || 'avatar');
+      const uploaded = await api('/api/avatar/upload', { method: 'POST', body });
+      const avatarUrl = String(uploaded.secure_url || '');
+      if (!/^https:\/\//i.test(avatarUrl)) throw new Error('Сервис вернул некорректную ссылку на аватарку');
+      const saved = await api('/api/profile', { method:'PATCH', body:jsonBody({bio:currentUser.bio || '',avatarUrl}) });
+      currentUser.avatarUrl = avatarUrl;
+      currentUser.avatarHtml = safeImgHtml(avatarUrl);
+      if (saved.user) {
+        const normalized = normalizeUser(saved.user);
+        currentUser = { ...currentUser, ...normalized };
+      }
+      profileSnapshot = JSON.stringify({bio:currentUser.bio || '',avatarUrl});
+      applyAvatarToAll(currentUser.avatarHtml);
+      storeCurrentUserInCache();
+    } catch (err) {
+      alert(err.message || 'Не удалось обновить аватарку');
+    } finally {
+      input.value = '';
+    }
   };
   window.submitCreateProject = async function() {
     if (!currentUser) { openAuthModal(); return; }
     const name = document.getElementById('project-name-input').value.trim();
     const category = document.getElementById('project-category-select').value;
     if (!name) { alert('Введите название звезды!'); return; }
+    const projectUrl = '';
     const defaults = category === 'Python'
       ? '# Нарисуем квадрат черепашкой\nimport turtle\nfor i in range(4):\n    turtle.forward(100)\n    turtle.right(90)\n'
-      : category === 'Roblox' || category === 'Картинки' || category === 'Scratch' ? '' : '// Напишите HTML код здесь';
+      : ['Roblox','Картинки','Медиа','Видео','Сайт','Разговорник','Scratch'].includes(category) ? '' : '// Напишите HTML код здесь';
+    const submitButton = document.querySelector('#project-modal .modal-actions .auth-btn');
+    if (submitButton) { submitButton.disabled = true; submitButton.dataset.oldLabel = submitButton.textContent; submitButton.textContent = 'Создаём…'; }
     try {
-      await api('/api/projects',{method:'POST',body:jsonBody({name,category,description:'',published:false,data:defaults})});
-      await refreshBootstrap({render:false});
-      applyUserSession();
+      const createdResult = await api('/api/projects',{method:'POST',body:jsonBody({name,category,description:'',published:false,data:defaults,projectUrl})});
+      const createdProject = normalizeProject(createdResult.project);
+      currentUser.projectsList = currentUser.projectsList || [];
+      currentUser.projectsList.unshift(createdProject);
       document.getElementById('stat-projects').textContent = currentUser.projectsList.length;
       closeCreateProjectModal();
       switchProtoSection(null,'stars');
-    } catch (e) { alert(e.message); }
+      // Refresh account data after the modal has already closed; don't make the user wait for bootstrap.
+      refreshBootstrap({render:false}).then(() => {
+        applyUserSession();
+        const stat = document.getElementById('stat-projects');
+        if (stat) stat.textContent = currentUser.projectsList.length;
+        if (typeof renderProtoStars === 'function') renderProtoStars();
+      }).catch(() => {});
+    } catch (e) {
+      alert(e.message);
+    } finally {
+      if (submitButton) { submitButton.disabled = false; submitButton.textContent = submitButton.dataset.oldLabel || 'Создать'; }
+    }
   };
   window.openStarEditor = async function(projectId) {
     if (!currentUser) { openAuthModal(); return; }
@@ -452,7 +551,7 @@
     if (!activeStarObject || !confirm('Удалить комментарий?')) return;
     try {
       await api(`/api/comments/${commentId}`,{method:'DELETE'});
-      activeStarObject.comments = (activeStarObject.comments || []).filter(c => Number(c.id) !== Number(commentId));
+      activeStarObject.comments = (activeStarObject.comments || []).filter(c => String(c.id) !== String(commentId));
       activeStarObject.commentsCount = activeStarObject.comments.length;
       updateLocalProject(activeStarObject);
       document.getElementById('star-comments-counter').textContent = activeStarObject.comments.length;
@@ -517,21 +616,85 @@
       renderZvezdnyFeed();
     } catch (e) { alert(e.message); }
   };
-  window.handleSb3Upload = function(event) {
-    const file = event.target.files?.[0];
-    if (!file || !activeStarObject || !currentUser || file.size > 300000) { if (file) alert('Файл .sb3 должен быть меньше 300 КБ.'); return; }
-    if (activeStarObject.author.toLowerCase() !== currentUser.username.toLowerCase()) return;
-    const reader = new FileReader();
-    reader.onload = async e => { activeStarObject.sb3Data=String(e.target.result); activeStarObject.sb3Name=file.name; renderLocalScratchPlayer(activeStarObject.sb3Data); await saveProjectNow(); };
-    reader.readAsDataURL(file);
+  window.handleSb3Upload = function() {
+    alert('Чтобы не занимать место StarAlgo, сначала загрузи .sb3 на Catbox.moe, затем вставь прямую HTTPS-ссылку в поле «Ссылка на .sb3» ниже.');
   };
-  window.handleCoverUpload = function(event) {
-    const file=event.target.files?.[0];
-    if (!file || !activeStarObject || !currentUser || file.size>250000) { if(file) alert('Обложка должна быть меньше 250 КБ.'); return; }
-    if (!file.type.startsWith('image/')) { alert('Нужен файл изображения.'); return; }
-    const reader=new FileReader();
-    reader.onload=async e=>{ activeStarObject.coverUrl=String(e.target.result); await saveProjectNow(); document.getElementById('star-panorama-img').src=activeStarObject.coverUrl; document.getElementById('zoomed-panorama-img').src=activeStarObject.coverUrl; renderZvezdnyFeed(); };
-    reader.readAsDataURL(file);
+  window.saveScratchUrl = async function() {
+    if (!activeStarObject || !currentUser || activeStarObject.author.toLowerCase() !== currentUser.username.toLowerCase()) return;
+    const input = document.getElementById('scratch-project-url');
+    const value = String(input?.value || '').trim();
+    if (!value) { alert('Вставь прямую ссылку на .sb3 файл.'); return; }
+    activeStarObject.sb3Url = value;
+    activeStarObject.sb3Data = '';
+    try {
+      if (await saveProjectNow()) {
+        renderLocalScratchPlayer(value);
+        const status = document.getElementById('sb3-status-label');
+        if (status) status.textContent = 'Внешняя ссылка сохранена';
+      }
+    } catch (error) { alert(error.message); }
+  };
+  window.handlePanoramaUpload = async function(event) {
+    const input = event.target;
+    const file = input.files?.[0];
+    if (!file || !activeStarObject || !currentUser) return;
+    if (activeStarObject.author.toLowerCase() !== currentUser.username.toLowerCase()) { input.value=''; return; }
+    if (!/^image\/(png|jpeg|webp|gif)$/.test(file.type)) { alert('Выбери PNG, JPG, WEBP или GIF.'); input.value=''; return; }
+    if (file.size > 10 * 1024 * 1024) { alert('Панорама должна быть не больше 10 МБ.'); input.value=''; return; }
+    try {
+      const body = new FormData();
+      body.append('file', file, file.name || 'panorama');
+      body.append('purpose', 'panorama');
+      const uploaded = await api('/api/avatar/upload', { method:'POST', body });
+      const url = String(uploaded.secure_url || '');
+      if (!/^https:\/\//i.test(url)) throw new Error('Сервис вернул некорректную ссылку на панораму');
+      activeStarObject.coverUrl = url;
+      if (await saveProjectNow()) {
+        const image = document.getElementById('star-panorama-img');
+        const zoom = document.getElementById('zoomed-panorama-img');
+        if (image) image.src = url;
+        if (zoom) zoom.src = url;
+        const status = document.getElementById('panorama-upload-status');
+        if (status) status.textContent = 'Панорама загружена и сохранена';
+        renderZvezdnyFeed();
+      }
+    } catch (error) { alert(error.message || 'Не удалось загрузить панораму'); }
+    finally { input.value = ''; }
+  };
+  window.saveCoverUrl = async function() {
+    if (!activeStarObject || !currentUser || activeStarObject.author.toLowerCase() !== currentUser.username.toLowerCase()) return;
+    const input = document.getElementById('cover-url-input');
+    const value = String(input?.value || '').trim();
+    if (!value) { alert('Вставь HTTPS-ссылку на обложку с разрешённого сервиса.'); return; }
+    activeStarObject.coverUrl = value;
+    try {
+      if (await saveProjectNow()) {
+        const image = document.getElementById('star-panorama-img');
+        const zoom = document.getElementById('zoomed-panorama-img');
+        if (image) image.src = value;
+        if (zoom) zoom.src = value;
+        renderZvezdnyFeed();
+      }
+    } catch (error) { alert(error.message); }
+  };
+  window.saveProjectResourceUrl = async function() {
+    if (!activeStarObject || !currentUser || activeStarObject.author.toLowerCase() !== currentUser.username.toLowerCase()) return;
+    const input = document.getElementById('project-resource-url');
+    const value = String(input?.value || '').trim();
+    if (!value) { alert('Вставь HTTPS-ссылку на внешний ресурс.'); return; }
+    activeStarObject.projectUrl = value;
+    try { if (await saveProjectNow()) renderStarRuntime(activeStarObject, false); }
+    catch (error) { alert(error.message); }
+  };
+  window.saveProjectMediaUrl = async function() {
+    if (!activeStarObject || !currentUser || activeStarObject.author.toLowerCase() !== currentUser.username.toLowerCase()) return;
+    const input = document.getElementById('project-media-url');
+    const value = String(input?.value || '').trim();
+    if (!value) { alert('Вставь HTTPS-ссылку на изображение или GIF.'); return; }
+    activeStarObject.projectUrl = value;
+    activeStarObject.data = '';
+    try { if (await saveProjectNow()) renderStarRuntime(activeStarObject, false); }
+    catch (error) { alert(error.message); }
   };
   window.handleImageProjectUpload = function(event) {
     const file=event.target.files?.[0];
@@ -587,7 +750,7 @@
   };
   window.deleteDwarfComment = async function(commentId) {
     if(!activeDwarfObject)return;
-    try { await api(`/api/dwarf-comments/${commentId}`,{method:'DELETE'}); activeDwarfObject.comments=activeDwarfObject.comments.filter(c=>Number(c.id)!==Number(commentId)); activeDwarfObject.commentsCount=activeDwarfObject.comments.length; renderDwarfCommentsList(activeDwarfObject); renderTelescopeFeed(); }
+    try { await api(`/api/dwarf-comments/${commentId}`,{method:'DELETE'}); activeDwarfObject.comments=activeDwarfObject.comments.filter(c=>String(c.id)!==String(commentId)); activeDwarfObject.commentsCount=activeDwarfObject.comments.length; renderDwarfCommentsList(activeDwarfObject); renderTelescopeFeed(); }
     catch(e){alert(e.message);}
   };
   window.openNotificationsModal = async function() {
@@ -611,6 +774,106 @@
       alert('Жалоба отправлена модераторам.'); closeReportModal();
     } catch(e){alert(e.message);}
   };
+  const GUEST_SUPPORT_KEY='staralgo_guest_support_key';
+  window.openSupportModal = async function() {
+    document.getElementById('support-modal')?.classList.add('open');
+    await loadMySupportTickets();
+  };
+  window.closeSupportModal = function(){document.getElementById('support-modal')?.classList.remove('open');};
+  window.submitSupportTicket = async function(){
+    const subject=document.getElementById('support-subject')?.value.trim()||'Обращение в техподдержку';
+    const message=document.getElementById('support-message')?.value.trim()||'';
+    const name=document.getElementById('support-guest-name')?.value.trim()||'Гость';
+    if(!message){alert('Опишите проблему перед отправкой.');return;}
+    try{
+      const result=await api('/api/support/guest',{method:'POST',body:jsonBody({name,subject,message})});
+      localStorage.setItem(GUEST_SUPPORT_KEY,result.accessKey);
+      document.getElementById('support-subject').value='';
+      document.getElementById('support-message').value='';
+      alert('Обращение отправлено! Сохраните доступ в этом браузере, чтобы прочитать ответ.');
+      await loadMySupportTickets();
+    }catch(e){alert('Не удалось отправить обращение: '+e.message);}
+  };
+  window.loadMySupportTickets = async function(){
+    const box=document.getElementById('my-support-tickets');if(!box)return;
+    const key=localStorage.getItem(GUEST_SUPPORT_KEY);
+    if(!key){box.innerHTML='<div class="empty-placeholder">Отправьте обращение — ответы появятся здесь. Аккаунт не нужен.</div>';return;}
+    try{
+      const result=await api('/api/support/guest?key='+encodeURIComponent(key));
+      const tickets=result.tickets||[];
+      if(!tickets.length){box.innerHTML='<div class="empty-placeholder">Обращений пока нет.</div>';return;}
+      box.innerHTML=tickets.map(t=>`<div class="report-card" style="margin:8px 0;">
+        <div class="report-header"><strong>${esc(t.subject)}</strong><span>${t.status==='waiting_user'?'Ожидает вашего ответа':t.status==='resolved'?'Решено':'В работе'}</span></div>
+        <div style="max-height:220px;overflow:auto;margin:8px 0;">${t.messages.map(m=>`<p><strong>${esc(m.username)}:</strong> ${esc(m.body)}</p>`).join('')}</div>
+        ${t.status==='waiting_user'?`<div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="auth-btn" onclick="confirmGuestSupportResolved('${t.id}',true)">Да, проблема решена</button><button class="auth-btn" onclick="confirmGuestSupportResolved('${t.id}',false)">Нет, проблема осталась</button></div>`:''}
+      </div>`).join('');
+    }catch(e){box.innerHTML='<div class="empty-placeholder">Не удалось загрузить переписку: '+esc(e.message)+'</div>';}
+  };
+  window.confirmGuestSupportResolved = async function(id,resolved){
+    const key=localStorage.getItem(GUEST_SUPPORT_KEY);if(!key)return;
+    let message='';
+    if(!resolved){message=prompt('Что осталось нерешённым?')||'';if(!message.trim())return;}
+    try{await api('/api/support/guest/'+encodeURIComponent(id)+'/confirm',{method:'POST',body:jsonBody({key,resolved,message})});await loadMySupportTickets();}
+    catch(e){alert('Не удалось отправить ответ: '+e.message);}
+  };
+  window.confirmSupportResolved = async function(id,resolved){
+    let message='';
+    if(!resolved){message=prompt('Что осталось нерешённым?')||'';if(!message.trim())return;}
+    try{await api('/api/support/'+encodeURIComponent(id)+'/confirm',{method:'POST',body:jsonBody({resolved,message})});await loadMySupportTickets();if(typeof renderReportsInbox==='function')renderReportsInbox();}
+    catch(e){alert(e.message);}
+  };
+  window.changeProfileUsername = async function(){
+    const value=prompt('Введите новый ник (3–24 символа):',currentUser?.username||'');
+    if(value===null)return;
+    try{
+      const result=await api('/api/account/username',{method:'POST',body:jsonBody({username:value})});
+      alert('Ник изменён. Старый ник сохранён в профиле как первоначальный.');
+      await refreshBootstrap();
+      if(typeof viewUserProfile==='function')await viewUserProfile('id/'+currentUser.id);
+    }catch(e){alert('Не удалось сменить ник: '+e.message);}
+  };
+  window.adminResetUserPassword = async function(id){
+    if(!confirm('Сгенерировать временный пароль и завершить все текущие сессии пользователя?'))return;
+    try{await api('/api/admin/users/'+encodeURIComponent(id)+'/password',{method:'POST',body:jsonBody({})});alert('Временный пароль отправлен пользователю в уведомления. Вы его не увидите.');}
+    catch(e){alert(e.message);}
+  };
+  window.singularitySetUserPassword = async function(id){
+    const password=prompt('Введите новый пароль (минимум 8 символов). Он будет отправлен пользователю приватным уведомлением:');
+    if(password===null)return;
+    if(password.length<8){alert('Минимум 8 символов');return;}
+    try{await api('/api/singularity/users/'+encodeURIComponent(id)+'/password',{method:'POST',body:jsonBody({password})});alert('Пароль изменён, все прежние сессии завершены.');}
+    catch(e){alert(e.message);}
+  };
+  window.openChangePassword = function(){document.getElementById('change-password-modal')?.classList.add('open');};
+  window.closeChangePassword = function(){document.getElementById('change-password-modal')?.classList.remove('open');};
+  window.submitPasswordChange = async function(){
+    const current=document.getElementById('change-password-current')?.value||'';
+    const next=document.getElementById('change-password-new')?.value||'';
+    const confirmNext=document.getElementById('change-password-confirm')?.value||'';
+    const error=document.getElementById('change-password-error');
+    if(next.length<8){error.textContent='Новый пароль должен содержать минимум 8 символов.';error.style.display='block';return;}
+    if(next!==confirmNext){error.textContent='Новые пароли не совпадают.';error.style.display='block';return;}
+    const button=document.getElementById('change-password-submit');if(button)button.disabled=true;
+    try{
+      const result=await api('/api/auth/change-password',{method:'POST',body:jsonBody({currentPassword:current,newPassword:next})});
+      ['change-password-current','change-password-new','change-password-confirm'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+      closeChangePassword();
+      alert('Пароль изменён. Остальные устройства отключены. Аккаунт на этом устройстве останется активным.');
+    }catch(e){error.textContent=e.message;error.style.display='block';}
+    finally{if(button)button.disabled=false;}
+  };
+  window.replySupportTicket = async function(id){
+    const input=document.getElementById('support-reply-'+String(id));
+    const message=input?.value.trim()||'';if(!message){alert('Напишите ответ пользователю.');return;}
+    const button=input?.parentElement?.querySelector('button');
+    if(button)button.disabled=true;
+    try{
+      await api('/api/support/'+encodeURIComponent(id)+'/reply',{method:'POST',body:jsonBody({message})});
+      await renderReportsInbox();
+      alert('Ответ отправлен. Обращение передано пользователю на подтверждение.');
+    }catch(e){alert('Не удалось отправить ответ: '+e.message);}
+    finally{if(button)button.disabled=false;}
+  };
   window.renderReportsInbox = async function() {
     const grid=document.getElementById('reports-grid-container');
     if(!grid)return;
@@ -621,18 +884,59 @@
       const result=await api('/api/reports'); const reports=result.reports||[];
       localStorage.setItem('staralgo_reports_db',JSON.stringify(reports));
       if(!reports.length){grid.innerHTML='<div class="empty-placeholder">Жалоб пока нет. Всё спокойно в космосе!</div>';return;}
-      grid.innerHTML=reports.map(r=>`<div class="report-card" id="report-${r.id}"><div class="report-header"><span>Тип: <strong>${String(r.type).toUpperCase()}</strong> | Объект: ${r.targetName||'N/A'}</span><span>От: ${r.reporter}</span></div><div><strong>Причина:</strong> ${r.reason}</div><div style="display:flex;gap:8px;margin-top:5px;">${r.type==='project'?`<button class="auth-btn" onclick="viewPublishedStar('${r.targetOwner}',${r.targetId})">Перейти</button>`:''}<button class="auth-btn" style="color:#ff5555;border-color:#ff5555;" onclick="resolveReport(${r.id},'${r.type}',${r.targetId},'${r.targetOwner}')">Обработать</button><button class="auth-btn" onclick="dismissReport(${r.id})">Отклонить</button></div></div>`).join('');
+      grid.innerHTML=reports.map(r=>{
+        if(r.type==='support'||r.type==='support_guest') return `<div class="report-card" id="report-${r.id}" style="border-color:var(--gold-bright);">
+          <div class="report-header"><strong>🛟 ТЕХПОДДЕРЖКА · ${esc(r.targetName)}</strong><span>От: ${esc(r.reporter)}</span></div>
+          <div style="margin:8px 0;">${(r.messages||[]).map(m=>`<p><strong>${esc(m.username)}:</strong> ${esc(m.body)}</p>`).join('')}</div>
+          <div style="opacity:.8;margin:6px 0;">Статус: ${r.status==='waiting_user'?'Ожидает пользователя':'Открыто'}</div>
+          <textarea id="support-reply-${r.id}" class="form-textarea" rows="3" maxlength="4000" placeholder="Напишите ответ пользователю..."></textarea>
+          <button class="auth-btn" style="margin-top:7px;" onclick="replySupportTicket('${r.id}')">Отправить ответ</button>
+        </div>`;
+        return `<div class="report-card" id="report-${r.id}"><div class="report-header"><span>Тип: <strong>${String(r.type).toUpperCase()}</strong> | Объект: ${esc(r.targetName||'N/A')}</span><span>От: ${esc(r.reporter)}</span></div><div><strong>Причина:</strong> ${esc(r.reason)}</div><div style="display:flex;gap:8px;margin-top:5px;"><button class="auth-btn" onclick="openReportTarget('${r.type}','${r.targetId}','${jsName(r.targetOwner||'')}','${r.targetParentType||''}','${r.targetParentId||''}','${jsName(r.targetParentOwner||'')}')">Перейти к объекту</button><button class="auth-btn" style="color:#ff5555;border-color:#ff5555;" onclick="resolveReport('${r.id}','${r.type}','${r.targetId}','${jsName(r.targetOwner||'')}')">Обработать</button><button class="auth-btn" onclick="dismissReport('${r.id}')">Отклонить</button></div></div>`;
+      }).join('');
     } catch(e){grid.innerHTML=`<div class="empty-placeholder">${e.message}</div>`;}
+  };
+  window.openReportTarget = async function(type,targetId,targetOwnerEncoded,parentType,parentId,parentOwnerEncoded) {
+    const owner=decodeURIComponent(targetOwnerEncoded||'');
+    const parentOwner=decodeURIComponent(parentOwnerEncoded||'');
+    try {
+      if(type==='project') { await viewPublishedStar(owner,targetId); return; }
+      if(type==='user') { await viewUserProfile(owner); return; }
+      if(type==='comment') {
+        if(parentType==='dwarf') {
+          await viewYellowDwarf(parentId);
+          requestAnimationFrame(()=>document.getElementById('dwarf-comment-'+CSS.escape(String(targetId)))?.scrollIntoView({behavior:'smooth',block:'center'}));
+        } else if(parentType==='project') {
+          await viewPublishedStar(parentOwner,parentId);
+          requestAnimationFrame(()=>document.getElementById('comment-'+CSS.escape(String(targetId)))?.scrollIntoView({behavior:'smooth',block:'center'}));
+        } else alert('Не удалось определить публикацию, к которой относится комментарий.');
+      }
+    } catch(e) { alert(e.message); }
+  };
+  window.revokeUserSessions = async function(userId,username){
+    if(!confirm('Завершить все активные сессии аккаунта '+username+'? Пользователю придётся войти снова.'))return;
+    try{
+      const result=await api('/api/admin/users/'+encodeURIComponent(userId)+'/revoke-sessions',{method:'POST',body:jsonBody({})});
+      alert('Готово. Завершено сессий: '+result.revoked);
+    }catch(e){alert(e.message);}
   };
   window.dismissReport = async function(reportId) {
     try { await api(`/api/reports/${reportId}`,{method:'DELETE'}); renderReportsInbox(); }
     catch(e){alert(e.message);}
   };
   window.resolveReport = async function(reportId,type,targetId,targetOwner) {
-    if(!confirm('Подтвердить отправку проекта в Вакуум?'))return;
-    if(type!=='project'){alert('Автоматическое действие для этого типа жалобы пока не настроено.');return;}
-    try { await api(`/api/admin/reports/${reportId}`,{method:'POST',body:jsonBody({action:'delete-project'})}); await refreshBootstrap(); renderReportsInbox(); }
-    catch(e){alert(e.message);}
+    const action=type==='project'?'delete-project':type==='comment'?'delete-comment':'resolve-user';
+    const promptText=type==='project'?'Отправить проект в Вакуум?':type==='comment'?'Удалить этот комментарий и закрыть жалобу?':'Отметить жалобу на пользователя как обработанную?';
+    if(!confirm(promptText))return;
+    try {
+      await api(`/api/admin/reports/${reportId}`,{method:'POST',body:jsonBody({action})});
+      await refreshBootstrap({render:false});
+      renderReportsInbox();
+      if(type==='comment' && activeDwarfObject) {
+        const d=await api(`/api/dwarfs/${activeDwarfObject.id}`);
+        activeDwarfObject=d.dwarf; renderDwarfCommentsList(activeDwarfObject);
+      }
+    } catch(e){alert(e.message);}
   };
   const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
   window.saEscapeHTML = esc;
@@ -646,7 +950,7 @@
     if(!comments.length){box.innerHTML='<div class="empty-placeholder">Пока нет комментариев...</div>';return;}
     box.innerHTML=comments.map(c=>{
       const mine=currentUser && currentUser.username.toLowerCase()===String(c.author).toLowerCase();
-      return `<div class="comment-item${c.parentId?' comment-reply-item':''}" id="comment-${Number(c.id)}"><div class="comment-header-row"><span class="comment-author" onclick="viewUserProfile(decodeURIComponent('${jsName(c.author)}'))">${esc(c.author)}</span><div class="comment-actions-row"><button class="comment-action-btn" onclick="setReplyTo(${Number(c.id)},decodeURIComponent('${jsName(c.author)}'))">Ответить</button>${!mine?`<button class="comment-action-btn" style="color:#ff5555;" onclick="openReportModal('comment',${Number(c.id)},'Комментарий','${jsName(c.author)}')">⚠️</button>`:''}${mine?`<button class="comment-action-btn" style="color:#ff5555;" onclick="deleteComment(${Number(c.id)})">Удалить</button>`:''}</div></div><div>${c.replyToUser?`<span style="opacity:.7;font-size:.9rem;">Ответ для @${esc(c.replyToUser)}:</span><br>`:''}${esc(c.text)}</div></div>`;
+      return `<div class="comment-item${c.parentId?' comment-reply-item':''}" id="comment-${esc(c.id)}"><div class="comment-header-row"><span class="comment-author" onclick="viewUserProfile(decodeURIComponent('${jsName(c.author)}'))">${esc(c.author)}</span><div class="comment-actions-row"><button class="comment-action-btn" onclick="setReplyTo('${jsName(c.id)}',decodeURIComponent('${jsName(c.author)}'))">Ответить</button>${!mine?`<button class="comment-action-btn" style="color:#ff5555;" onclick="openReportModal('comment',decodeURIComponent('${jsName(c.id)}'),'Комментарий',decodeURIComponent('${jsName(c.author)}'),'project',${Number(project.id)})">⚠️</button>`:''}${(mine||(currentUser&&['[Сингулярность]','[Администратор]','[Модератор]'].includes(currentUser.role)))?`<button class="comment-action-btn" style="color:#ff5555;" onclick="deleteComment(decodeURIComponent('${jsName(c.id)}'))">Удалить</button>`:''}</div></div><div>${c.replyToUser?`<span style="opacity:.7;font-size:.9rem;">Ответ для @${esc(c.replyToUser)}:</span><br>`:''}${esc(c.text)}</div></div>`;
     }).join('');
   };
   window.renderDwarfCommentsList = function(dwarf) {
@@ -656,7 +960,7 @@
     if(!comments.length){box.innerHTML='<div class="empty-placeholder">Пока нет комментариев...</div>';return;}
     box.innerHTML=comments.map(c=>{
       const mine=currentUser && currentUser.username.toLowerCase()===String(c.author).toLowerCase();
-      return `<div class="comment-item"><div class="comment-header-row"><span class="comment-author" onclick="viewUserProfile(decodeURIComponent('${jsName(c.author)}'))">${esc(c.author)}</span><div class="comment-actions-row">${mine?`<button class="comment-action-btn" style="color:#ff5555;" onclick="deleteDwarfComment(${Number(c.id)})">Удалить</button>`:''}</div></div><div>${esc(c.text)}</div></div>`;
+      return `<div class="comment-item" id="dwarf-comment-${esc(c.id)}"><div class="comment-header-row"><span class="comment-author" onclick="viewUserProfile(decodeURIComponent('${jsName(c.author)}'))">${esc(c.author)}</span><div class="comment-actions-row">${!mine?`<button class="comment-action-btn" style="color:#ff5555;" onclick="openReportModal('comment',decodeURIComponent('${jsName(c.id)}'),'Комментарий к новости',decodeURIComponent('${jsName(c.author)}'),'dwarf',${Number(dwarf.id)})">⚠️</button>`:''}${(mine||(currentUser&&['[Сингулярность]','[Администратор]','[Модератор]'].includes(currentUser.role)))?`<button class="comment-action-btn" style="color:#ff5555;" onclick="deleteDwarfComment('${jsName(c.id)}')">Удалить</button>`:''}</div></div><div>${esc(c.text)}</div></div>`;
     }).join('');
   };
   window.renderZvezdnyFeed = function() {
@@ -697,7 +1001,7 @@
     const dwarfs=readObjectCache('staralgo_yellow_dwarfs_db',[]).slice().sort((a,b)=>(b.date||0)-(a.date||0));
     if(!dwarfs.length){grid.innerHTML='<div class="empty-placeholder">Новости (Жёлтые Карлики) пока отсутствуют...</div>';return;}
     const db=readObjectCache('staralgo_users_db',{});
-    grid.innerHTML=dwarfs.map(d=>`<div class="dwarf-banner-card" onclick="viewYellowDwarf(${Number(d.id)})"><img src="${esc(d.coverUrl||generateYellowDwarfPanorama(d.name+d.id))}" class="dwarf-cover-large" alt="Cover"><div style="display:flex;justify-content:space-between;align-items:center;"><div class="feed-star-title" style="font-size:1.8rem;">${esc(d.name)}</div>${currentUser&&currentUser.username.toLowerCase()===String(d.author).toLowerCase()?`<button class="auth-btn" style="color:#ff5555;border-color:#ff5555;" onclick="event.stopPropagation();deleteYellowDwarf(${Number(d.id)})">🗑 Удалить</button>`:''}</div><div class="feed-star-author">Автор: ${esc(d.author)}${db[String(d.author).toLowerCase()]?.isSupernova?' ⭐':''} [Жёлтый Карлик]</div><div class="feed-star-desc" style="font-size:1.2rem;">${esc(d.description)}</div><div style="display:flex;justify-content:space-between;font-size:1.1rem;color:var(--gold-bright);margin-top:8px;border-top:1px dashed rgba(212,178,54,.3);padding-top:8px;"><span>❤️ ${Number(d.likes||0)} лайков</span><span>💬 ${Number(d.commentsCount||0)} комментариев</span><span>📅 ${new Date(d.date).toLocaleDateString()}</span></div></div>`).join('');
+    grid.innerHTML=dwarfs.map(d=>`<div class="dwarf-banner-card" onclick="viewYellowDwarf(${Number(d.id)})"><img src="${esc(d.coverUrl||generateYellowDwarfPanorama(d.name+d.id))}" class="dwarf-cover-large" alt="Cover"><div style="display:flex;justify-content:space-between;align-items:center;"><div class="feed-star-title" style="font-size:1.8rem;">${esc(d.name)}</div>${currentUser&&(currentUser.username.toLowerCase()===String(d.author).toLowerCase()||['[Сингулярность]','[Администратор]','[Модератор]'].includes(currentUser.role))?`<button class="auth-btn" style="color:#ff5555;border-color:#ff5555;" onclick="event.stopPropagation();deleteYellowDwarf(${Number(d.id)})">🗑 Удалить</button>`:''}</div><div class="feed-star-author">Автор: ${esc(d.author)}${db[String(d.author).toLowerCase()]?.isSupernova?' ⭐':''} [Жёлтый Карлик]</div><div class="feed-star-desc" style="font-size:1.2rem;">${esc(d.description)}</div><div style="display:flex;justify-content:space-between;font-size:1.1rem;color:var(--gold-bright);margin-top:8px;border-top:1px dashed rgba(212,178,54,.3);padding-top:8px;"><span>❤️ ${Number(d.likes||0)} лайков</span><span>💬 ${Number(d.commentsCount||0)} комментариев</span><span>📅 ${new Date(d.date).toLocaleDateString()}</span></div></div>`).join('');
   };
   window.handleDwarfCoverUpload = function(event) {
     const file=event.target.files?.[0]; if(!file)return;
@@ -810,7 +1114,7 @@ except Exception as error:
   };
   window.addEventListener('beforeunload', () => { if (projectSaveTimer) clearTimeout(projectSaveTimer); });
 
-  const start = () => window.initApp();
+  const start = () => window.initApp().then(() => window.restoreRoute?.());
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once:true });
   else start();
 })();
