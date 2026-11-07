@@ -614,6 +614,33 @@
       }
     } catch (error) { alert(error.message); }
   };
+  window.handlePanoramaUpload = async function(event) {
+    const input = event.target;
+    const file = input.files?.[0];
+    if (!file || !activeStarObject || !currentUser) return;
+    if (activeStarObject.author.toLowerCase() !== currentUser.username.toLowerCase()) { input.value=''; return; }
+    if (!/^image\/(png|jpeg|webp|gif)$/.test(file.type)) { alert('Выбери PNG, JPG, WEBP или GIF.'); input.value=''; return; }
+    if (file.size > 10 * 1024 * 1024) { alert('Панорама должна быть не больше 10 МБ.'); input.value=''; return; }
+    try {
+      const body = new FormData();
+      body.append('file', file, file.name || 'panorama');
+      body.append('purpose', 'panorama');
+      const uploaded = await api('/api/avatar/upload', { method:'POST', body });
+      const url = String(uploaded.secure_url || '');
+      if (!/^https:\/\//i.test(url)) throw new Error('Сервис вернул некорректную ссылку на панораму');
+      activeStarObject.coverUrl = url;
+      if (await saveProjectNow()) {
+        const field = document.getElementById('cover-url-input');
+        if (field) field.value = url;
+        const image = document.getElementById('star-panorama-img');
+        const zoom = document.getElementById('zoomed-panorama-img');
+        if (image) image.src = url;
+        if (zoom) zoom.src = url;
+        renderZvezdnyFeed();
+      }
+    } catch (error) { alert(error.message || 'Не удалось загрузить панораму'); }
+    finally { input.value = ''; }
+  };
   window.saveCoverUrl = async function() {
     if (!activeStarObject || !currentUser || activeStarObject.author.toLowerCase() !== currentUser.username.toLowerCase()) return;
     const input = document.getElementById('cover-url-input');
