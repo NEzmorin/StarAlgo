@@ -4235,6 +4235,7 @@
             }
 
             const container = document.getElementById('editor-runtime-container');
+            container.classList.toggle('image-project-preview', project.category === 'Картинки');
             container.innerHTML = '';
 
             if (project.category === 'Roblox') {
