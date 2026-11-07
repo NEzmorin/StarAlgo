@@ -504,6 +504,21 @@ async function handle(request, env) {
     return json({ user: publicUser(found), ...(await createSession(found.id, env)) });
   }
   if (path === '/api/auth/me' && method === 'GET') return user ? json({ user: publicUser(user) }) : json({ error:'Не авторизован' },401);
+  if (path === '/api/auth/change-password' && method === 'POST') {
+    if(!user) fail(401,'Сначала войдите в аккаунт');
+    const body=await readBody(request);
+    if(typeof body.currentPassword!=='string'||typeof body.newPassword!=='string') fail(400,'Заполните оба поля');
+    if(body.newPassword.length<8||body.newPassword.length>256) fail(400,'Новый пароль должен содержать от 8 до 256 символов');
+    if(await passwordHash(body.currentPassword,user.password_salt,user.password_iterations)!==user.password_hash) fail(403,'Текущий пароль указан неверно');
+    const salt=b64(crypto.getRandomValues(new Uint8Array(16))),iterations=100000;
+    const hash=await passwordHash(body.newPassword,salt,iterations);
+    await env.DB.prepare('UPDATE users SET password_hash=?,password_salt=?,password_iterations=?,updated_at=? WHERE id=?').bind(hash,salt,iterations,now(),user.id).run();
+    const token=(request.headers.get('Authorization')||'').replace(/^Bearer\\s+/i,'');
+    const tokenHash=token?await digest(token):'';
+    const revoked=await env.DB.prepare('DELETE FROM sessions WHERE user_id=? AND token_hash!=?').bind(user.id,tokenHash).run();
+    return json({ok:true,revoked:Number(revoked.meta.changes||0)});
+  }
+
   if (path === '/api/auth/logout' && method === 'POST') {
     const token = (request.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
     if (token) await env.DB.prepare('DELETE FROM sessions WHERE token_hash=?').bind(await digest(token)).run();
@@ -540,7 +555,13 @@ async function handle(request, env) {
     const body=await readBody(request), message=text(body.message,4000,'Ответ');
     const rawId=supportReply[1], isGuest=rawId.startsWith('guest-'), ticketId=isGuest?rawId.slice(6):rawId;
     const stamp=now();
-    if(isGuest) fail(403,'Отвечать можно только на обращения, отправленные из зарегистрированного аккаунта.');
+    if(isGuest){
+      const ticket=await env.DB.prepare('SELECT * FROM guest_support_tickets WHERE id=?').bind(ticketId).first();
+      if(!ticket) fail(404,'Обращение не найдено');
+      await env.DB.prepare("INSERT INTO guest_support_messages(id,ticket_id,sender_name,sender_role,body,created_at) VALUES(?,?,?,'Техподдержка',?,?)").bind(makeId(),ticket.id,user.username,message,stamp).run();
+      await env.DB.prepare("UPDATE guest_support_tickets SET status='waiting_user',updated_at=? WHERE id=?").bind(stamp,ticket.id).run();
+      return json({ok:true});
+    }
     const ticket=await env.DB.prepare('SELECT * FROM support_tickets WHERE id=?').bind(ticketId).first();
     if(!ticket) fail(404,'Обращение не найдено');
     await env.DB.prepare('INSERT INTO support_messages(id,ticket_id,sender_id,sender_role,body,created_at) VALUES(?,?,?,?,?,?)').bind(makeId(),ticket.id,user.id,user.role,message,stamp).run();
