@@ -360,7 +360,7 @@ async function handle(request, env) {
     await env.DB.prepare("INSERT INTO guest_support_messages(id,ticket_id,sender_name,sender_role,body,created_at) VALUES(?,?,?,'Гость',?,?)").bind(makeId(),id,guestName,message,stamp).run();
     return json({id,accessKey},201);
   }
-  const guestConfirm=path.match(/^\/api\/support\/guest\/([\\w-]+)\/confirm$/);
+  const guestConfirm=path.match(/^\/api\/support\/guest\/([\w-]+)\/confirm$/);
   if(guestConfirm && method==='POST'){
     await ensureSupportSchema(env);
     const body=await readBody(request), key=String(body.key||'');
