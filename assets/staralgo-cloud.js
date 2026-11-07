@@ -1109,9 +1109,12 @@
     };
     const stopRun = () => cleanup();
     const onMessage = event => {
-      if (!event.data || event.data.type !== 'staralgo-python-output' || event.data.token !== token) return;
-      outputBox.textContent = String(event.data.output || '').slice(0, 50000);
-      outputBox.style.color = event.data.ok ? '#55ff55' : '#ff5555';
+      let data = event.data;
+      if (typeof data === 'string') { try { data = JSON.parse(data); } catch (_) { return; } }
+      if (!data || data.type !== 'staralgo-python-output' || data.token !== token) return;
+      outputBox.textContent = String(data.output || '').slice(0, 50000);
+      outputBox.style.color = data.ok ? '#55ff55' : '#ff5555';
+      outputBox.scrollTop = outputBox.scrollHeight;
       if (timeoutId) window.clearTimeout(timeoutId);
       window.removeEventListener('message', onMessage);
       if (activePythonSandboxCleanup === stopRun) activePythonSandboxCleanup = null;
