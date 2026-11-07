@@ -8,9 +8,6 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css">
     
-    <!-- Brython for Python + Turtle graphics in browser -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/brython/3.11.1/brython.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/brython/3.11.1/brython_stdlib.js"></script>
 
     <style>
         @font-face {
@@ -4420,13 +4417,11 @@
             } else if (project.category === 'HTML') {
                 if (isReadOnly) {
                     container.innerHTML = `
-                        <div style="color: var(--gold-bright); margin-bottom: 5px;">Результат выполнения HTML</div>
-                        <iframe sandbox="allow-scripts" id="html-preview-frame" style="width: 100%; height: 320px; background: #fff; border: 2px solid var(--gold-main); border-radius: 8px;"></iframe>
+                        <div style="color: var(--gold-bright); margin-bottom: 5px;">Результат HTML · изолированный просмотр</div>
+                        <div id="html-preview-status" style="font-size:.9rem;opacity:.75;">Загрузка безопасного предпросмотра…</div>
+                        <iframe sandbox="allow-scripts" referrerpolicy="no-referrer" id="html-preview-frame" style="width: 100%; height: 320px; background: #fff; border: 2px solid var(--gold-main); border-radius: 8px;"></iframe>
                     `;
-                    setTimeout(() => {
-                        const previewFrame = document.getElementById('html-preview-frame');
-                        if (previewFrame) previewFrame.srcdoc = project.data || '';
-                    }, 50);
+                    setTimeout(() => runHtmlSandbox(project.data || ''), 50);
                 } else {
                     container.innerHTML = `
                         <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:5px;">
@@ -4540,35 +4535,10 @@
         };
 
         function runPythonReadonlyResult(code) {
-            const consoleBox = document.getElementById('python-console-output');
-            const canvasContainer = document.getElementById('turtle-graphics-canvas-container');
-            if (!consoleBox || !canvasContainer) return;
-            canvasContainer.innerHTML = '<canvas id="turtle-canvas" width="400" height="180" style="background:#fff;"></canvas>';
-            try {
-                window.py_stdout_buffer = '';
-                const wrappedCode = `
-import sys
-import io
-from browser import document, window
-
-class BrowserOutput(io.StringIO):
-    def write(self, s):
-        window.py_stdout_buffer += s
-
-sys.stdout = BrowserOutput()
-sys.stderr = sys.stdout
-
-try:
-    exec(${JSON.stringify(code)})
-except Exception as e:
-    print("Ошибка:", e)
-`;
-                window.__BRYTHON__.run_code(wrappedCode, 'python_script_ro');
-                consoleBox.textContent = window.py_stdout_buffer || 'Выполнено успешно!';
-                consoleBox.style.color = '#55ff55';
-            } catch (err) {
-                consoleBox.style.color = '#ff5555';
-                consoleBox.textContent = 'Ошибка: ' + err.message;
+            if (typeof window.runPythonSandbox === 'function') window.runPythonSandbox(code);
+            else {
+                const output = document.getElementById('python-console-output');
+                if (output) output.textContent = 'Изолированная среда Python не загрузилась. Обновите страницу.';
             }
         }
 
@@ -5055,8 +5025,8 @@ except Exception as e:
             reader.readAsDataURL(file);
         }
 
-        function runHtmlSandbox() {
-            const code = codeMirrorEditor ? codeMirrorEditor.getValue() : '';
+        function runHtmlSandbox(sourceCode) {
+            const code = sourceCode !== undefined ? String(sourceCode || '') : (codeMirrorEditor ? codeMirrorEditor.getValue() : '');
             const previewFrame = document.getElementById('html-preview-frame');
             if (!previewFrame) return;
             if (code.length > 200000) {
