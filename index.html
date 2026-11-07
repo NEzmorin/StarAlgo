@@ -4976,21 +4976,23 @@ except Exception as e:
             reader.readAsDataURL(file);
         }
 
-        function renderLocalScratchPlayer(sb3Source) {
+                function renderLocalScratchPlayer(sb3Source) {
             const iframe = document.getElementById('scratch-player-iframe');
             if (!iframe) return;
             const source = String(sb3Source || '').trim();
+
+            // Published Scratch project pages use the Scratch/TurboWarp project player directly.
             let scratchProjectId = '';
+            let parsedSource = null;
             try {
-                const scratchUrl = new URL(source);
-                if (scratchUrl.hostname === 'scratch.mit.edu' || scratchUrl.hostname === 'www.scratch.mit.edu') {
-                    const scratchParts = scratchUrl.pathname.split('/').filter(Boolean);
+                parsedSource = new URL(source);
+                if (parsedSource.hostname === 'scratch.mit.edu' || parsedSource.hostname === 'www.scratch.mit.edu') {
+                    const scratchParts = parsedSource.pathname.split('/').filter(Boolean);
                     scratchProjectId = scratchParts[0] === 'projects' && /^[0-9]+$/.test(scratchParts[1] || '') ? scratchParts[1] : '';
                 }
             } catch (_) {}
+
             if (scratchProjectId) {
-                // TurboWarp's embed player resizes its stage to the iframe dimensions
-                // and provides its own fullscreen control for shared Scratch projects.
                 iframe.src = 'https://turbowarp.org/' + scratchProjectId + '/embed?fullscreen-background=%23080808';
                 iframe.removeAttribute('srcdoc');
                 iframe.setAttribute('allowfullscreen', '');
@@ -5000,29 +5002,38 @@ except Exception as e:
                 iframe.style.colorScheme = 'auto';
                 return;
             }
-            let driveId = '';
-            try {
-                const driveUrl = new URL(source);
-                if (driveUrl.hostname === 'drive.google.com') {
-                    const parts = driveUrl.pathname.split('/').filter(Boolean);
-                    driveId = (parts[0] === 'file' && parts[1] === 'd' ? parts[2] : '') || driveUrl.searchParams.get('id') || '';
+
+            // The Cloudflare download proxy is exclusively for Google Drive share/download URLs.
+            // Catbox and every other HTTPS host must be handed straight to TurboWarp unchanged.
+            const host = parsedSource?.hostname?.toLowerCase() || '';
+            const isGoogleDrive = host === 'drive.google.com' || host === 'www.drive.google.com' ||
+                host === 'drive.usercontent.google.com';
+            if (isGoogleDrive) {
+                const parts = parsedSource.pathname.split('/').filter(Boolean);
+                const driveId = (parts[0] === 'file' && parts[1] === 'd' ? parts[2] : '') ||
+                    parsedSource.searchParams.get('id') || '';
+                if (!/^[A-Za-z0-9_-]{10,100}$/.test(driveId)) {
+                    iframe.removeAttribute('src');
+                    iframe.srcdoc = `<!DOCTYPE html><html><body style="background:#0c0b08;color:#d4b236;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:90vh;margin:0;text-align:center"><div style="border:2px solid #d4b236;padding:20px;border-radius:10px"><h2>Google Drive</h2><p>Не удалось определить ID файла. Откройте доступ «Все, у кого есть ссылка» и вставьте ссылку на сам файл .sb3.</p></div></body></html>`;
+                    return;
                 }
-            } catch (_) {}
-            if (driveId) {
                 const downloadUrl = 'https://staralgo-api.nezmorin-official.workers.dev/api/scratch/drive/' + encodeURIComponent(driveId);
                 iframe.src = 'https://turbowarp.org/embed?project_url=' + encodeURIComponent(downloadUrl);
                 iframe.removeAttribute('srcdoc');
                 iframe.setAttribute('allowfullscreen', '');
                 return;
             }
+
+            // All non-Drive file hosts (including Catbox) bypass the Google Drive proxy.
             if (/^https:\/\//i.test(source)) {
                 iframe.src = 'https://turbowarp.org/embed?project_url=' + encodeURIComponent(source);
                 iframe.removeAttribute('srcdoc');
                 iframe.setAttribute('allowfullscreen', '');
                 return;
             }
+
             iframe.removeAttribute('src');
-            iframe.srcdoc = `<!DOCTYPE html><html><body style="background:#0c0b08;color:#d4b236;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:90vh;margin:0;text-align:center"><div style="border:2px solid #d4b236;padding:20px;border-radius:10px"><h2>Scratch-проект</h2><p>Старый файл хранился внутри StarAlgo и не может быть воспроизведён этим плеером. Загрузите .sb3 на Catbox и добавьте прямую ссылку в редакторе.</p></div></body></html>`;
+            iframe.srcdoc = `<!DOCTYPE html><html><body style="background:#0c0b08;color:#d4b236;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:90vh;margin:0;text-align:center"><div style="border:2px solid #d4b236;padding:20px;border-radius:10px"><h2>Scratch-проект</h2><p>Загрузите .sb3 на Catbox или другой хостинг с прямой HTTPS-ссылкой на файл, затем добавьте её в редакторе.</p></div></body></html>`;
         }
 
         function handleCoverUpload(event) {
