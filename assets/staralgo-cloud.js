@@ -785,9 +785,16 @@
       box.innerHTML=tickets.map(t=>`<div class="report-card" style="margin:8px 0;">
         <div class="report-header"><strong>${esc(t.subject)}</strong><span>${t.status==='waiting_user'?'Ожидает вашего ответа':t.status==='resolved'?'Решено':'В работе'}</span></div>
         <div style="max-height:220px;overflow:auto;margin:8px 0;">${t.messages.map(m=>`<p><strong>${esc(m.username)}:</strong> ${esc(m.body)}</p>`).join('')}</div>
-        ${t.status==='waiting_user'?'<div style="opacity:.8;">Ответьте команде через форму ниже или подтвердите решение после того, как проблема действительно решена.</div>':''}
+        ${t.status==='waiting_user'?`<div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="auth-btn" onclick="confirmGuestSupportResolved('${t.id}',true)">Да, проблема решена</button><button class="auth-btn" onclick="confirmGuestSupportResolved('${t.id}',false)">Нет, проблема осталась</button></div>`:''}
       </div>`).join('');
     }catch(e){box.innerHTML='<div class="empty-placeholder">Не удалось загрузить переписку: '+esc(e.message)+'</div>';}
+  };
+  window.confirmGuestSupportResolved = async function(id,resolved){
+    const key=localStorage.getItem(GUEST_SUPPORT_KEY);if(!key)return;
+    let message='';
+    if(!resolved){message=prompt('Что осталось нерешённым?')||'';if(!message.trim())return;}
+    try{await api('/api/support/guest/'+encodeURIComponent(id)+'/confirm',{method:'POST',body:jsonBody({key,resolved,message})});await loadMySupportTickets();}
+    catch(e){alert('Не удалось отправить ответ: '+e.message);}
   };
   window.confirmSupportResolved = async function(id,resolved){
     let message='';
@@ -798,8 +805,14 @@
   window.replySupportTicket = async function(id){
     const input=document.getElementById('support-reply-'+CSS.escape(String(id)));
     const message=input?.value.trim()||'';if(!message){alert('Напишите ответ пользователю.');return;}
-    try{await api('/api/support/'+encodeURIComponent(id)+'/reply',{method:'POST',body:jsonBody({message})});renderReportsInbox();}
-    catch(e){alert(e.message);}
+    const button=input?.parentElement?.querySelector('button');
+    if(button)button.disabled=true;
+    try{
+      await api('/api/support/'+encodeURIComponent(id)+'/reply',{method:'POST',body:jsonBody({message})});
+      await renderReportsInbox();
+      alert('Ответ отправлен. Обращение передано пользователю на подтверждение.');
+    }catch(e){alert('Не удалось отправить ответ: '+e.message);}
+    finally{if(button)button.disabled=false;}
   };
   window.renderReportsInbox = async function() {
     const grid=document.getElementById('reports-grid-container');
