@@ -283,6 +283,20 @@ async function fetchDriveScratchProject(fileId) {
   return json({ error: 'Google Drive не отдал открытый .sb3-файл. Проверьте доступ «Все, у кого есть ссылка» и что ссылка ведёт на файл .sb3.' }, 502);
 }
 
+async function ensureSupportSchema(env) {
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS support_tickets (
+    id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    subject TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'open',
+    created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL
+  )`).run();
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS support_messages (
+    id TEXT PRIMARY KEY, ticket_id TEXT NOT NULL REFERENCES support_tickets(id) ON DELETE CASCADE,
+    sender_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    sender_role TEXT NOT NULL, body TEXT NOT NULL, created_at INTEGER NOT NULL
+  )`).run();
+  await env.DB.prepare('CREATE INDEX IF NOT EXISTS support_tickets_status_idx ON support_tickets(status,updated_at DESC)').run();
+  await env.DB.prepare('CREATE INDEX IF NOT EXISTS support_messages_ticket_idx ON support_messages(ticket_id,created_at)').run();
+}
 async function handle(request, env) {
   const url = new URL(request.url), path = url.pathname.replace(/\/+$/, '') || '/', method = request.method;
   if (path.startsWith('/api/scratch/drive/') && method === 'OPTIONS') return new Response(null, { status: 204, headers: { 'access-control-allow-methods': 'GET,HEAD,OPTIONS', 'access-control-allow-headers': 'Content-Type', 'access-control-max-age': '86400' } });
@@ -441,6 +455,68 @@ async function handle(request, env) {
   if (path === '/api/bootstrap' && method === 'GET') return json(await bootstrap(env, user));
   if (path.startsWith('/api/') && !user && !(method === 'GET' && (path === '/api/feed' || path === '/api/projects' || path === '/api/dwarfs' || path.startsWith('/api/users/') || /^\/api\/projects\/[\w-]+$/.test(path) || /^\/api\/projects\/[\w-]+\/comments$/.test(path) || /^\/api\/dwarfs\/[\w-]+$/.test(path) || /^\/api\/dwarfs\/[\w-]+\/comments$/.test(path)))) fail(401, 'Необходима авторизация');
   if (user?.is_banned && (!user.ban_until || user.ban_until > now()) && !isSingularity(user)) fail(403, 'Аккаунт заблокирован');
+  if (path === '/api/support' && method === 'POST') {
+    await ensureSupportSchema(env);
+    const body=await readBody(request);
+    const subject=text(body.subject || 'Обращение в техподдержку',120,'Тема');
+    const message=text(body.message,4000,'Сообщение');
+    const id=makeId(), stamp=now();
+    await env.DB.prepare('INSERT INTO support_tickets(id,user_id,subject,status,created_at,updated_at) VALUES(?,?,?,\'open\',?,?)').bind(id,user.id,subject,stamp,stamp).run();
+    await env.DB.prepare('INSERT INTO support_messages(id,ticket_id,sender_id,sender_role,body,created_at) VALUES(?,?,?,?,?,?)').bind(makeId(),id,user.id,user.role,message,stamp).run();
+    return json({id},201);
+  }
+  if (path === '/api/support' && method === 'GET') {
+    await ensureSupportSchema(env);
+    const rows=await env.DB.prepare(`SELECT t.*,u.username FROM support_tickets t JOIN users u ON u.id=t.user_id
+      WHERE ${isStaff(user)?'1=1':'t.user_id=?'} ORDER BY t.updated_at DESC LIMIT 100`).bind(...(isStaff(user)?[]:[user.id])).all();
+    const tickets=[];
+    for(const row of rows.results){
+      const msgs=await env.DB.prepare(`SELECT m.*,u.username FROM support_messages m JOIN users u ON u.id=m.sender_id WHERE m.ticket_id=? ORDER BY m.created_at ASC`).bind(row.id).all();
+      tickets.push({id:String(row.id),subject:row.subject,status:row.status,username:row.username,userId:row.user_id,createdAt:Number(row.created_at),updatedAt:Number(row.updated_at),messages:msgs.results.map(m=>({id:String(m.id),username:m.username,role:m.sender_role,body:m.body,date:Number(m.created_at)}))});
+    }
+    return json({tickets});
+  }
+  const supportReply=path.match(/^\/api\/support\/([\w-]+)\/reply$/);
+  if(supportReply && method==='POST'){
+    await ensureSupportSchema(env);
+    if(!isStaff(user)) fail(403,'Отвечать на обращения может только команда модерации');
+    const body=await readBody(request), message=text(body.message,4000,'Ответ');
+    const ticket=await env.DB.prepare('SELECT * FROM support_tickets WHERE id=?').bind(supportReply[1]).first();
+    if(!ticket) fail(404,'Обращение не найдено');
+    const stamp=now();
+    await env.DB.prepare('INSERT INTO support_messages(id,ticket_id,sender_id,sender_role,body,created_at) VALUES(?,?,?,?,?,?)').bind(makeId(),ticket.id,user.id,user.role,message,stamp).run();
+    await env.DB.prepare("UPDATE support_tickets SET status='waiting_user',updated_at=? WHERE id=?").bind(stamp,ticket.id).run();
+    await addNotification(env,ticket.user_id,user.id,'support_reply','Техподдержка ответила на ваше обращение: '+ticket.subject,{linkType:'support',ticketId:ticket.id});
+    return json({ok:true});
+  }
+  const supportConfirm=path.match(/^\/api\/support\/([\w-]+)\/confirm$/);
+  if(supportConfirm && method==='POST'){
+    await ensureSupportSchema(env);
+    const body=await readBody(request);
+    const ticket=await env.DB.prepare('SELECT * FROM support_tickets WHERE id=?').bind(supportConfirm[1]).first();
+    if(!ticket || ticket.user_id!==user.id) fail(404,'Обращение не найдено');
+    if(ticket.status!=='waiting_user') fail(409,'Сначала дождитесь ответа техподдержки');
+    const stamp=now();
+    if(body.resolved===true){
+      await env.DB.prepare("UPDATE support_tickets SET status='resolved',updated_at=? WHERE id=?").bind(stamp,ticket.id).run();
+      await env.DB.prepare('INSERT INTO support_messages(id,ticket_id,sender_id,sender_role,body,created_at) VALUES(?,?,?,?,?,?)').bind(makeId(),ticket.id,user.id,user.role,'Пользователь подтвердил: проблема решена.',stamp).run();
+    } else {
+      const note=text(body.message || 'Проблема не решена, прошу продолжить помощь.',1000,'Комментарий',true);
+      await env.DB.prepare("UPDATE support_tickets SET status='open',updated_at=? WHERE id=?").bind(stamp,ticket.id).run();
+      await env.DB.prepare('INSERT INTO support_messages(id,ticket_id,sender_id,sender_role,body,created_at) VALUES(?,?,?,?,?,?)').bind(makeId(),ticket.id,user.id,user.role,note || 'Проблема не решена, прошу продолжить помощь.',stamp).run();
+    }
+    return json({ok:true});
+  }
+  const revokeSessions=path.match(/^\/api\/admin\/users\/([\w-]+)\/revoke-sessions$/);
+  if(revokeSessions && method==='POST'){
+    if(!isAdmin(user)) fail(403,'Только администратор или Сингулярность могут завершать все сессии');
+    const target=await env.DB.prepare('SELECT id,role,username FROM users WHERE id=?').bind(revokeSessions[1]).first();
+    if(!target || target.role==='[Сингулярность]' && !isSingularity(user)) fail(403,'Недостаточно прав');
+    if(target.id===user.id) fail(400,'Нельзя завершить собственную сессию этой кнопкой');
+    const result=await env.DB.prepare('DELETE FROM sessions WHERE user_id=?').bind(target.id).run();
+    return json({ok:true,revoked:Number(result.meta.changes||0),username:target.username});
+  }
+
 
   if (path === '/api/profile' && method === 'GET') return json({ user: await getProfile(env, user, user) });
   if (path === '/api/profile' && method === 'PATCH') {
@@ -715,6 +791,15 @@ async function handle(request, env) {
       targetParentId:String(r.comment_project_id||r.comment_dwarf_id||''),targetParentOwner:r.comment_parent_owner||(r.du_username||''),
       reporter:r.reporter,reason:r.reason,date:Number(r.created_at)
     }))});
+    await ensureSupportSchema(env);
+    const supportRows=await env.DB.prepare(`SELECT t.*,u.username FROM support_tickets t JOIN users u ON u.id=t.user_id WHERE t.status!='resolved' ORDER BY t.updated_at DESC LIMIT 100`).all();
+    const supportItems=[];
+    for(const t of supportRows.results){
+      const messages=await env.DB.prepare('SELECT m.*,u.username FROM support_messages m JOIN users u ON u.id=m.sender_id WHERE m.ticket_id=? ORDER BY m.created_at ASC').bind(t.id).all();
+      supportItems.push({id:String(t.id),type:'support',targetName:t.subject,targetId:String(t.id),reporter:t.username,reason:messages.results.map(m=>m.username+': '+m.body).join('\\n'),date:Number(t.created_at),status:t.status,messages:messages.results.map(m=>({username:m.username,body:m.body,date:Number(m.created_at)}))});
+    }
+    const standard=rows.results.map(r=>({id:String(r.id),type:r.target_type,targetId:String(r.target_id),targetName:r.target_name,targetOwner:r.target_owner||'',targetParentType:r.comment_project_id?'project':r.comment_dwarf_id?'dwarf':'',targetParentId:String(r.comment_project_id||r.comment_dwarf_id||''),targetParentOwner:r.comment_parent_owner||(r.du_username||''),reporter:r.reporter,reason:r.reason,date:Number(r.created_at)}));
+    return json({reports:[...supportItems,...standard]});
   }
   const reportMatch = path.match(/^\/api\/reports\/([\w-]+)$/);
   if (reportMatch && method === 'DELETE') {
