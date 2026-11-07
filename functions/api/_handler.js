@@ -785,12 +785,6 @@ async function handle(request, env) {
       LEFT JOIN yellow_dwarfs yd ON yd.id=dc.dwarf_id
       LEFT JOIN users du ON du.id=yd.author_id
       WHERE r.status='open' ORDER BY r.created_at DESC LIMIT 100`).all();
-    return json({reports:rows.results.map(r=>({
-      id:String(r.id),type:r.target_type,targetId:String(r.target_id),targetName:r.target_name,
-      targetOwner:r.target_owner||'',targetParentType:r.comment_project_id?'project':r.comment_dwarf_id?'dwarf':'',
-      targetParentId:String(r.comment_project_id||r.comment_dwarf_id||''),targetParentOwner:r.comment_parent_owner||(r.du_username||''),
-      reporter:r.reporter,reason:r.reason,date:Number(r.created_at)
-    }))});
     await ensureSupportSchema(env);
     const supportRows=await env.DB.prepare(`SELECT t.*,u.username FROM support_tickets t JOIN users u ON u.id=t.user_id WHERE t.status!='resolved' ORDER BY t.updated_at DESC LIMIT 100`).all();
     const supportItems=[];
@@ -798,7 +792,12 @@ async function handle(request, env) {
       const messages=await env.DB.prepare('SELECT m.*,u.username FROM support_messages m JOIN users u ON u.id=m.sender_id WHERE m.ticket_id=? ORDER BY m.created_at ASC').bind(t.id).all();
       supportItems.push({id:String(t.id),type:'support',targetName:t.subject,targetId:String(t.id),reporter:t.username,reason:messages.results.map(m=>m.username+': '+m.body).join('\\n'),date:Number(t.created_at),status:t.status,messages:messages.results.map(m=>({username:m.username,body:m.body,date:Number(m.created_at)}))});
     }
-    const standard=rows.results.map(r=>({id:String(r.id),type:r.target_type,targetId:String(r.target_id),targetName:r.target_name,targetOwner:r.target_owner||'',targetParentType:r.comment_project_id?'project':r.comment_dwarf_id?'dwarf':'',targetParentId:String(r.comment_project_id||r.comment_dwarf_id||''),targetParentOwner:r.comment_parent_owner||(r.du_username||''),reporter:r.reporter,reason:r.reason,date:Number(r.created_at)}));
+    const standard=rows.results.map(r=>({
+      id:String(r.id),type:r.target_type,targetId:String(r.target_id),targetName:r.target_name,
+      targetOwner:r.target_owner||'',targetParentType:r.comment_project_id?'project':r.comment_dwarf_id?'dwarf':'',
+      targetParentId:String(r.comment_project_id||r.comment_dwarf_id||''),targetParentOwner:r.comment_parent_owner||(r.du_username||''),
+      reporter:r.reporter,reason:r.reason,date:Number(r.created_at)
+    }));
     return json({reports:[...supportItems,...standard]});
   }
   const reportMatch = path.match(/^\/api\/reports\/([\w-]+)$/);
