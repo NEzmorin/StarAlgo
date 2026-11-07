@@ -540,13 +540,7 @@ async function handle(request, env) {
     const body=await readBody(request), message=text(body.message,4000,'Ответ');
     const rawId=supportReply[1], isGuest=rawId.startsWith('guest-'), ticketId=isGuest?rawId.slice(6):rawId;
     const stamp=now();
-    if(isGuest){
-      const ticket=await env.DB.prepare('SELECT * FROM guest_support_tickets WHERE id=?').bind(ticketId).first();
-      if(!ticket) fail(404,'Обращение не найдено');
-      await env.DB.prepare("INSERT INTO guest_support_messages(id,ticket_id,sender_name,sender_role,body,created_at) VALUES(?,?,?,'Техподдержка',?,?)").bind(makeId(),ticket.id,user.username,message,stamp).run();
-      await env.DB.prepare("UPDATE guest_support_tickets SET status='waiting_user',updated_at=? WHERE id=?").bind(stamp,ticket.id).run();
-      return json({ok:true});
-    }
+    if(isGuest) fail(403,'Отвечать можно только на обращения, отправленные из зарегистрированного аккаунта.');
     const ticket=await env.DB.prepare('SELECT * FROM support_tickets WHERE id=?').bind(ticketId).first();
     if(!ticket) fail(404,'Обращение не найдено');
     await env.DB.prepare('INSERT INTO support_messages(id,ticket_id,sender_id,sender_role,body,created_at) VALUES(?,?,?,?,?,?)').bind(makeId(),ticket.id,user.id,user.role,message,stamp).run();
