@@ -2367,6 +2367,7 @@
                 <input type="file" id="panorama-file-input" accept="image/png,image/jpeg,image/webp,image/gif" style="display:none;" onchange="handlePanoramaUpload(event)">
                 <button type="button" class="auth-btn" style="width:100%;" onclick="document.getElementById('panorama-file-input').click()">🖼️ Загрузить панораму с устройства</button>
                 <small style="display:block; margin-top:6px; opacity:.7;">Изображение или GIF загрузится в Cloudinary, а ссылка сохранится автоматически.</small>
+                <small id="panorama-upload-status" style="display:block; margin-top:5px; color:var(--gold-bright);"></small>
             </div>
 
             <div style="display: flex; gap: 15px; margin-top: 10px;">
