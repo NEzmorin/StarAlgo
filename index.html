@@ -1837,6 +1837,9 @@
         <section class="content-section">
             <!-- Главная -->
             <div id="tab-main" class="tab-page active">
+                <div style="display:flex;justify-content:flex-end;margin:0 0 14px;">
+                    <button class="auth-btn" onclick="openSupportModal()" style="font-size:1.15rem;padding:10px 20px;">🛟 ТехПоддержка</button>
+                </div>
                 <div class="search-container upload-guide-card" style="max-width: 900px;">
                     <div class="search-title">!Как загружать файлы и картинки!</div>
                     <p class="page-text" style="font-size:1.05rem; margin:0;">Чтобы экономить место и ускорять StarAlgo, не загружайте большие файлы напрямую на сайт. Сначала разместите файл на одном из разрешённых внешних сервисов, затем вставьте прямую HTTPS-ссылку в проект.</p>
@@ -2275,6 +2278,24 @@
                 <button class="auth-btn" style="border-color: #ff5555; color: #ff5555;" onclick="submitReport()">Отправить</button>
                 <button class="auth-btn" onclick="closeReportModal()">Отмена</button>
             </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="support-modal">
+        <div class="modal-box" style="width:min(760px,95vw);max-width:95vw;">
+            <div class="modal-title" style="font-size:1.8rem;">Техническая поддержка</div>
+            <div class="form-group">
+                <label>Тема обращения</label>
+                <input class="form-input" id="support-subject" maxlength="120" placeholder="Например: не могу войти в аккаунт">
+            </div>
+            <div class="form-group">
+                <label>Что случилось?</label>
+                <textarea class="form-textarea" id="support-message" maxlength="4000" placeholder="Опишите проблему подробнее..."></textarea>
+            </div>
+            <button class="auth-btn" style="width:100%;" onclick="submitSupportTicket()">Отправить обращение</button>
+            <div class="search-title" style="margin-top:18px;">Мои обращения</div>
+            <div id="my-support-tickets"><div class="empty-placeholder">Загрузка...</div></div>
+            <div class="modal-actions"><button class="auth-btn" onclick="closeSupportModal()">Закрыть</button></div>
         </div>
     </div>
 
