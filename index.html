@@ -443,8 +443,8 @@
         /* Компактная памятка справа от описания главной страницы. */
         .upload-guide-card {
             float: right;
-            width: min(43%, 520px);
-            max-width: 520px !important;
+            width: min(52%, 680px);
+            max-width: 680px !important;
             margin: 0 0 22px 24px;
             padding: 14px;
             gap: 9px;
@@ -1789,7 +1789,7 @@
                     <p class="page-text" style="font-size:1.05rem; margin:0;">Чтобы экономить место и ускорять StarAlgo, не загружайте большие файлы напрямую на сайт. Сначала разместите файл на одном из разрешённых внешних сервисов, затем вставьте прямую HTTPS-ссылку в проект.</p>
                     <p class="page-text resource-guide-links" style="font-size:1.05rem; margin:0;"><strong>Сервисы и для чего они подходят:</strong>
                         <a href="https://www.image2url.com/" target="_blank" rel="noopener noreferrer">image2url.com</a> — изображения;
-                        <a href="https://catbox.moe/" target="_blank" rel="noopener noreferrer">catbox.moe</a> — файлы, в том числе .sb3 (если сервис работает; не полагайтесь на него как на единственный хостинг);
+                        <a href="https://catbox.moe/" target="_blank" rel="noopener noreferrer">catbox.moe</a> — файлы, в том числе .sb3;
                         <a href="https://imgbb.com/" target="_blank" rel="noopener noreferrer">imgbb.com</a> /
                         <a href="https://ibb.co/" target="_blank" rel="noopener noreferrer">ibb.co</a> — изображения и GIF;
                         <a href="https://posty5.com/" target="_blank" rel="noopener noreferrer">posty5.com</a> — одна HTML-страница (не ZIP/многофайловый сайт);
@@ -2293,7 +2293,7 @@
 
     <!-- Модалка публикации -->
     <div class="modal-overlay" id="publish-modal">
-        <div class="modal-box" style="width: 560px;">
+        <div class="modal-box" style="width: min(820px, 94vw); max-width: 94vw; box-sizing: border-box;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <div class="modal-title" style="font-size: 1.8rem; text-align: left;">Описание и публикация</div>
                 <button class="auth-btn" onclick="closePublishModal()" style="padding: 2px 6px;">✕</button>
@@ -3430,6 +3430,7 @@
         }
 
         function renderProfileStarsCategories(projects) {
+            projects = (projects || []).filter(project => project && project.published === true);
             const newSorted = [...projects].sort((a, b) => b.date - a.date);
             const gridNew = document.getElementById('profile-grid-new');
             gridNew.innerHTML = newSorted.length === 0 ? `<div class="empty-placeholder">Нет звёзд</div>` : newSorted.map(p => {
@@ -3596,7 +3597,7 @@
         function updateProjectUploadHint() {
             const category = document.getElementById('project-category-select')?.value || 'Scratch';
             const hints = {
-                Scratch: 'Для Scratch проще всего вставить ссылку на опубликованный проект Scratch. Для файла .sb3 подойдут Google Drive (доступ «Все, у кого есть ссылка») или GitHub Pages. <a href="https://scratch.mit.edu/" target="_blank" rel="noopener noreferrer">Scratch</a> · <a href="https://drive.google.com/" target="_blank" rel="noopener noreferrer">Google Drive</a> · <a href="https://pages.github.com/" target="_blank" rel="noopener noreferrer">GitHub Pages</a>',
+                Scratch: 'Для Scratch проще всего вставить ссылку на опубликованный проект Scratch. Для файла .sb3 удобнее всего Catbox; также подойдут Google Drive (доступ «Все, у кого есть ссылка») или GitHub Pages. <a href="https://scratch.mit.edu/" target="_blank" rel="noopener noreferrer">Scratch</a> · <a href="https://drive.google.com/" target="_blank" rel="noopener noreferrer">Google Drive</a> · <a href="https://pages.github.com/" target="_blank" rel="noopener noreferrer">GitHub Pages</a>',
                 HTML: 'Для одной HTML-страницы подойдёт Posty5; для полноценного сайта с несколькими файлами — GitHub Pages или Vercel. <a href="https://posty5.com/" target="_blank" rel="noopener noreferrer">Posty5</a> · <a href="https://pages.github.com/" target="_blank" rel="noopener noreferrer">GitHub Pages</a> · <a href="https://vercel.com/" target="_blank" rel="noopener noreferrer">Vercel</a>',
                 Сайт: 'Для сайта с несколькими файлами используйте GitHub Pages или Vercel. После публикации вставьте ссылку на сайт. <a href="https://pages.github.com/" target="_blank" rel="noopener noreferrer">GitHub Pages</a> · <a href="https://vercel.com/" target="_blank" rel="noopener noreferrer">Vercel</a>',
                 Python: 'Код Python можно написать прямо во встроенном редакторе StarAlgo. Если нужны дополнительные файлы, разместите их на GitHub или другом файловом хостинге и добавьте ссылку в описание проекта.',
