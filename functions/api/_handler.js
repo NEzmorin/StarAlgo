@@ -311,8 +311,10 @@ async function ensureSupportSchema(env) {
 async function ensureIdentityColumns(env) {
   const columns=await env.DB.prepare('PRAGMA table_info(users)').all();
   const names=new Set((columns.results||[]).map(x=>x.name));
-  if(!names.has('original_username')) await env.DB.prepare('ALTER TABLE users ADD COLUMN original_username TEXT').run();
-  await env.DB.prepare("UPDATE users SET original_username=username WHERE original_username IS NULL OR original_username=''").run();
+  if(!names.has('original_username')) {
+    await env.DB.prepare('ALTER TABLE users ADD COLUMN original_username TEXT').run();
+    await env.DB.prepare("UPDATE users SET original_username=username WHERE original_username IS NULL OR original_username=''").run();
+  }
 }
 async function handle(request, env) {
   const url = new URL(request.url), path = url.pathname.replace(/\/+$/, '') || '/', method = request.method;
