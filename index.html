@@ -1052,10 +1052,26 @@
             overflow: hidden !important;
         }
         #editor-runtime-container:fullscreen #turtle-graphics-canvas-container {
-            flex: 1 1 58vh !important;
+            flex: 1 1 62vh !important;
+            width: 100% !important;
             height: auto !important;
-            min-height: 220px !important;
+            min-height: 320px !important;
             max-height: none !important;
+        }
+        #editor-runtime-container:fullscreen #turtle-graphics-canvas-container iframe {
+            display: block !important;
+            width: 100% !important;
+            height: 100% !important;
+            min-height: 320px !important;
+        }
+        #editor-runtime-container:fullscreen #python-console-output {
+            flex: 0 0 24vh !important;
+            width: 100% !important;
+            height: 24vh !important;
+            min-height: 150px !important;
+            max-height: 28vh !important;
+            overflow: auto !important;
+            white-space: pre-wrap;
         }
         #editor-runtime-container:fullscreen #turtle-graphics-canvas-container iframe {
             width: 100% !important;
@@ -4505,7 +4521,7 @@
                 if (isReadOnly) {
                     container.innerHTML = `
                         <div style="color: var(--gold-bright);">Результат Python · изолированная среда</div>
-                        <div style="font-size:.9rem;opacity:.75;">Python исполняется в отдельном Worker без доступа к сети и странице.</div>
+                        <div style="font-size:.9rem;opacity:.75;">Python исполняется в отдельном изолированном iframe без доступа к сети и странице.</div>
                         <div id="turtle-graphics-canvas-container" style="width: 100%; height: 200px; background: #ffffff; border: 2px solid var(--gold-main); border-radius: 6px; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center;">
                             <span style="color: #000; font-size: 1rem;" id="turtle-placeholder">Запуск результата...</span>
                         </div>
