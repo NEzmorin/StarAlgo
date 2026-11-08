@@ -8,6 +8,8 @@
   const LEGACY_KEYS = [
     'staralgo_users_db', 'staralgo_yellow_dwarfs_db', 'staralgo_reports_db'
   ];
+  const CLOUD_CACHE_VERSION_KEY = 'staralgo_cloud_cache_version';
+  const CLOUD_CACHE_VERSION = '1';
   let profileSnapshot = '';
   let pendingProjectSave = null;
   let projectSaveTimer = null;
@@ -90,6 +92,7 @@
     localStorage.setItem('staralgo_users_db', JSON.stringify(users));
     localStorage.setItem('staralgo_yellow_dwarfs_db', JSON.stringify(data.dwarfs || []));
     localStorage.setItem('staralgo_reports_db', JSON.stringify(data.reports || []));
+    localStorage.setItem(CLOUD_CACHE_VERSION_KEY, CLOUD_CACHE_VERSION);
     if (currentUser) {
       const safe = { ...currentUser };
       delete safe.password;
@@ -247,16 +250,23 @@
     document.addEventListener('visibilitychange', () => {
       if (!document.hidden) window.checkStarAlgoSession();
     });
-    // Local records from the former demo are deliberately not imported.
-    LEGACY_KEYS.forEach(key => localStorage.removeItem(key));
+    // Discard pre-cloud demo records once; thereafter reuse only cache written by a successful server bootstrap.
+    const hasTrustedCloudCache = localStorage.getItem(CLOUD_CACHE_VERSION_KEY) === CLOUD_CACHE_VERSION;
+    if (!hasTrustedCloudCache) LEGACY_KEYS.forEach(key => localStorage.removeItem(key));
     const token = localStorage.getItem(TOKEN_KEY);
-    // Restore the last server-confirmed profile immediately while the token is revalidated.
-    if (token) {
-      const cachedSession = readObjectCache('staralgo_current_session', null);
-      if (cachedSession) {
-        currentUser = normalizeUser(cachedSession);
-        applyUserSession();
+    // Paint the last server-confirmed data immediately while fresh data loads in parallel.
+    if (hasTrustedCloudCache) {
+      if (token) {
+        const cachedSession = readObjectCache('staralgo_current_session', null);
+        if (cachedSession) {
+          currentUser = normalizeUser(cachedSession);
+          applyUserSession();
+        }
       }
+      updateNavVisibility();
+      renderZvezdnyFeed();
+      renderTelescopeFeed();
+      renderReportsInbox();
     }
     try {
       await refreshBootstrap({ render: false });
