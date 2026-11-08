@@ -769,6 +769,14 @@
             display: flex;
             align-items: center;
             gap: 6px;
+            transition: background 0.2s, color 0.2s, border-color 0.2s;
+        }
+
+        .proto-btn-pill:hover,
+        .proto-btn-pill.active {
+            background: rgba(212, 178, 54, 0.18);
+            border-color: var(--gold-bright);
+            color: var(--gold-bright);
         }
 
         .proto-create-btn {
@@ -3425,6 +3433,49 @@
         }
 
         let activeProtoCategory = 'all';
+        // Default: newest first. Each sort button toggles its own direction.
+        let protoSortMode = 'date-desc';
+        const protoNameCollator = new Intl.Collator(['ru', 'en'], {
+            numeric: true,
+            sensitivity: 'base'
+        });
+
+        function toggleProtoSort(sortBy) {
+            const isDateSort = sortBy === 'date';
+            const isSameSort = protoSortMode.startsWith(sortBy + '-');
+
+            if (isDateSort) {
+                protoSortMode = isSameSort && protoSortMode === 'date-desc' ? 'date-asc' : 'date-desc';
+            } else {
+                protoSortMode = isSameSort && protoSortMode === 'name-asc' ? 'name-desc' : 'name-asc';
+            }
+
+            const container = document.getElementById('proto-main-content-area');
+            if (container) renderProtoProjectsView(container);
+        }
+
+        function getProtoProjectDate(project) {
+            const values = [
+                project.date,
+                project.createdAt,
+                project.created_at,
+                project.updatedAt,
+                project.updated_at,
+                project.id
+            ];
+
+            for (const value of values) {
+                if (value === null || value === undefined || value === '') continue;
+                if (typeof value === 'number' && Number.isFinite(value)) return value;
+                if (typeof value === 'string' && value.trim() !== '') {
+                    const numeric = Number(value);
+                    if (Number.isFinite(numeric)) return numeric;
+                }
+                const parsed = Date.parse(value);
+                if (Number.isFinite(parsed)) return parsed;
+            }
+            return 0;
+        }
 
         function switchProtoSection(event, sectionName) {
             activeProtoSectionName = sectionName;
@@ -3461,12 +3512,22 @@
             });
 
             const filtered = activeProtoCategory === 'all' ? projects : projects.filter(p => p.category === activeProtoCategory);
+            // Work on a copy: sorting must never modify the user's saved project order.
+            const sortedFiltered = [...filtered].sort((a, b) => {
+                if (protoSortMode.startsWith('name-')) {
+                    const direction = protoSortMode === 'name-asc' ? 1 : -1;
+                    return protoNameCollator.compare(String(a.name || ''), String(b.name || '')) * direction;
+                }
+
+                const direction = protoSortMode === 'date-desc' ? -1 : 1;
+                return (getProtoProjectDate(a) - getProtoProjectDate(b)) * direction;
+            });
 
             let gridHtml = '';
             if (filtered.length === 0) {
                 gridHtml = `<div class="empty-placeholder" style="grid-column: 1 / -1; margin-top: 20px;">Нет звёзд в этой категории.</div>`;
             } else {
-                filtered.forEach(p => {
+                sortedFiltered.forEach(p => {
                     const cover = p.coverUrl || generateRandomPanorama(p.name + p.id);
                     gridHtml += `
                         <div class="project-item-card" onclick="openStarEditor(${p.id})">
@@ -3483,8 +3544,18 @@
                     <h1 class="page-title" style="margin-bottom: 0;">Звёзды</h1>
                     <div class="proto-controls">
                         <span class="proto-sort-label">Сортировать</span>
-                        <button class="proto-btn-pill">↓ Дата</button>
-                        <button class="proto-btn-pill">↓ А-Я</button>
+                        <button
+                            class="proto-btn-pill ${protoSortMode.startsWith('date-') ? 'active' : ''}"
+                            type="button"
+                            aria-pressed="${protoSortMode.startsWith('date-')}"
+                            onclick="toggleProtoSort('date')"
+                        >${protoSortMode === 'date-asc' ? '↑ Старые' : '↓ Новые'}</button>
+                        <button
+                            class="proto-btn-pill ${protoSortMode.startsWith('name-') ? 'active' : ''}"
+                            type="button"
+                            aria-pressed="${protoSortMode.startsWith('name-')}"
+                            onclick="toggleProtoSort('name')"
+                        >${protoSortMode === 'name-desc' ? 'Я–А / Z–A' : 'А–Я / A–Z'}</button>
                         <button class="proto-create-btn" onclick="openCreateProjectModal()">+ Создать</button>
                     </div>
                 </div>
