@@ -185,12 +185,6 @@ async function bootstrap(env, user) {
     current = await getProfile(env, user, user);
     current.avatarHtml = user.avatar_url ? `<img src="${escapeHtmlAttribute(user.avatar_url)}" alt="Avatar">` : '';
     users[user.username.toLowerCase()] = current;
-    const follows = await env.DB.prepare(`SELECT f.followed_id,u.username FROM follows f JOIN users u ON u.id=f.followed_id WHERE f.follower_id=?`).bind(user.id).all();
-    const followers = await env.DB.prepare(`SELECT f.follower_id,u.username FROM follows f JOIN users u ON u.id=f.follower_id WHERE f.followed_id=?`).bind(user.id).all();
-    current.followingList = follows.results.map(x => x.username.toLowerCase());
-    current.followersList = followers.results.map(x => x.username.toLowerCase());
-    const notifRows = await env.DB.prepare(`SELECT n.*,a.username actor,json_extract(n.payload,'$.text') text FROM notifications n LEFT JOIN users a ON a.id=n.actor_id WHERE n.user_id=? ORDER BY n.created_at DESC LIMIT 100`).bind(user.id).all();
-    current.notifications = notifRows.results.map(mapNotification);
     current.projectsList = current.projectsList.map(p => ({ ...p }));
     dwarfs = (await env.DB.prepare(`SELECT d.*,u.username author,(SELECT COUNT(*) FROM dwarf_likes l WHERE l.dwarf_id=d.id) likes_count,(SELECT COUNT(*) FROM dwarf_comments c WHERE c.dwarf_id=d.id) comments_count FROM yellow_dwarfs d JOIN users u ON u.id=d.author_id ORDER BY d.created_at DESC LIMIT 100`).all()).results.map(r => ({ id:Number(r.id), name:r.title, description:r.body, coverUrl:r.image_url || '', author:r.author, date:Number(r.created_at), likes:Number(r.likes_count), commentsCount:Number(r.comments_count), comments:[] }));
     if (isStaff(user)) reports = (await env.DB.prepare(`SELECT r.*,u.username reporter,coalesce(t.username,'') target_owner FROM reports r JOIN users u ON u.id=r.reporter_id LEFT JOIN users t ON t.id=r.target_user_id WHERE r.status='open' ORDER BY r.created_at DESC LIMIT 100`).all()).results.map(r => ({id:Number(r.id),type:r.target_type,targetId:String(r.target_id),targetName:r.target_name,targetOwner:r.target_owner,reporter:r.reporter,reason:r.reason,date:Number(r.created_at)}));
