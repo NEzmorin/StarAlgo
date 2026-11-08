@@ -146,6 +146,23 @@
     const result = await api(`/api/projects/${encodeURIComponent(projectId)}${editMode?'?edit=1':''}`);
     return normalizeProject(result.project);
   }
+  async function loadProjectComments(project) {
+    if (!project) return;
+    const projectId = Number(project.id);
+    try {
+      const result = await api(`/api/projects/${encodeURIComponent(projectId)}/comments`);
+      if (!activeStarObject || Number(activeStarObject.id) !== projectId) return;
+      activeStarObject.comments = Array.isArray(result.comments) ? result.comments : [];
+      activeStarObject.commentsCount = activeStarObject.comments.length;
+      project.comments = activeStarObject.comments;
+      project.commentsCount = activeStarObject.commentsCount;
+      const counter = document.getElementById('star-comments-counter');
+      if (counter) counter.textContent = project.commentsCount;
+      if (typeof renderCommentsList === 'function') renderCommentsList(activeStarObject);
+    } catch (error) {
+      console.warn('Не удалось загрузить комментарии проекта:', error);
+    }
+  }
   function updateLocalProject(project) {
     if (!project) return;
     const normalized = normalizeProject(project);
@@ -480,6 +497,7 @@
       document.getElementById('star-back-btn').textContent = '← К списку звезд';
       setTab(null,'star-editor',`Настройка звезды: ${project.name}`);
       renderStarRuntime(project,false);
+      loadProjectComments(project);
     } catch (e) { alert(e.message); }
   };
   window.viewPublishedStar = async function(authorName, starId) {
@@ -491,6 +509,7 @@
       document.getElementById('star-back-btn').textContent = '← К Звёздному залу';
       setTab(null,'star-editor',`Звезда: ${project.name}`);
       renderStarRuntime(project, !currentUser || project.author.toLowerCase() !== currentUser.username.toLowerCase());
+      loadProjectComments(project);
     } catch (e) { alert(e.message); }
   };
   window.openRobloxGame = function() {
@@ -510,6 +529,7 @@
       document.getElementById('star-back-btn').textContent = '← К списку звезд';
       setTab(null,'star-editor',`Звезда: ${project.name}`);
       renderStarRuntime(project, !currentUser || project.author.toLowerCase() !== currentUser.username.toLowerCase());
+      loadProjectComments(project);
     } catch (e) { alert(e.message); }
   };
   window.saveActiveStarChanges = function() {
