@@ -3548,13 +3548,15 @@
                             class="proto-btn-pill ${protoSortMode.startsWith('date-') ? 'active' : ''}"
                             type="button"
                             aria-pressed="${protoSortMode.startsWith('date-')}"
-                            onclick="toggleProtoSort('date')"
+                            data-proto-sort="date"
+                            aria-label="Изменить порядок сортировки по дате"
                         >${protoSortMode === 'date-asc' ? '↑ Старые' : '↓ Новые'}</button>
                         <button
                             class="proto-btn-pill ${protoSortMode.startsWith('name-') ? 'active' : ''}"
                             type="button"
                             aria-pressed="${protoSortMode.startsWith('name-')}"
-                            onclick="toggleProtoSort('name')"
+                            data-proto-sort="name"
+                            aria-label="Изменить алфавитный порядок сортировки"
                         >${protoSortMode === 'name-desc' ? 'Я–А / Z–A' : 'А–Я / A–Z'}</button>
                         <button class="proto-create-btn" onclick="openCreateProjectModal()">+ Создать</button>
                     </div>
@@ -3562,6 +3564,16 @@
                 <div class="proto-tabs-row" id="proto-category-tabs">${tabsHtml}</div>
                 <div class="proto-projects-grid" id="proto-projects-grid">${gridHtml}</div>
             `;
+
+            // Bind clicks after each render. This avoids relying on inline onclick
+            // attributes on buttons inserted through innerHTML.
+            container.querySelectorAll('[data-proto-sort]').forEach(button => {
+                button.addEventListener('click', event => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    toggleProtoSort(button.dataset.protoSort);
+                });
+            });
         }
 
         function renderProtoVacuumView(container) {
