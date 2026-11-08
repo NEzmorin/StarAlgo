@@ -641,6 +641,26 @@ async function handle(request, env) {
     }
     return json({tickets});
   }
+  const guestSupportDelete=path.match(/^\/api\/support\/guest\/([\w-]+)$/);
+  if(guestSupportDelete && method==='DELETE'){
+    await ensureSupportSchema(env);
+    if(!isAdmin(user)) fail(403,'Удалять гостевые обращения может только администратор или Сингулярность');
+    const ticket=await env.DB.prepare('SELECT id FROM guest_support_tickets WHERE id=?').bind(guestSupportDelete[1]).first();
+    if(!ticket) fail(404,'Обращение не найдено');
+    await env.DB.prepare('DELETE FROM guest_support_messages WHERE ticket_id=?').bind(ticket.id).run();
+    await env.DB.prepare('DELETE FROM guest_support_tickets WHERE id=?').bind(ticket.id).run();
+    return json({ok:true});
+  }
+  const supportDelete=path.match(/^\/api\/support\/([\w-]+)$/);
+  if(supportDelete && method==='DELETE'){
+    await ensureSupportSchema(env);
+    if(!isAdmin(user)) fail(403,'Удалять обращения может только администратор или Сингулярность');
+    const ticket=await env.DB.prepare('SELECT id FROM support_tickets WHERE id=?').bind(supportDelete[1]).first();
+    if(!ticket) fail(404,'Обращение не найдено');
+    await env.DB.prepare('DELETE FROM support_messages WHERE ticket_id=?').bind(ticket.id).run();
+    await env.DB.prepare('DELETE FROM support_tickets WHERE id=?').bind(ticket.id).run();
+    return json({ok:true});
+  }
   const supportReply=path.match(/^\/api\/support\/([\w-]+)\/reply$/);
   if(supportReply && method==='POST'){
     await ensureSupportSchema(env);
@@ -921,6 +941,10 @@ async function handle(request, env) {
     if (!result.meta.changes) fail(404,'Комментарий не найден или нет доступа');
     return json({ok:true});
   }
+  if (path === '/api/reports/mine' && method === 'GET') {
+    const rows=await env.DB.prepare('SELECT id,target_type,target_name,reason,status,created_at FROM reports WHERE reporter_id=? ORDER BY created_at DESC LIMIT 100').bind(user.id).all();
+    return json({reports:rows.results.map(r=>({id:String(r.id),type:r.target_type,targetName:r.target_name,reason:r.reason,status:r.status,date:Number(r.created_at)}))});
+  }
   if (path === '/api/reports' && method === 'POST') {
     const body = await readBody(request), type = text(body.type,24,'Тип жалобы'), reason = text(body.reason,2000,'Причина');
     if (!['project','user','comment'].includes(type)) fail(400,'Неизвестный тип жалобы');
@@ -994,9 +1018,15 @@ async function handle(request, env) {
   }
   const reportMatch = path.match(/^\/api\/reports\/([\w-]+)$/);
   if (reportMatch && method === 'DELETE') {
-    if (!isStaff(user)) fail(403,'Нет доступа');
-    await env.DB.prepare("UPDATE reports SET status='dismissed' WHERE id=?").bind(reportMatch[1]).run();
-    return json({ok:true});
+    const report=await env.DB.prepare('SELECT id,reporter_id FROM reports WHERE id=?').bind(reportMatch[1]).first();
+    if(!report) fail(404,'Жалоба не найдена');
+    if(String(report.reporter_id)===String(user.id)){
+      await env.DB.prepare('DELETE FROM reports WHERE id=? AND reporter_id=?').bind(report.id,user.id).run();
+      return json({ok:true,deleted:true});
+    }
+    if (!isStaff(user)) fail(403,'Удалять можно только собственные жалобы');
+    await env.DB.prepare("UPDATE reports SET status='dismissed' WHERE id=?").bind(report.id).run();
+    return json({ok:true,dismissed:true});
   }
   if (path === '/api/admin/users' && method === 'PATCH') {
     const body=await readBody(request);
