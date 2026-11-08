@@ -146,7 +146,7 @@ async function getProfile(env, profile, viewer) {
   const followerRows = await env.DB.prepare('SELECT u.username FROM follows f JOIN users u ON u.id=f.follower_id WHERE f.followed_id=? ORDER BY u.username').bind(profile.id).all();
   const followingRows = await env.DB.prepare('SELECT u.username FROM follows f JOIN users u ON u.id=f.followed_id WHERE f.follower_id=? ORDER BY u.username').bind(profile.id).all();
   const own = !!viewer && viewer.id === profile.id;
-  const projectRows = await env.DB.prepare(`SELECT p.*,u.username author,
+  const projectRows = await env.DB.prepare(`SELECT p.id,p.user_id,p.name,p.category,p.description,p.published,p.cover_url,p.project_url,p.views,p.deleted_at,p.was_published,p.created_at,p.updated_at,u.username author,
     (SELECT COUNT(*) FROM project_likes l WHERE l.project_id=p.id) likes_count,
     (SELECT COUNT(*) FROM comments c WHERE c.project_id=p.id) comments_count
     FROM projects p JOIN users u ON u.id=p.user_id
@@ -166,7 +166,7 @@ async function bootstrap(env, user) {
     (SELECT COUNT(*) FROM projects p WHERE p.user_id=u.id AND p.published=1 AND p.deleted_at IS NULL) projects_count,
     (SELECT COUNT(*) FROM project_likes l JOIN projects p ON p.id=l.project_id WHERE p.user_id=u.id) likes_received
     FROM users u ORDER BY u.created_at LIMIT 250`).all();
-  const projectsRows = await env.DB.prepare(`SELECT p.*,u.username author,
+  const projectsRows = await env.DB.prepare(`SELECT p.id,p.user_id,p.name,p.category,p.description,p.published,p.cover_url,p.project_url,p.views,p.deleted_at,p.was_published,p.created_at,p.updated_at,u.username author,
     (SELECT COUNT(*) FROM project_likes l WHERE l.project_id=p.id) likes_count,
     (SELECT COUNT(*) FROM comments c WHERE c.project_id=p.id) comments_count
     FROM projects p JOIN users u ON u.id=p.user_id WHERE p.published=1 AND p.deleted_at IS NULL
@@ -677,7 +677,7 @@ async function handle(request, env) {
     if (own && !user) fail(401,'Необходима авторизация');
     const rows = own
       ? await env.DB.prepare(`SELECT p.*,u.username author,(SELECT COUNT(*) FROM project_likes l WHERE l.project_id=p.id) likes_count,(SELECT COUNT(*) FROM comments c WHERE c.project_id=p.id) comments_count FROM projects p JOIN users u ON u.id=p.user_id WHERE p.user_id=? AND p.deleted_at IS NULL ORDER BY p.updated_at DESC LIMIT 200`).bind(user.id).all()
-      : await env.DB.prepare(`SELECT p.*,u.username author,(SELECT COUNT(*) FROM project_likes l WHERE l.project_id=p.id) likes_count,(SELECT COUNT(*) FROM comments c WHERE c.project_id=p.id) comments_count FROM projects p JOIN users u ON u.id=p.user_id WHERE p.published=1 AND p.deleted_at IS NULL ORDER BY p.updated_at DESC LIMIT 100`).all();
+      : await env.DB.prepare(`SELECT p.id,p.user_id,p.name,p.category,p.description,p.published,p.cover_url,p.project_url,p.views,p.deleted_at,p.was_published,p.created_at,p.updated_at,u.username author,(SELECT COUNT(*) FROM project_likes l WHERE l.project_id=p.id) likes_count,(SELECT COUNT(*) FROM comments c WHERE c.project_id=p.id) comments_count FROM projects p JOIN users u ON u.id=p.user_id WHERE p.published=1 AND p.deleted_at IS NULL ORDER BY p.updated_at DESC LIMIT 100`).all();
     return json({ projects: rows.results.map(r => mapProject(r)) });
   }
   if (path === '/api/projects' && method === 'POST') {
@@ -755,7 +755,7 @@ async function handle(request, env) {
     return json({ ok:true });
   }
   if (path === '/api/feed' && method === 'GET') {
-    const rows = await env.DB.prepare(`SELECT p.*,u.username author,(SELECT COUNT(*) FROM project_likes l WHERE l.project_id=p.id) likes_count,(SELECT COUNT(*) FROM comments c WHERE c.project_id=p.id) comments_count FROM projects p JOIN users u ON u.id=p.user_id WHERE p.published=1 AND p.deleted_at IS NULL ORDER BY p.updated_at DESC LIMIT 100`).all();
+    const rows = await env.DB.prepare(`SELECT p.id,p.user_id,p.name,p.category,p.description,p.published,p.cover_url,p.project_url,p.views,p.deleted_at,p.was_published,p.created_at,p.updated_at,u.username author,(SELECT COUNT(*) FROM project_likes l WHERE l.project_id=p.id) likes_count,(SELECT COUNT(*) FROM comments c WHERE c.project_id=p.id) comments_count FROM projects p JOIN users u ON u.id=p.user_id WHERE p.published=1 AND p.deleted_at IS NULL ORDER BY p.updated_at DESC LIMIT 100`).all();
     return json({ projects: rows.results.map(r => mapProject(r)) });
   }
   if (path === '/api/follows' && method === 'POST') {
