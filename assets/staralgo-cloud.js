@@ -819,28 +819,88 @@
     const name=document.getElementById('support-guest-name')?.value.trim()||'Гость';
     if(!message){alert('Опишите проблему перед отправкой.');return;}
     try{
-      const result=await api('/api/support/guest',{method:'POST',body:jsonBody({name,subject,message})});
+      const accessKey=localStorage.getItem(GUEST_SUPPORT_KEY)||'';
+      const result=await api('/api/support/guest',{method:'POST',body:jsonBody({name,subject,message,accessKey})});
       localStorage.setItem(GUEST_SUPPORT_KEY,result.accessKey);
       document.getElementById('support-subject').value='';
       document.getElementById('support-message').value='';
-      alert('Обращение отправлено! Сохраните доступ в этом браузере, чтобы прочитать ответ.');
+      alert('Обращение отправлено! Все ваши обращения в этом браузере собраны в одном списке.');
       await loadMySupportTickets();
     }catch(e){alert('Не удалось отправить обращение: '+e.message);}
   };
   window.loadMySupportTickets = async function(){
     const box=document.getElementById('my-support-tickets');if(!box)return;
     const key=localStorage.getItem(GUEST_SUPPORT_KEY);
-    if(!key){box.innerHTML='<div class="empty-placeholder">Отправьте обращение — ответы появятся здесь. Аккаунт не нужен.</div>';return;}
+    const tickets=[];
+    if(key){
+      try{
+        const result=await api('/api/support/guest?key='+encodeURIComponent(key));
+        (result.tickets||[]).forEach(t=>tickets.push({...t,ticketKind:'guest'}));
+      }catch(e){box.innerHTML='<div class="empty-placeholder">Не удалось загрузить гостевые обращения: '+esc(e.message)+'</div>';return;}
+    }
+    if(currentUser){
+      try{
+        const result=await api('/api/support');
+        (result.tickets||[]).forEach(t=>tickets.push({...t,ticketKind:'account'}));
+      }catch(e){console.warn('StarAlgo support tickets:',e);}
+    }
+    tickets.sort((a,b)=>Number(b.updatedAt||b.createdAt||0)-Number(a.updatedAt||a.createdAt||0));
+    box.replaceChildren();
+    if(!tickets.length){
+      box.innerHTML='<div class="empty-placeholder">Пока нет обращений. Отправьте сообщение через форму слева.</div>';
+      return;
+    }
+    tickets.forEach(t=>{
+      const card=document.createElement('div');
+      card.className='report-card';
+      card.style.cssText='margin:0 0 9px;border-color:rgba(212,178,54,.42);';
+      const status=t.status==='waiting_user'?'Ожидает вашего ответа':t.status==='resolved'?'Решено':'В работе';
+      const header=document.createElement('div');
+      header.innerHTML='<div class="report-header"><strong>'+esc(t.subject)+'</strong><span>'+status+'</span></div>';
+      card.appendChild(header);
+      const messages=document.createElement('div');
+      messages.style.cssText='max-height:150px;overflow-y:auto;margin:7px 0;padding-right:4px;';
+      (t.messages||[]).forEach(m=>{
+        const p=document.createElement('p');
+        p.style.cssText='margin:4px 0;overflow-wrap:anywhere;';
+        if(m.role==='Временный пароль'){
+          p.style.cssText+='padding:8px;border:1px solid var(--gold-bright);border-radius:7px;background:rgba(212,178,54,.08);user-select:text;-webkit-user-select:text;';
+          p.innerHTML='<strong>🔐 '+esc(m.username)+':</strong> '+esc(m.body)+'<br><small>Скопируйте временный пароль и сразу замените его после входа.</small>';
+        }else{
+          p.innerHTML='<strong>'+esc(m.username||m.role||'Пользователь')+':</strong> '+esc(m.body);
+        }
+        messages.appendChild(p);
+      });
+      card.appendChild(messages);
+      if(t.status==='waiting_user'){
+        const actions=document.createElement('div');
+        actions.style.cssText='display:flex;gap:6px;flex-wrap:wrap;margin:6px 0;';
+        const yes=document.createElement('button');yes.className='auth-btn';yes.textContent='Решено';
+        yes.addEventListener('click',()=>t.ticketKind==='guest'?window.confirmGuestSupportResolved(t.id,true):window.confirmSupportResolved(t.id,true));
+        const no=document.createElement('button');no.className='auth-btn';no.textContent='Не решено';
+        no.addEventListener('click',()=>t.ticketKind==='guest'?window.confirmGuestSupportResolved(t.id,false):window.confirmSupportResolved(t.id,false));
+        actions.append(yes,no);card.appendChild(actions);
+      }
+      const remove=document.createElement('button');
+      remove.className='auth-btn';remove.textContent='Удалить обращение';
+      remove.style.cssText='margin-top:5px;border-color:#ff7777;color:#ff7777;';
+      remove.addEventListener('click',()=>window.deleteMySupportTicket(t.ticketKind,t.id));
+      card.appendChild(remove);
+      box.appendChild(card);
+    });
+  };
+  window.deleteMySupportTicket = async function(type,id){
+    if(!['guest','account'].includes(type))return;
+    if(!confirm('Удалить это обращение и всю переписку? Это действие нельзя отменить.'))return;
     try{
-      const result=await api('/api/support/guest?key='+encodeURIComponent(key));
-      const tickets=result.tickets||[];
-      if(!tickets.length){box.innerHTML='<div class="empty-placeholder">Обращений пока нет.</div>';return;}
-      box.innerHTML=tickets.map(t=>`<div class="report-card" style="margin:8px 0;">
-        <div class="report-header"><strong>${esc(t.subject)}</strong><span>${t.status==='waiting_user'?'Ожидает вашего ответа':t.status==='resolved'?'Решено':'В работе'}</span></div>
-        <div style='max-height:260px;overflow:auto;margin:8px 0;'>${t.messages.map(m=>m.role==='Временный пароль' ? `<div style='margin:8px 0;padding:10px;border:1px solid var(--gold-bright);border-radius:8px;background:rgba(212,178,54,.08);user-select:text;-webkit-user-select:text;'><strong style='color:var(--gold-bright);'>🔐 Восстановление аккаунта</strong><p style='user-select:text;-webkit-user-select:text;'><strong>${esc(m.username)}:</strong> ${esc(m.body)}</p><small style='user-select:text;-webkit-user-select:text;'>Скопируйте пароль сейчас и сразу замените его после входа. Это сообщение показывается один раз.</small></div>` : `<p><strong>${esc(m.username)}:</strong> ${esc(m.body)}</p>`).join('')}</div>
-        ${t.status==='waiting_user'?`<div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="auth-btn" onclick="confirmGuestSupportResolved('${t.id}',true)">Да, проблема решена</button><button class="auth-btn" onclick="confirmGuestSupportResolved('${t.id}',false)">Нет, проблема осталась</button></div>`:''}
-      </div>`).join('');
-    }catch(e){box.innerHTML='<div class="empty-placeholder">Не удалось загрузить переписку: '+esc(e.message)+'</div>';}
+      if(type==='guest'){
+        const accessKey=localStorage.getItem(GUEST_SUPPORT_KEY)||'';
+        await api('/api/support/guest/'+encodeURIComponent(id),{method:'DELETE',body:jsonBody({accessKey})});
+      }else{
+        await api('/api/support/'+encodeURIComponent(id),{method:'DELETE'});
+      }
+      await loadMySupportTickets();
+    }catch(e){alert('Не удалось удалить обращение: '+e.message);}
   };
   window.loadMyReports = async function(){
     const box=document.getElementById('my-reports-container');if(!box)return;
