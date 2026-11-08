@@ -14,9 +14,30 @@ async function passwordHash(password, salt, iterations) {
 }
 async function readBody(req, maxBytes = 600000) {
   const declared = Number(req.headers.get('Content-Length') || 0);
-  if (declared > maxBytes) throw new HttpError(413, 'Слишком большой запрос');
-  const raw = await req.text();
-  if (new TextEncoder().encode(raw).length > maxBytes) throw new HttpError(413, 'Слишком большой запрос');
+  if (Number.isFinite(declared) && declared > maxBytes) throw new HttpError(413, 'Слишком большой запрос');
+
+  const reader = req.body?.getReader();
+  if (!reader) return {};
+  const chunks = [];
+  let total = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > maxBytes) {
+      try { await reader.cancel(); } catch (_) {}
+      throw new HttpError(413, 'Слишком большой запрос');
+    }
+    chunks.push(value);
+  }
+
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  const raw = new TextDecoder().decode(bytes);
   try { return raw ? JSON.parse(raw) : {}; } catch { throw new HttpError(400, 'Некорректный JSON'); }
 }
 class HttpError extends Error { constructor(status, message) { super(message); this.status = status; } }
