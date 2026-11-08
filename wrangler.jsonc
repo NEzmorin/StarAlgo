@@ -11,6 +11,19 @@
       "database_id": "000ce601-434d-4436-8de8-6b1975009edb"
     }
   ],
+  "previews": {
+    "vars": {
+      "APP_ORIGIN": "https://staralgo.vercel.app",
+      "ALLOW_PAGES_PREVIEWS": "true"
+    },
+    "d1_databases": [
+      {
+        "binding": "DB",
+        "database_name": "staralgo-preview-db",
+        "database_id": "488c6ecb-8140-40ec-83ae-0be8a78df22c"
+      }
+    ]
+  },
   "vars": {
     "APP_ORIGIN": "https://staralgo.vercel.app"
   },
