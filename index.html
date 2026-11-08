@@ -2080,6 +2080,13 @@
                 background: rgba(12, 11, 8, .97);
                 backdrop-filter: blur(12px);
                 box-shadow: 0 -5px 20px rgba(0, 0, 0, .55);
+                transition: transform .18s ease, opacity .18s ease;
+            }
+
+            body.mobile-keyboard-open #mobile-bottom-nav {
+                transform: translateY(110%);
+                opacity: 0;
+                pointer-events: none;
             }
 
             .mobile-dock-item {
@@ -2345,7 +2352,7 @@
     </header>
 
     <nav id="mobile-bottom-nav" aria-label="Основная навигация">
-        <button class="nav-item mobile-dock-item" type="button" onclick="setTab(event, 'main', 'Главная')" aria-label="Главная">
+        <button class="nav-item mobile-dock-item active" type="button" onclick="setTab(event, 'main', 'Главная')" aria-label="Главная">
             <span class="mobile-nav-icon" aria-hidden="true">⌂</span><span class="mobile-nav-label">Главная</span>
         </button>
         <button class="nav-item mobile-dock-item" type="button" onclick="setTab(event, 'hall', 'Звёздный Зал')" aria-label="Звёздный Зал">
@@ -3369,6 +3376,23 @@
             if (wrap && !wrap.contains(event.target)) closeMobileMoreMenu();
         });
 
+        const isMobileTextEntry = target => !!target && (
+            (target.matches && target.matches('input, textarea, select')) || target.isContentEditable
+        );
+        document.addEventListener('focusin', function(event) {
+            if (window.matchMedia && window.matchMedia('(max-width: 760px)').matches && isMobileTextEntry(event.target)) {
+                document.body.classList.add('mobile-keyboard-open');
+                closeMobileMoreMenu();
+            }
+        });
+        document.addEventListener('focusout', function() {
+            window.setTimeout(function() {
+                if (!isMobileTextEntry(document.activeElement)) {
+                    document.body.classList.remove('mobile-keyboard-open');
+                }
+            }, 140);
+        });
+
         function setTab(event, tabId, name) {
             if (tabId === 'proto' && !currentUser) {
                 openAuthModal();
@@ -3395,16 +3419,13 @@
             const targetPage = document.getElementById(`tab-${tabId}`);
             if (targetPage) targetPage.classList.add('active');
 
-            if (event && event.currentTarget) {
-                event.currentTarget.classList.add('active');
-            } else {
-                const navTabId = tabId === 'star-editor'
-                    ? (starOpenSource === 'hall' ? 'hall' : 'proto')
-                    : tabId === 'dwarf-viewer' ? 'telescope' : tabId;
-                const navBtn = Array.from(document.querySelectorAll('#main-nav .nav-item, #mobile-bottom-nav .nav-item, #mobile-more-menu .nav-item'))
-                    .find(button => (button.getAttribute('onclick') || '').includes("'" + navTabId + "'"));
-                if (navBtn) navBtn.classList.add('active');
-            }
+            const navTabId = tabId === 'star-editor'
+                ? (starOpenSource === 'hall' ? 'hall' : 'proto')
+                : tabId === 'dwarf-viewer' ? 'telescope' : tabId;
+            document.querySelectorAll('#main-nav .nav-item, #mobile-bottom-nav .nav-item, #mobile-more-menu .nav-item').forEach(button => {
+                const handler = button.getAttribute('onclick') || '';
+                if (handler.includes("'" + navTabId + "'")) button.classList.add('active');
+            });
 
             const mobileMoreBtn = document.getElementById('mobile-more-btn');
             const mobileProfileBtn = document.getElementById('mobile-profile-btn');
