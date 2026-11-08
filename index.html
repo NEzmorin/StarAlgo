@@ -4468,7 +4468,7 @@
                             </div>
                         ` : ''}
                         <div id="scratch-fullscreen-stage" style="position:relative;width:100%;height:min(72vh,760px);min-height:480px;background:#080808;border:2px solid var(--gold-main);border-radius:10px;overflow:hidden;">
-                            <iframe id="scratch-player-iframe" allow="fullscreen; autoplay; clipboard-read; clipboard-write" allowfullscreen style="display:block;width:100%;height:100%;min-height:480px;border:0;"></iframe>
+                            <iframe id="scratch-player-iframe" sandbox="allow-scripts allow-same-origin allow-pointer-lock allow-popups" allow="fullscreen; autoplay; clipboard-read; clipboard-write" allowfullscreen style="display:block;width:100%;height:100%;min-height:480px;border:0;"></iframe>
                         </div>
                     </div>
                 `;
