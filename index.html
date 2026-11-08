@@ -2587,7 +2587,7 @@
                 <div class="search-container">
                     <div class="search-title">Поиск пользователей</div>
                     <div class="search-input-row">
-                        <input type="text" id="user-search-input" class="search-input" placeholder="Введите никнейм..." autocomplete="off" autocapitalize="none" spellcheck="false" data-lpignore="true" data-form-type="other" oninput="handleUserSearch()">
+                        <input type="text" id="user-search-input" class="search-input" maxlength="24" placeholder="Введите никнейм (до 24 символов)..." autocomplete="off" autocapitalize="none" spellcheck="false" data-lpignore="true" data-form-type="other" oninput="handleUserSearch()">
                     </div>
                     <div class="search-results-list" id="search-results-list">
                         <div class="empty-placeholder">Начните ввод для поиска пользователей...</div>
@@ -2612,7 +2612,7 @@
                 <div class="search-container" style="max-width: 100%; margin-bottom: 20px;">
                     <div class="search-title" style="font-size: 1.4rem;">Поиск звёзд</div>
                     <div class="search-input-row">
-                        <input type="text" id="star-search-input" class="search-input" placeholder="Введите название звезды или автора..." oninput="handleStarSearch()">
+                        <input type="text" id="star-search-input" class="search-input" maxlength="100" placeholder="Название звезды или автор (до 100 символов)..." oninput="handleStarSearch()">
                     </div>
                     <div class="search-results-list" id="star-search-results-list" style="display:none; max-height: 180px;"></div>
                 </div>
@@ -2971,12 +2971,12 @@
             
             <div class="form-group">
                 <label>Никнейм:</label>
-                <input type="text" class="form-input" id="auth-username" autocomplete="username">
+                <input type="text" class="form-input" id="auth-username" maxlength="24" autocomplete="username">
             </div>
 
             <div class="form-group">
                 <label>Пароль:</label>
-                <input type="password" class="form-input" id="auth-password" autocomplete="current-password">
+                <input type="password" class="form-input" id="auth-password" maxlength="256" autocomplete="current-password">
             </div>
 
             <div id="turnstile-box" style="margin:12px 0; min-height:0;"></div>
@@ -2995,9 +2995,9 @@
     <div class="modal-overlay" id="change-password-modal">
         <div class="modal-box">
             <div class="modal-title">Смена пароля</div>
-            <div class="form-group"><label>Текущий пароль</label><input id="change-password-current" class="form-input" type="password" autocomplete="current-password"></div>
-            <div class="form-group"><label>Новый пароль (минимум 8 символов)</label><input id="change-password-new" class="form-input" type="password" autocomplete="new-password"></div>
-            <div class="form-group"><label>Повторите новый пароль</label><input id="change-password-confirm" class="form-input" type="password" autocomplete="new-password"></div>
+            <div class="form-group"><label>Текущий пароль</label><input id="change-password-current" class="form-input" type="password" maxlength="256" autocomplete="current-password"></div>
+            <div class="form-group"><label>Новый пароль (минимум 8 символов)</label><input id="change-password-new" class="form-input" type="password" maxlength="256" autocomplete="new-password"></div>
+            <div class="form-group"><label>Повторите новый пароль</label><input id="change-password-confirm" class="form-input" type="password" maxlength="256" autocomplete="new-password"></div>
             <div class="auth-error" id="change-password-error" style="display:none;"></div>
             <div class="modal-actions">
                 <button class="auth-btn" id="change-password-submit" onclick="submitPasswordChange()">Изменить пароль</button>
@@ -4437,8 +4437,11 @@
         }
 
         function handleUserSearch() {
-            const query = document.getElementById('user-search-input').value.toLowerCase().trim();
+            const input = document.getElementById('user-search-input');
             const resultsList = document.getElementById('search-results-list');
+            if (!input || !resultsList) return;
+            if (input.value.length > 24) input.value = input.value.slice(0, 24);
+            const query = input.value.toLowerCase().trim();
             let usersDB = JSON.parse(localStorage.getItem('staralgo_users_db') || '{}');
 
             if (!query) {
@@ -4446,7 +4449,7 @@
                 return;
             }
 
-            const matchedUsers = Object.values(usersDB).filter(u => u.username.toLowerCase().includes(query));
+            const matchedUsers = Object.values(usersDB).filter(u => u.username.toLowerCase().includes(query)).slice(0, 20);
 
             if (matchedUsers.length === 0) {
                 resultsList.innerHTML = `<div class="empty-placeholder">Пользователи не найдены</div>`;
@@ -4473,8 +4476,11 @@
 
         /* Поиск звёзд в Звёздном зале */
         function handleStarSearch() {
-            const query = document.getElementById('star-search-input').value.toLowerCase().trim();
+            const input = document.getElementById('star-search-input');
             const resultsList = document.getElementById('star-search-results-list');
+            if (!input || !resultsList) return;
+            if (input.value.length > 100) input.value = input.value.slice(0, 100);
+            const query = input.value.toLowerCase().trim();
             let usersDB = JSON.parse(localStorage.getItem('staralgo_users_db') || '{}');
 
             if (!query) {
@@ -4485,15 +4491,18 @@
 
             resultsList.style.display = 'flex';
             let matchedStars = [];
-            Object.values(usersDB).forEach(u => {
-                if (u.projectsList) {
-                    u.projectsList.forEach(p => {
-                        if (p.published && (p.name.toLowerCase().includes(query) || p.author.toLowerCase().includes(query))) {
-                            matchedStars.push(p);
-                        }
-                    });
+            starSearchLoop:
+            for (const u of Object.values(usersDB)) {
+                const projects = Array.isArray(u.projectsList) ? u.projectsList : [];
+                for (const p of projects) {
+                    const projectName = String(p.name || '').toLowerCase();
+                    const authorName = String(p.author || '').toLowerCase();
+                    if (p.published && (projectName.includes(query) || authorName.includes(query))) {
+                        matchedStars.push(p);
+                        if (matchedStars.length >= 20) break starSearchLoop;
+                    }
                 }
-            });
+            }
 
             if (matchedStars.length === 0) {
                 resultsList.innerHTML = `<div class="empty-placeholder" style="padding: 6px;">Звёзды не найдены</div>`;
