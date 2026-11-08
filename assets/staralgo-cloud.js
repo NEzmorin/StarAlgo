@@ -303,6 +303,15 @@
     if (!username || !password) {
       error.textContent = 'Заполните все поля!'; error.style.display = 'block'; return;
     }
+    if (username.length > 24) {
+      error.textContent = 'Никнейм не должен превышать 24 символа.'; error.style.display = 'block'; return;
+    }
+    if (password.length > 256) {
+      error.textContent = 'Пароль не должен превышать 256 символов.'; error.style.display = 'block'; return;
+    }
+    if (authMode === 'register' && password.length < 8) {
+      error.textContent = 'Пароль должен содержать минимум 8 символов.'; error.style.display = 'block'; return;
+    }
     const button = document.getElementById('modal-submit-btn');
     if (button) button.disabled = true;
     error.style.display = 'none';
@@ -360,27 +369,41 @@
     }catch(_){}
     finally{sessionCheckRunning=false;}
   };
-  window.handleUserSearch = async function() {
+  let userSearchTimer = null;
+  let userSearchRevision = 0;
+  window.handleUserSearch = function() {
     const input = document.getElementById('user-search-input');
     const list = document.getElementById('search-results-list');
     if (!input || !list) return;
+    if (input.value.length > 24) input.value = input.value.slice(0, 24);
     const q = input.value.trim();
-    if (!q) { list.innerHTML = '<div class="empty-placeholder">Начните ввод для поиска пользователей...</div>'; return; }
-    try {
-      const result = await api(`/api/users/search?q=${encodeURIComponent(q)}`);
-      const users = result.users || [];
-      const db = readObjectCache('staralgo_users_db', {});
-      users.forEach(row => {
-        const key = row.username.toLowerCase();
-        db[key] = normalizeUser({ ...row, isSupernova: !!row.is_supernova, avatarHtml: safeImgHtml(row.avatar_url), projectsList: db[key]?.projectsList || [] });
-      });
-      localStorage.setItem('staralgo_users_db', JSON.stringify(db));
-      list.innerHTML = users.length ? users.map(u => {
-        const avatar = safeImgHtml(u.avatar_url);
-        const count = db[u.username.toLowerCase()]?.projects || 0;
-        return `<div class="search-result-card" onclick="viewUserProfile('${String(u.username).replace(/'/g,"\\'")}')"><div class="search-result-avatar">${avatar}</div><div class="search-result-info"><div class="uname">${u.username}</div><div class="urole">${u.role} | Звёзд: ${count}</div></div></div>`;
-      }).join('') : '<div class="empty-placeholder">Пользователи не найдены</div>';
-    } catch (e) { list.innerHTML = `<div class="empty-placeholder">${e.message}</div>`; }
+    if (userSearchTimer !== null) window.clearTimeout(userSearchTimer);
+    const revision = ++userSearchRevision;
+    if (!q) {
+      list.innerHTML = '<div class="empty-placeholder">Начните ввод для поиска пользователей...</div>';
+      return;
+    }
+    list.innerHTML = '<div class="empty-placeholder">Поиск...</div>';
+    userSearchTimer = window.setTimeout(async () => {
+      try {
+        const result = await api(`/api/users/search?q=${encodeURIComponent(q)}`);
+        if (revision !== userSearchRevision || input.value.trim() !== q) return;
+        const users = (result.users || []).slice(0, 20);
+        const db = readObjectCache('staralgo_users_db', {});
+        users.forEach(row => {
+          const key = row.username.toLowerCase();
+          db[key] = normalizeUser({ ...row, isSupernova: !!row.is_supernova, avatarHtml: safeImgHtml(row.avatar_url), projectsList: db[key]?.projectsList || [] });
+        });
+        localStorage.setItem('staralgo_users_db', JSON.stringify(db));
+        list.innerHTML = users.length ? users.map(u => {
+          const avatar = safeImgHtml(u.avatar_url);
+          const count = db[u.username.toLowerCase()]?.projects || 0;
+          return `<div class="search-result-card" onclick="viewUserProfile('${String(u.username).replace(/'/g,"\\'")}')"><div class="search-result-avatar">${avatar}</div><div class="search-result-info"><div class="uname">${u.username}</div><div class="urole">${u.role} | Звёзд: ${count}</div></div></div>`;
+        }).join('') : '<div class="empty-placeholder">Пользователи не найдены</div>';
+      } catch (e) {
+        if (revision === userSearchRevision) list.innerHTML = `<div class="empty-placeholder">${e.message}</div>`;
+      }
+    }, 180);
   };
   window.viewUserProfile = async function(username) {
     try {
@@ -959,6 +982,8 @@
   window.changeProfileUsername = async function(){
     const value=prompt('Введите новый ник (3–24 символа):',currentUser?.username||'');
     if(value===null)return;
+    if(value.trim().length>24){alert('Ник не должен превышать 24 символа.');return;}
+    if(value.trim().length<3){alert('Ник должен содержать минимум 3 символа.');return;}
     try{
       const result=await api('/api/account/username',{method:'POST',body:jsonBody({username:value})});
       alert('Ник изменён. Старый ник сохранён в профиле как первоначальный.');
@@ -978,6 +1003,7 @@
     const password=prompt('Введите новый пароль (минимум 8 символов). Передайте его владельцу только по безопасному каналу:');
     if(password===null)return;
     if(password.length<8){alert('Минимум 8 символов');return;}
+    if(password.length>256){alert('Пароль не должен превышать 256 символов.');return;}
     try{
       await api('/api/singularity/users/'+encodeURIComponent(id)+'/password',{method:'POST',body:jsonBody({password})});
       alert('Пароль изменён, все прежние сессии завершены. Уведомление не содержит пароль — передайте его владельцу безопасным способом. Для потерявшего доступ используйте гостевое обращение.');
@@ -990,7 +1016,9 @@
     const next=document.getElementById('change-password-new')?.value||'';
     const confirmNext=document.getElementById('change-password-confirm')?.value||'';
     const error=document.getElementById('change-password-error');
+    if(current.length>256){error.textContent='Текущий пароль не должен превышать 256 символов.';error.style.display='block';return;}
     if(next.length<8){error.textContent='Новый пароль должен содержать минимум 8 символов.';error.style.display='block';return;}
+    if(next.length>256||confirmNext.length>256){error.textContent='Пароль не должен превышать 256 символов.';error.style.display='block';return;}
     if(next!==confirmNext){error.textContent='Новые пароли не совпадают.';error.style.display='block';return;}
     const button=document.getElementById('change-password-submit');if(button)button.disabled=true;
     try{
