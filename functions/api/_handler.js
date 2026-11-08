@@ -136,40 +136,57 @@ async function refreshRank(env, userId) {
   const role = projects >= 5 || likes >= 15 ? '[Понимающий]' : projects >= 2 || likes >= 5 ? '[Ознакомленный]' : '[Начинающий]';
   await env.DB.prepare('UPDATE users SET role=?,updated_at=? WHERE id=?').bind(role,now(),userId).run();
 }
-async function getProfile(env, profile, viewer) {
-  const stats = await env.DB.prepare(`SELECT
-    (SELECT COUNT(*) FROM projects WHERE user_id=? AND published=1 AND deleted_at IS NULL) projects,
-    (SELECT COUNT(*) FROM follows WHERE followed_id=?) followers,
-    (SELECT COUNT(*) FROM follows WHERE follower_id=?) following,
-    (SELECT COUNT(*) FROM project_likes l JOIN projects p ON p.id=l.project_id WHERE p.user_id=?) likes_received`).bind(profile.id, profile.id, profile.id, profile.id).first();
-  const followerRows = await env.DB.prepare('SELECT u.username FROM follows f JOIN users u ON u.id=f.follower_id WHERE f.followed_id=? ORDER BY u.username').bind(profile.id).all();
-  const followingRows = await env.DB.prepare('SELECT u.username FROM follows f JOIN users u ON u.id=f.followed_id WHERE f.follower_id=? ORDER BY u.username').bind(profile.id).all();
+async function getProfile(env, profile, viewer, options = {}) {
   const own = !!viewer && viewer.id === profile.id;
-  const projectRows = await env.DB.prepare(`SELECT ${own ? 'p.*' : 'p.id,p.user_id,p.name,p.category,p.description,p.published,p.cover_url,p.project_url,p.views,p.deleted_at,p.was_published,p.created_at,p.updated_at'},u.username author,
-    (SELECT COUNT(*) FROM project_likes l WHERE l.project_id=p.id) likes_count,
-    (SELECT COUNT(*) FROM comments c WHERE c.project_id=p.id) comments_count
-    FROM projects p JOIN users u ON u.id=p.user_id
-    WHERE p.user_id=? AND ${own ? '1=1' : 'p.published=1 AND p.deleted_at IS NULL'} ORDER BY p.updated_at DESC LIMIT 100`).bind(profile.id).all();
-  const notifs = own ? await env.DB.prepare(`SELECT n.*,a.username actor,json_extract(n.payload,'$.text') text FROM notifications n LEFT JOIN users a ON a.id=n.actor_id WHERE n.user_id=? ORDER BY n.created_at DESC LIMIT 100`).bind(profile.id).all() : { results: [] };
+  const includeProjectPayload = own && options.includeProjectPayload !== false;
+  const projectColumns = includeProjectPayload
+    ? 'p.*'
+    : 'p.id,p.user_id,p.name,p.category,p.description,p.published,p.cover_url,p.project_url,p.views,p.deleted_at,p.was_published,p.created_at,p.updated_at';
+  const [stats, followerRows, followingRows, projectRows, notifs] = await Promise.all([
+    env.DB.prepare(`SELECT
+      (SELECT COUNT(*) FROM projects WHERE user_id=? AND published=1 AND deleted_at IS NULL) projects,
+      (SELECT COUNT(*) FROM follows WHERE followed_id=?) followers,
+      (SELECT COUNT(*) FROM follows WHERE follower_id=?) following,
+      (SELECT COUNT(*) FROM project_likes l JOIN projects p ON p.id=l.project_id WHERE p.user_id=?) likes_received`).bind(profile.id, profile.id, profile.id, profile.id).first(),
+    env.DB.prepare('SELECT u.username FROM follows f JOIN users u ON u.id=f.follower_id WHERE f.followed_id=? ORDER BY u.username').bind(profile.id).all(),
+    env.DB.prepare('SELECT u.username FROM follows f JOIN users u ON u.id=f.followed_id WHERE f.follower_id=? ORDER BY u.username').bind(profile.id).all(),
+    env.DB.prepare(`SELECT ${projectColumns},u.username author,
+      (SELECT COUNT(*) FROM project_likes l WHERE l.project_id=p.id) likes_count,
+      (SELECT COUNT(*) FROM comments c WHERE c.project_id=p.id) comments_count
+      FROM projects p JOIN users u ON u.id=p.user_id
+      WHERE p.user_id=? AND ${own ? '1=1' : 'p.published=1 AND p.deleted_at IS NULL'} ORDER BY p.updated_at DESC LIMIT 100`).bind(profile.id).all(),
+    own
+      ? env.DB.prepare(`SELECT n.*,a.username actor,json_extract(n.payload,'$.text') text FROM notifications n LEFT JOIN users a ON a.id=n.actor_id WHERE n.user_id=? ORDER BY n.created_at DESC LIMIT 100`).bind(profile.id).all()
+      : Promise.resolve({ results: [] })
+  ]);
   const base = publicUser({ ...profile, likes_received: stats.likes_received, projects_count: stats.projects });
   return {
-    ...base, projectsList: projectRows.results.filter(p => !p.deleted_at).map(p => mapProject(p, own)),
-    vacuumList: projectRows.results.filter(p => !!p.deleted_at).map(p => mapProject(p, own)),
+    ...base,
+    projectsList: projectRows.results.filter(p => !p.deleted_at).map(p => mapProject(p, includeProjectPayload)),
+    vacuumList: projectRows.results.filter(p => !!p.deleted_at).map(p => mapProject(p, includeProjectPayload)),
     followersList: followerRows.results.map(x => x.username.toLowerCase()),
     followingList: followingRows.results.map(x => x.username.toLowerCase()),
     notifications: notifs.results.map(mapNotification)
   };
 }
 async function bootstrap(env, user) {
-  const usersRows = await env.DB.prepare(`SELECT u.*,
+  const usersQuery = env.DB.prepare(`SELECT u.*,
     (SELECT COUNT(*) FROM projects p WHERE p.user_id=u.id AND p.published=1 AND p.deleted_at IS NULL) projects_count,
     (SELECT COUNT(*) FROM project_likes l JOIN projects p ON p.id=l.project_id WHERE p.user_id=u.id) likes_received
     FROM users u ORDER BY u.created_at LIMIT 250`).all();
-  const projectsRows = await env.DB.prepare(`SELECT p.id,p.user_id,p.name,p.category,p.description,p.published,p.cover_url,p.project_url,p.views,p.deleted_at,p.was_published,p.created_at,p.updated_at,u.username author,
+  const projectsQuery = env.DB.prepare(`SELECT p.id,p.user_id,p.name,p.category,p.description,p.published,p.cover_url,p.project_url,p.views,p.deleted_at,p.was_published,p.created_at,p.updated_at,u.username author,
     (SELECT COUNT(*) FROM project_likes l WHERE l.project_id=p.id) likes_count,
     (SELECT COUNT(*) FROM comments c WHERE c.project_id=p.id) comments_count
     FROM projects p JOIN users u ON u.id=p.user_id WHERE p.published=1 AND p.deleted_at IS NULL
     ORDER BY p.updated_at DESC LIMIT 250`).all();
+  const dwarfsQuery = env.DB.prepare(`SELECT d.*,u.username author,(SELECT COUNT(*) FROM dwarf_likes l WHERE l.dwarf_id=d.id) likes_count,(SELECT COUNT(*) FROM dwarf_comments c WHERE c.dwarf_id=d.id) comments_count FROM yellow_dwarfs d JOIN users u ON u.id=d.author_id ORDER BY d.created_at DESC LIMIT 100`).all();
+  const reportsQuery = user && isStaff(user)
+    ? env.DB.prepare(`SELECT r.*,u.username reporter,coalesce(t.username,'') target_owner FROM reports r JOIN users u ON u.id=r.reporter_id LEFT JOIN users t ON t.id=r.target_user_id WHERE r.status='open' ORDER BY r.created_at DESC LIMIT 100`).all()
+    : Promise.resolve({ results: [] });
+  const [usersRows, projectsRows, dwarfsRows, reportsRows, currentProfile] = await Promise.all([
+    usersQuery, projectsQuery, dwarfsQuery, reportsQuery,
+    user ? getProfile(env, user, user, { includeProjectPayload: false }) : Promise.resolve(null)
+  ]);
   const users = {};
   for (const row of usersRows.results) users[row.username.toLowerCase()] = {
     ...publicUser(row), avatarHtml: row.avatar_url ? `<img src="${escapeHtmlAttribute(row.avatar_url)}" alt="Avatar">` : '',
@@ -179,17 +196,15 @@ async function bootstrap(env, user) {
     const key = row.author.toLowerCase();
     if (users[key]) users[key].projectsList.push(mapProject(row));
   }
-  let current = null, dwarfs = [], reports = [];
+  const dwarfs = dwarfsRows.results.map(r => ({ id:Number(r.id), name:r.title, description:r.body, coverUrl:r.image_url || '', author:r.author, date:Number(r.created_at), likes:Number(r.likes_count), commentsCount:Number(r.comments_count), comments:[] }));
+  let current = null;
   if (user) {
-    current = await getProfile(env, user, user);
+    current = currentProfile;
     current.avatarHtml = user.avatar_url ? `<img src="${escapeHtmlAttribute(user.avatar_url)}" alt="Avatar">` : '';
     users[user.username.toLowerCase()] = current;
     current.projectsList = current.projectsList.map(p => ({ ...p }));
-    dwarfs = (await env.DB.prepare(`SELECT d.*,u.username author,(SELECT COUNT(*) FROM dwarf_likes l WHERE l.dwarf_id=d.id) likes_count,(SELECT COUNT(*) FROM dwarf_comments c WHERE c.dwarf_id=d.id) comments_count FROM yellow_dwarfs d JOIN users u ON u.id=d.author_id ORDER BY d.created_at DESC LIMIT 100`).all()).results.map(r => ({ id:Number(r.id), name:r.title, description:r.body, coverUrl:r.image_url || '', author:r.author, date:Number(r.created_at), likes:Number(r.likes_count), commentsCount:Number(r.comments_count), comments:[] }));
-    if (isStaff(user)) reports = (await env.DB.prepare(`SELECT r.*,u.username reporter,coalesce(t.username,'') target_owner FROM reports r JOIN users u ON u.id=r.reporter_id LEFT JOIN users t ON t.id=r.target_user_id WHERE r.status='open' ORDER BY r.created_at DESC LIMIT 100`).all()).results.map(r => ({id:Number(r.id),type:r.target_type,targetId:String(r.target_id),targetName:r.target_name,targetOwner:r.target_owner,reporter:r.reporter,reason:r.reason,date:Number(r.created_at)}));
-  } else {
-    dwarfs = (await env.DB.prepare(`SELECT d.*,u.username author,(SELECT COUNT(*) FROM dwarf_likes l WHERE l.dwarf_id=d.id) likes_count,(SELECT COUNT(*) FROM dwarf_comments c WHERE c.dwarf_id=d.id) comments_count FROM yellow_dwarfs d JOIN users u ON u.id=d.author_id ORDER BY d.created_at DESC LIMIT 100`).all()).results.map(r => ({ id:Number(r.id), name:r.title, description:r.body, coverUrl:r.image_url || '', author:r.author, date:Number(r.created_at), likes:Number(r.likes_count), commentsCount:Number(r.comments_count), comments:[] }));
   }
+  const reports = reportsRows.results.map(r => ({id:Number(r.id),type:r.target_type,targetId:String(r.target_id),targetName:r.target_name,targetOwner:r.target_owner,reporter:r.reporter,reason:r.reason,date:Number(r.created_at)}));
   return { user: current, users, dwarfs, reports };
 }
 async function fetchDriveScratchProject(fileId) {
