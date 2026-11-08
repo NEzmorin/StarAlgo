@@ -848,21 +848,24 @@
     try{
       const result=await api('/api/reports/mine');
       const reports=result.reports||[];
+      box.replaceChildren();
       if(!reports.length){box.innerHTML='<div class="empty-placeholder">Вы ещё не отправляли жалобы.</div>';return;}
-      box.innerHTML=reports.map(r=>{
+      reports.forEach(r=>{
         const card=document.createElement('div');
         card.className='report-card';
         card.style.cssText='margin:8px 0;border-color:rgba(212,178,54,.45);';
         const status=r.status==='open'?'На рассмотрении':r.status==='dismissed'?'Отклонена':'Закрыта';
-        card.innerHTML='<div class="report-header"><strong>'+esc(String(r.type||'').toUpperCase())+' · '+esc(r.targetName||'Объект')+'</strong><span>'+status+'</span></div><div>'+esc(r.reason)+'</div><small style="opacity:.65;">'+new Date(r.date).toLocaleString()+'</small>';
+        const details=document.createElement('div');
+        details.innerHTML='<div class="report-header"><strong>'+esc(String(r.type||'').toUpperCase())+' · '+esc(r.targetName||'Объект')+'</strong><span>'+status+'</span></div><div>'+esc(r.reason)+'</div><small style="opacity:.65;">'+new Date(r.date).toLocaleString()+'</small>';
+        card.appendChild(details);
         const remove=document.createElement('button');
         remove.className='auth-btn';
         remove.textContent='Удалить мою жалобу';
         remove.style.cssText='margin-top:6px;border-color:#ff7777;color:#ff7777;';
         remove.addEventListener('click',()=>window.deleteMyReport(r.id));
         card.appendChild(remove);
-        return card.outerHTML;
-      }).join('');
+        box.appendChild(card);
+      });
     }catch(e){box.innerHTML='<div class="empty-placeholder">Не удалось загрузить жалобы: '+esc(e.message)+'</div>';}
   };
   window.deleteMyReport = async function(id){
