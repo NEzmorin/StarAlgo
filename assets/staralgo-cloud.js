@@ -837,7 +837,7 @@
       if(!tickets.length){box.innerHTML='<div class="empty-placeholder">Обращений пока нет.</div>';return;}
       box.innerHTML=tickets.map(t=>`<div class="report-card" style="margin:8px 0;">
         <div class="report-header"><strong>${esc(t.subject)}</strong><span>${t.status==='waiting_user'?'Ожидает вашего ответа':t.status==='resolved'?'Решено':'В работе'}</span></div>
-        <div style="max-height:220px;overflow:auto;margin:8px 0;">${t.messages.map(m=>`<p><strong>${esc(m.username)}:</strong> ${esc(m.body)}</p>`).join('')}</div>
+        <div style='max-height:260px;overflow:auto;margin:8px 0;'>${t.messages.map(m=>m.role==='Временный пароль' ? `<div style='margin:8px 0;padding:10px;border:1px solid var(--gold-bright);border-radius:8px;background:rgba(212,178,54,.08);user-select:text;-webkit-user-select:text;'><strong style='color:var(--gold-bright);'>🔐 Восстановление аккаунта</strong><p style='user-select:text;-webkit-user-select:text;'><strong>${esc(m.username)}:</strong> ${esc(m.body)}</p><small style='user-select:text;-webkit-user-select:text;'>Скопируйте пароль сейчас и сразу замените его после входа. Это сообщение показывается один раз.</small></div>` : `<p><strong>${esc(m.username)}:</strong> ${esc(m.body)}</p>`).join('')}</div>
         ${t.status==='waiting_user'?`<div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="auth-btn" onclick="confirmGuestSupportResolved('${t.id}',true)">Да, проблема решена</button><button class="auth-btn" onclick="confirmGuestSupportResolved('${t.id}',false)">Нет, проблема осталась</button></div>`:''}
       </div>`).join('');
     }catch(e){box.innerHTML='<div class="empty-placeholder">Не удалось загрузить переписку: '+esc(e.message)+'</div>';}
@@ -874,11 +874,13 @@
     }catch(e){alert(e.message);}
   };
   window.singularitySetUserPassword = async function(id){
-    const password=prompt('Введите новый пароль (минимум 8 символов). Он будет отправлен пользователю приватным уведомлением:');
+    const password=prompt('Введите новый пароль (минимум 8 символов). Передайте его владельцу только по безопасному каналу:');
     if(password===null)return;
     if(password.length<8){alert('Минимум 8 символов');return;}
-    try{await api('/api/singularity/users/'+encodeURIComponent(id)+'/password',{method:'POST',body:jsonBody({password})});alert('Пароль изменён, все прежние сессии завершены.');}
-    catch(e){alert(e.message);}
+    try{
+      await api('/api/singularity/users/'+encodeURIComponent(id)+'/password',{method:'POST',body:jsonBody({password})});
+      alert('Пароль изменён, все прежние сессии завершены. Уведомление не содержит пароль — передайте его владельцу безопасным способом. Для потерявшего доступ используйте гостевое обращение.');
+    }catch(e){alert(e.message);}
   };
   window.openChangePassword = function(){document.getElementById('change-password-modal')?.classList.add('open');};
   window.closeChangePassword = function(){document.getElementById('change-password-modal')?.classList.remove('open');};
@@ -942,7 +944,7 @@
           <div style="opacity:.8;margin:6px 0;">Статус: ${r.status==='waiting_user'?'Ожидает пользователя':'Открыто'}</div>
           <textarea id="support-reply-${r.id}" class="form-textarea" rows="3" maxlength="4000" placeholder="Напишите ответ пользователю..."></textarea>
           <button class="auth-btn" style="margin-top:7px;" onclick="replySupportTicket('${r.id}')">Отправить ответ</button>
-          ${r.type==='support_guest'?'<button class="auth-btn" style="margin-top:7px;border-color:#f5d65c;color:#f5d65c;" onclick="recoverGuestAccountFromTicket(\\''+esc(r.targetId)+'\\')">Восстановить аккаунт · выдать временный пароль</button>':''}
+          ${r.type==='support_guest'?'<button class="auth-btn" style="margin-top:7px;border-color:#f5d65c;color:#f5d65c;" onclick="recoverGuestAccountFromTicket(\''+esc(r.targetId)+'\')">Восстановить аккаунт · выдать временный пароль</button>':''}
         </div>`;
         return `<div class="report-card" id="report-${r.id}"><div class="report-header"><span>Тип: <strong>${String(r.type).toUpperCase()}</strong> | Объект: ${esc(r.targetName||'N/A')}</span><span>От: ${esc(r.reporter)}</span></div><div><strong>Причина:</strong> ${esc(r.reason)}</div><div style="display:flex;gap:8px;margin-top:5px;"><button class="auth-btn" onclick="openReportTarget('${r.type}','${r.targetId}','${jsName(r.targetOwner||'')}','${r.targetParentType||''}','${r.targetParentId||''}','${jsName(r.targetParentOwner||'')}')">Перейти к объекту</button><button class="auth-btn" style="color:#ff5555;border-color:#ff5555;" onclick="resolveReport('${r.id}','${r.type}','${r.targetId}','${jsName(r.targetOwner||'')}')">Обработать</button><button class="auth-btn" onclick="dismissReport('${r.id}')">Отклонить</button></div></div>`;
       }).join('');
