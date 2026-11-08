@@ -1110,14 +1110,30 @@
     };
     const stopRun = () => cleanup();
     const onMessage = event => {
+      if (event.source !== frame.contentWindow) return;
       let data = event.data;
       if (typeof data === 'string' && data.indexOf('SA_PY|') === 0) {
-        const p = data.indexOf('|', 6), q = data.indexOf('|', p + 1);
-        if (p < 0 || q < 0) return;
+        const p = data.indexOf('|', 6), q = p < 0 ? -1 : data.indexOf('|', p + 1);
+        if (p < 0 || q < 0) {
+          outputBox.textContent = 'Python завершился, но прислал сообщение в неизвестном формате.';
+          outputBox.style.color = '#ff5555';
+          return;
+        }
         data = { type: 'staralgo-python-output', token: data.slice(6, p), ok: data.slice(p + 1, q) === '1', output: data.slice(q + 1) };
-      } else if (typeof data === 'string') { try { data = JSON.parse(data); } catch (_) { return; } }
-      if (!data || data.type !== 'staralgo-python-output' || data.token !== token) return;
-      outputBox.textContent = String(data.output || '').slice(0, 50000);
+      } else if (typeof data === 'string') {
+        try { data = JSON.parse(data); } catch (_) {
+          outputBox.textContent = 'Получено неизвестное сообщение от среды Python.';
+          outputBox.style.color = '#ff5555';
+          return;
+        }
+      }
+      if (!data || data.type !== 'staralgo-python-output') return;
+      if (data.token !== token) {
+        outputBox.textContent = 'Получен ответ от другого запуска Python. Повторите запуск.';
+        outputBox.style.color = '#ff5555';
+        return;
+      }
+      outputBox.textContent = String(data.output == null ? '' : data.output).slice(0, 50000) || (data.ok ? 'Скрипт выполнен успешно!' : 'Выполнение завершено с ошибкой.');
       outputBox.style.color = data.ok ? '#55ff55' : '#ff5555';
       outputBox.scrollTop = outputBox.scrollHeight;
       if (timeoutId) window.clearTimeout(timeoutId);
