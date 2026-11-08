@@ -223,8 +223,10 @@
     window.__staralgoCloudInitialized = true;
     updateRealTime();
     setInterval(updateRealTime, 1000);
-    // Revalidate sessions frequently so an admin kick is reflected in already-open tabs.
-    setInterval(() => window.checkStarAlgoSession(), 4000);
+    // Revalidate active sessions periodically; hidden tabs check immediately when reopened.
+    setInterval(() => {
+      if (!document.hidden) window.checkStarAlgoSession();
+    }, 30000);
     document.addEventListener('visibilitychange', () => {
       if (!document.hidden) window.checkStarAlgoSession();
     });
