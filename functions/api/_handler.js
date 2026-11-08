@@ -911,13 +911,13 @@ async function handle(request, env) {
       LEFT JOIN users du ON du.id=yd.author_id
       WHERE r.status='open' ORDER BY r.created_at DESC LIMIT 100`).all();
     await ensureSupportSchema(env);
-    const supportRows=await env.DB.prepare(\`SELECT t.*,u.username FROM support_tickets t JOIN users u ON u.id=t.user_id WHERE t.status!='resolved' ORDER BY t.updated_at DESC LIMIT 100\`).all();
+    const supportRows=await env.DB.prepare(`SELECT t.*,u.username FROM support_tickets t JOIN users u ON u.id=t.user_id WHERE t.status!='resolved' ORDER BY t.updated_at DESC LIMIT 100`).all();
     const guestRows=await env.DB.prepare("SELECT * FROM guest_support_tickets WHERE status!='resolved' ORDER BY updated_at DESC LIMIT 100").all();
     const supportItems=[];
     const supportMessagesByTicket=new Map();
     if(supportRows.results.length){
       const ids=supportRows.results.map(t=>t.id);
-      const messages=await env.DB.prepare(\`SELECT m.*,u.username FROM support_messages m JOIN users u ON u.id=m.sender_id WHERE m.ticket_id IN (\${ids.map(()=>'?').join(',')}) ORDER BY m.ticket_id,m.created_at ASC\`).bind(...ids).all();
+      const messages=await env.DB.prepare(`SELECT m.*,u.username FROM support_messages m JOIN users u ON u.id=m.sender_id WHERE m.ticket_id IN (${ids.map(()=>'?').join(',')}) ORDER BY m.ticket_id,m.created_at ASC`).bind(...ids).all();
       for(const m of messages.results){const key=String(m.ticket_id);if(!supportMessagesByTicket.has(key))supportMessagesByTicket.set(key,[]);supportMessagesByTicket.get(key).push(m);}
     }
     for(const t of supportRows.results){
@@ -927,7 +927,7 @@ async function handle(request, env) {
     const guestMessagesByTicket=new Map();
     if(guestRows.results.length){
       const ids=guestRows.results.map(t=>t.id);
-      const messages=await env.DB.prepare(\`SELECT * FROM guest_support_messages WHERE ticket_id IN (\${ids.map(()=>'?').join(',')}) ORDER BY ticket_id,created_at\`).bind(...ids).all();
+      const messages=await env.DB.prepare(`SELECT * FROM guest_support_messages WHERE ticket_id IN (${ids.map(()=>'?').join(',')}) ORDER BY ticket_id,created_at`).bind(...ids).all();
       for(const m of messages.results){const key=String(m.ticket_id);if(!guestMessagesByTicket.has(key))guestMessagesByTicket.set(key,[]);guestMessagesByTicket.get(key).push(m);}
     }
     for(const t of guestRows.results){
