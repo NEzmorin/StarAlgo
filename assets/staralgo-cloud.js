@@ -1191,7 +1191,21 @@
   window.runPythonReadonlyResult = window.runPythonSandbox;
   window.addEventListener('beforeunload', () => { if (projectSaveTimer) clearTimeout(projectSaveTimer); });
 
-  const start = () => window.initApp().then(() => window.restoreRoute?.());
+  const hideStarAlgoLoadingScreen = () => {
+    const screen = document.getElementById('staralgo-loading-screen');
+    if (screen) screen.classList.add('is-hidden');
+  };
+  const start = async () => {
+    try {
+      await window.initApp();
+      await window.restoreRoute?.();
+    } catch (error) {
+      console.error('StarAlgo startup:', error);
+    } finally {
+      // Let the last rendered frame reach the screen before fading out the loader.
+      requestAnimationFrame(() => requestAnimationFrame(hideStarAlgoLoadingScreen));
+    }
+  };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once:true });
   else start();
 })();
