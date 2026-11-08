@@ -4491,10 +4491,13 @@
 
             resultsList.style.display = 'flex';
             let matchedStars = [];
+            let scannedProjects = 0;
             starSearchLoop:
             for (const u of Object.values(usersDB)) {
                 const projects = Array.isArray(u.projectsList) ? u.projectsList : [];
                 for (const p of projects) {
+                    scannedProjects++;
+                    if (scannedProjects > 5000) break starSearchLoop;
                     const projectName = String(p.name || '').toLowerCase();
                     const authorName = String(p.author || '').toLowerCase();
                     if (p.published && (projectName.includes(query) || authorName.includes(query))) {
