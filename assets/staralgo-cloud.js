@@ -866,9 +866,12 @@
     }catch(e){alert('Не удалось сменить ник: '+e.message);}
   };
   window.adminResetUserPassword = async function(id){
-    if(!confirm('Сгенерировать временный пароль и завершить все текущие сессии пользователя?'))return;
-    try{await api('/api/admin/users/'+encodeURIComponent(id)+'/password',{method:'POST',body:jsonBody({})});alert('Временный пароль отправлен пользователю в уведомления. Вы его не увидите.');}
-    catch(e){alert(e.message);}
+    if(!confirm('Сгенерировать новый временный пароль и завершить все сессии этого аккаунта? Пароль будет показан только в этом браузере администратора.'))return;
+    try{
+      const result=await api('/api/admin/users/'+encodeURIComponent(id)+'/password',{method:'POST',body:jsonBody({})});
+      window.prompt('Временный пароль для @'+result.username+'. Скопируйте его и передайте владельцу по безопасному каналу:',result.temporaryPassword);
+      alert('Пароль сброшен. Все старые сессии завершены. Не отправляйте пароль в уведомления самого аккаунта.');
+    }catch(e){alert(e.message);}
   };
   window.singularitySetUserPassword = async function(id){
     const password=prompt('Введите новый пароль (минимум 8 символов). Он будет отправлен пользователю приватным уведомлением:');
@@ -894,6 +897,21 @@
       alert('Пароль изменён. Остальные устройства отключены. Аккаунт на этом устройстве останется активным.');
     }catch(e){error.textContent=e.message;error.style.display='block';}
     finally{if(button)button.disabled=false;}
+  };
+  window.recoverGuestAccountFromTicket = async function(ticketId){
+    const username=prompt('Введите ник аккаунта, который нужно восстановить (без @):');
+    if(username===null || !username.trim())return;
+    const verified=confirm('Перед сбросом вы лично подтвердили, что заявитель — владелец аккаунта, используя сведения или канал связи, не доступные постороннему? Одного сообщения в этом обращении недостаточно.');
+    if(!verified)return;
+    if(!confirm('Сбросить пароль аккаунта @'+username.trim()+' и завершить все его активные сессии? Одноразовый пароль появится в гостевом обращении заявителя.'))return;
+    try{
+      const result=await api('/api/support/guest/'+encodeURIComponent(ticketId)+'/reset-password',{
+        method:'POST',
+        body:jsonBody({username:username.trim(),identityVerified:true})
+      });
+      alert('Аккаунт @'+result.username+' восстановлен. Временный пароль доставлен в гостевое обращение и появится в браузере заявителя при следующем открытии раздела поддержки. Все старые сессии завершены.');
+      await renderReportsInbox();
+    }catch(e){alert('Не удалось восстановить аккаунт: '+e.message);}
   };
   window.replySupportTicket = async function(id){
     const input=document.getElementById('support-reply-'+String(id));
@@ -924,6 +942,7 @@
           <div style="opacity:.8;margin:6px 0;">Статус: ${r.status==='waiting_user'?'Ожидает пользователя':'Открыто'}</div>
           <textarea id="support-reply-${r.id}" class="form-textarea" rows="3" maxlength="4000" placeholder="Напишите ответ пользователю..."></textarea>
           <button class="auth-btn" style="margin-top:7px;" onclick="replySupportTicket('${r.id}')">Отправить ответ</button>
+          ${r.type==='support_guest'?'<button class="auth-btn" style="margin-top:7px;border-color:#f5d65c;color:#f5d65c;" onclick="recoverGuestAccountFromTicket(\\''+esc(r.targetId)+'\\')">Восстановить аккаунт · выдать временный пароль</button>':''}
         </div>`;
         return `<div class="report-card" id="report-${r.id}"><div class="report-header"><span>Тип: <strong>${String(r.type).toUpperCase()}</strong> | Объект: ${esc(r.targetName||'N/A')}</span><span>От: ${esc(r.reporter)}</span></div><div><strong>Причина:</strong> ${esc(r.reason)}</div><div style="display:flex;gap:8px;margin-top:5px;"><button class="auth-btn" onclick="openReportTarget('${r.type}','${r.targetId}','${jsName(r.targetOwner||'')}','${r.targetParentType||''}','${r.targetParentId||''}','${jsName(r.targetParentOwner||'')}')">Перейти к объекту</button><button class="auth-btn" style="color:#ff5555;border-color:#ff5555;" onclick="resolveReport('${r.id}','${r.type}','${r.targetId}','${jsName(r.targetOwner||'')}')">Обработать</button><button class="auth-btn" onclick="dismissReport('${r.id}')">Отклонить</button></div></div>`;
       }).join('');
