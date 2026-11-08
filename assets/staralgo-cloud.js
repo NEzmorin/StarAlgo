@@ -810,7 +810,7 @@
   const GUEST_SUPPORT_KEY='staralgo_guest_support_key';
   window.openSupportModal = async function() {
     document.getElementById('support-modal')?.classList.add('open');
-    await loadMySupportTickets();
+    await Promise.all([loadMySupportTickets(),loadMyReports()]);
   };
   window.closeSupportModal = function(){document.getElementById('support-modal')?.classList.remove('open');};
   window.submitSupportTicket = async function(){
@@ -841,6 +841,44 @@
         ${t.status==='waiting_user'?`<div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="auth-btn" onclick="confirmGuestSupportResolved('${t.id}',true)">Да, проблема решена</button><button class="auth-btn" onclick="confirmGuestSupportResolved('${t.id}',false)">Нет, проблема осталась</button></div>`:''}
       </div>`).join('');
     }catch(e){box.innerHTML='<div class="empty-placeholder">Не удалось загрузить переписку: '+esc(e.message)+'</div>';}
+  };
+  window.loadMyReports = async function(){
+    const box=document.getElementById('my-reports-container');if(!box)return;
+    if(!currentUser){box.innerHTML='<div class="empty-placeholder">Войдите в аккаунт, чтобы посмотреть свои жалобы.</div>';return;}
+    try{
+      const result=await api('/api/reports/mine');
+      const reports=result.reports||[];
+      if(!reports.length){box.innerHTML='<div class="empty-placeholder">Вы ещё не отправляли жалобы.</div>';return;}
+      box.innerHTML=reports.map(r=>{
+        const card=document.createElement('div');
+        card.className='report-card';
+        card.style.cssText='margin:8px 0;border-color:rgba(212,178,54,.45);';
+        const status=r.status==='open'?'На рассмотрении':r.status==='dismissed'?'Отклонена':'Закрыта';
+        card.innerHTML='<div class="report-header"><strong>'+esc(String(r.type||'').toUpperCase())+' · '+esc(r.targetName||'Объект')+'</strong><span>'+status+'</span></div><div>'+esc(r.reason)+'</div><small style="opacity:.65;">'+new Date(r.date).toLocaleString()+'</small>';
+        const remove=document.createElement('button');
+        remove.className='auth-btn';
+        remove.textContent='Удалить мою жалобу';
+        remove.style.cssText='margin-top:6px;border-color:#ff7777;color:#ff7777;';
+        remove.addEventListener('click',()=>window.deleteMyReport(r.id));
+        card.appendChild(remove);
+        return card.outerHTML;
+      }).join('');
+    }catch(e){box.innerHTML='<div class="empty-placeholder">Не удалось загрузить жалобы: '+esc(e.message)+'</div>';}
+  };
+  window.deleteMyReport = async function(id){
+    if(!confirm('Удалить вашу жалобу? Это действие нельзя отменить.'))return;
+    try{
+      await api('/api/reports/'+encodeURIComponent(id),{method:'DELETE'});
+      await loadMyReports();
+      if(typeof renderReportsInbox==='function' && currentUser && ['[Сингулярность]','[Администратор]','[Модератор]'].includes(currentUser.role)) await renderReportsInbox();
+    }catch(e){alert('Не удалось удалить жалобу: '+e.message);}
+  };
+  window.deleteSupportTicket = async function(type,id){
+    if(!['support','support_guest'].includes(type))return;
+    if(!confirm('Полностью удалить это обращение и всю переписку? Это действие нельзя отменить.'))return;
+    const path=type==='support_guest'?'/api/support/guest/':'/api/support/';
+    try{await api(path+encodeURIComponent(id),{method:'DELETE'});await renderReportsInbox();alert('Обращение и переписка удалены.');}
+    catch(e){alert('Не удалось удалить обращение: '+e.message);}
   };
   window.confirmGuestSupportResolved = async function(id,resolved){
     const key=localStorage.getItem(GUEST_SUPPORT_KEY);if(!key)return;
@@ -944,6 +982,7 @@
           <div style="opacity:.8;margin:6px 0;">Статус: ${r.status==='waiting_user'?'Ожидает пользователя':'Открыто'}</div>
           <textarea id="support-reply-${r.id}" class="form-textarea" rows="3" maxlength="4000" placeholder="Напишите ответ пользователю..."></textarea>
           <button class="auth-btn" style="margin-top:7px;" onclick="replySupportTicket('${r.id}')">Отправить ответ</button>
+          ${['[Сингулярность]','[Администратор]'].includes(currentUser.role) ? '<button class="auth-btn" style="margin-top:7px;border-color:#ff7777;color:#ff7777;" onclick="deleteSupportTicket(\\''+r.type+'\\',\\''+esc(r.targetId)+'\\')">Удалить обращение и переписку</button>' : ''}
           ${r.type==='support_guest' && ['[Сингулярность]','[Администратор]'].includes(currentUser.role)?'<button class="auth-btn" style="margin-top:7px;border-color:#f5d65c;color:#f5d65c;" onclick="recoverGuestAccountFromTicket(\''+esc(r.targetId)+'\')">Восстановить аккаунт · выдать временный пароль</button>':''}
         </div>`;
         return `<div class="report-card" id="report-${r.id}"><div class="report-header"><span>Тип: <strong>${String(r.type).toUpperCase()}</strong> | Объект: ${esc(r.targetName||'N/A')}</span><span>От: ${esc(r.reporter)}</span></div><div><strong>Причина:</strong> ${esc(r.reason)}</div><div style="display:flex;gap:8px;margin-top:5px;"><button class="auth-btn" onclick="openReportTarget('${r.type}','${r.targetId}','${jsName(r.targetOwner||'')}','${r.targetParentType||''}','${r.targetParentId||''}','${jsName(r.targetParentOwner||'')}')">Перейти к объекту</button><button class="auth-btn" style="color:#ff5555;border-color:#ff5555;" onclick="resolveReport('${r.id}','${r.type}','${r.targetId}','${jsName(r.targetOwner||'')}')">Обработать</button><button class="auth-btn" onclick="dismissReport('${r.id}')">Отклонить</button></div></div>`;
