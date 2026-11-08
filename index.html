@@ -2040,6 +2040,208 @@
             }
         }
 
+
+        /* Dedicated phone navigation. Desktop header and its DOM remain intact. */
+        #mobile-bottom-nav {
+            display: none;
+        }
+
+        @media (max-width: 760px) {
+            header {
+                display: none !important;
+            }
+
+            body {
+                padding: 14px max(12px, env(safe-area-inset-left)) calc(92px + env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-right));
+                min-height: 100vh;
+            }
+
+            #main-layout {
+                width: 100%;
+                min-width: 0;
+            }
+
+            #profile-sidebar {
+                display: none !important;
+            }
+
+            #mobile-bottom-nav {
+                position: fixed;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                z-index: 1200;
+                display: flex;
+                align-items: stretch;
+                justify-content: space-around;
+                gap: 2px;
+                padding: 7px max(8px, env(safe-area-inset-right)) calc(7px + env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+                border-top: 1px solid rgba(212, 178, 54, .55);
+                background: rgba(12, 11, 8, .97);
+                backdrop-filter: blur(12px);
+                box-shadow: 0 -5px 20px rgba(0, 0, 0, .55);
+            }
+
+            .mobile-dock-item {
+                position: relative;
+                flex: 1 1 0;
+                min-width: 0;
+                min-height: 48px;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                gap: 2px;
+                border: 0;
+                border-radius: 8px;
+                padding: 4px 2px;
+                background: transparent;
+                color: var(--gold-main);
+                font-family: var(--font-undertale);
+                cursor: pointer;
+                -webkit-tap-highlight-color: transparent;
+            }
+
+            .mobile-nav-icon {
+                font-size: 1.35rem;
+                line-height: 1;
+            }
+
+            .mobile-nav-label {
+                font-size: .72rem;
+                line-height: 1.1;
+                white-space: nowrap;
+            }
+
+            .mobile-dock-item.active {
+                color: var(--gold-bright);
+                background: rgba(212, 178, 54, .1);
+                text-shadow: 0 0 8px rgba(245, 214, 92, .65);
+            }
+
+            .mobile-dock-item:focus-visible,
+            .mobile-more-menu-item:focus-visible {
+                outline: 2px solid var(--gold-bright);
+                outline-offset: 2px;
+            }
+
+            #mobile-more-wrap {
+                position: relative;
+                display: flex;
+                flex: 1 1 0;
+                min-width: 0;
+            }
+
+            #mobile-more-wrap > #mobile-more-btn {
+                width: 100%;
+            }
+
+            .mobile-more-menu {
+                position: absolute;
+                right: 0;
+                bottom: calc(100% + 10px);
+                display: none;
+                flex-direction: column;
+                gap: 4px;
+                width: min(248px, calc(100vw - 24px));
+                padding: 8px;
+                border: 1px solid var(--gold-main);
+                border-radius: 12px;
+                background: rgba(18, 16, 10, .99);
+                box-shadow: 0 8px 28px rgba(0, 0, 0, .75);
+                z-index: 1201;
+            }
+
+            .mobile-more-menu.open {
+                display: flex;
+            }
+
+            .mobile-more-menu-item {
+                display: block;
+                width: 100%;
+                min-height: 42px;
+                border: 1px solid rgba(212, 178, 54, .28);
+                border-radius: 7px;
+                padding: 9px 12px;
+                background: rgba(212, 178, 54, .06);
+                color: var(--gold-main);
+                text-align: left;
+                font-family: var(--font-undertale);
+                font-size: .95rem;
+                cursor: pointer;
+            }
+
+            .mobile-more-menu-item:hover,
+            .mobile-more-menu-item.active {
+                background: rgba(212, 178, 54, .17);
+                color: var(--gold-bright);
+            }
+
+            .mobile-profile-dock-item {
+                position: relative;
+            }
+
+            .mobile-profile-notification-dot {
+                position: absolute;
+                top: 5px;
+                right: calc(50% - 17px);
+                width: 8px;
+                height: 8px;
+                border: 1px solid var(--bg-color);
+                border-radius: 50%;
+                background: #ff5555;
+                box-shadow: 0 0 8px rgba(255, 85, 85, .8);
+            }
+
+            .profile-logout-btn {
+                border-color: #ff7777 !important;
+                color: #ff9999 !important;
+            }
+
+            .page-title {
+                font-size: clamp(1.7rem, 7vw, 2.25rem);
+                overflow-wrap: anywhere;
+            }
+
+            .page-text {
+                font-size: 1.08rem;
+                overflow-wrap: anywhere;
+            }
+
+            .search-container,
+            .content-section,
+            .tab-page,
+            .profile-page-container {
+                min-width: 0;
+                max-width: 100%;
+            }
+
+            input, textarea, select, button {
+                max-width: 100%;
+            }
+        }
+
+        @media (max-width: 760px) and (orientation: landscape) {
+            #mobile-bottom-nav {
+                padding-top: 3px;
+                padding-bottom: calc(3px + env(safe-area-inset-bottom));
+            }
+
+            .mobile-dock-item {
+                min-height: 40px;
+                flex-direction: row;
+                gap: 5px;
+            }
+
+            .mobile-nav-icon {
+                font-size: 1.15rem;
+            }
+
+            .mobile-nav-label {
+                font-size: .68rem;
+            }
+        }
+
     </style>
 </head>
 <body>
@@ -2141,6 +2343,32 @@
             </div>
         </div>
     </header>
+
+    <nav id="mobile-bottom-nav" aria-label="Основная навигация">
+        <button class="nav-item mobile-dock-item" type="button" onclick="setTab(event, 'main', 'Главная')" aria-label="Главная">
+            <span class="mobile-nav-icon" aria-hidden="true">⌂</span><span class="mobile-nav-label">Главная</span>
+        </button>
+        <button class="nav-item mobile-dock-item" type="button" onclick="setTab(event, 'hall', 'Звёздный Зал')" aria-label="Звёздный Зал">
+            <span class="mobile-nav-icon" aria-hidden="true">✦</span><span class="mobile-nav-label">Зал</span>
+        </button>
+        <button class="nav-item mobile-dock-item" type="button" onclick="setTab(event, 'telescope', 'Телескоп Новостей')" aria-label="Телескоп Новостей">
+            <span class="mobile-nav-icon" aria-hidden="true">◉</span><span class="mobile-nav-label">Новости</span>
+        </button>
+        <div id="mobile-more-wrap">
+            <button class="nav-item mobile-dock-item" id="mobile-more-btn" type="button" onclick="toggleMobileMore(event)" aria-label="Ещё" aria-haspopup="menu" aria-controls="mobile-more-menu" aria-expanded="false">
+                <span class="mobile-nav-icon" aria-hidden="true">⋯</span><span class="mobile-nav-label">Ещё</span>
+            </button>
+            <div class="mobile-more-menu" id="mobile-more-menu" role="menu" aria-label="Дополнительная навигация">
+                <button class="nav-item mobile-more-menu-item" id="mobile-nav-proto-btn" type="button" role="menuitem" style="display:none;" onclick="setTab(event, 'proto', 'Протозвездие')">✧ Протозвездие</button>
+                <button class="nav-item mobile-more-menu-item" id="mobile-nav-reports-btn" type="button" role="menuitem" style="display:none;" onclick="setTab(event, 'reports', 'Ящик жалований')">⚑ Ящик жалований</button>
+                <button class="mobile-more-menu-item" type="button" role="menuitem" onclick="closeMobileMoreMenu(); openSupportModal();">✉ Поддержка</button>
+            </div>
+        </div>
+        <button class="mobile-dock-item mobile-profile-dock-item" id="mobile-profile-btn" type="button" onclick="openMobileProfile()" aria-label="Профиль">
+            <span class="mobile-nav-icon" aria-hidden="true">☆</span><span class="mobile-nav-label">Профиль</span>
+            <span class="mobile-profile-notification-dot" id="mobile-profile-notification-dot" aria-hidden="true" style="display:none;"></span>
+        </button>
+    </nav>
 
     <main id="main-layout">
         <aside class="profile-card" id="profile-sidebar">
@@ -2441,8 +2669,10 @@
                                 <div class="profile-page-name" id="pp-username">Никнейм</div>
                                 <div id="pp-original-username" style="font-size:.85rem;opacity:.65;margin-top:3px;"></div>
                                 <div id="profile-account-actions" style="display:none;gap:8px;flex-wrap:wrap;margin-top:10px;">
+                                  <button class="auth-btn" id="profile-notifications-btn" onclick="openNotificationsModal()">🔔 Уведомления</button>
                                   <button class="auth-btn" onclick="changeProfileUsername()">Сменить ник</button>
                                   <button class="auth-btn" onclick="openChangePassword()">Сменить пароль</button>
+                                  <button class="auth-btn profile-logout-btn" onclick="logout()">Выйти из аккаунта</button>
                                 </div>
                                 <button class="follow-btn" id="follow-action-btn" onclick="toggleFollowUser()" style="display: none;">➕ Подписаться</button>
                                 <span class="friend-badge" id="friend-status-badge" style="display: none;">🤝 ДРУЗЬЯ</span>
@@ -3064,18 +3294,18 @@
         function updateNavVisibility() {
             const protoBtn = document.getElementById('nav-proto-btn');
             const reportsBtn = document.getElementById('nav-reports-btn');
+            const mobileProtoBtn = document.getElementById('mobile-nav-proto-btn');
+            const mobileReportsBtn = document.getElementById('mobile-nav-reports-btn');
             const createDwarfBtn = document.getElementById('create-dwarf-btn');
+            const role = currentUser?.role;
+            const canSeeReports = !!currentUser && (role === '[Модератор]' || role === '[Администратор]' || isUserSingularity(currentUser.username));
 
-            if (protoBtn) {
-                protoBtn.style.display = currentUser ? 'inline-block' : 'none';
-            }
-            if (reportsBtn) {
-                const role = currentUser?.role;
-                const canSeeReports = currentUser && (role === '[Модератор]' || role === '[Администратор]' || isUserSingularity(currentUser.username));
-                reportsBtn.style.display = canSeeReports ? 'inline-block' : 'none';
-            }
+            if (protoBtn) protoBtn.style.display = currentUser ? 'inline-block' : 'none';
+            if (mobileProtoBtn) mobileProtoBtn.style.display = currentUser ? 'block' : 'none';
+            if (reportsBtn) reportsBtn.style.display = canSeeReports ? 'inline-block' : 'none';
+            if (mobileReportsBtn) mobileReportsBtn.style.display = canSeeReports ? 'block' : 'none';
+
             if (createDwarfBtn) {
-                const role = currentUser?.role;
                 const canCreateDwarf = currentUser && (role === '[Администратор]' || isUserSingularity(currentUser.username));
                 createDwarfBtn.style.display = canCreateDwarf ? 'inline-block' : 'none';
             }
@@ -3088,17 +3318,56 @@
 
         function updateBellIndicator() {
             const bell = document.getElementById('bell-notifications-btn');
-            if (!bell || !currentUser) return;
-            const notifs = currentUser.notifications || [];
+            const mobileDot = document.getElementById('mobile-profile-notification-dot');
+            const profileNotificationsBtn = document.getElementById('profile-notifications-btn');
+            const notifs = currentUser?.notifications || [];
             const unreadCount = notifs.filter(n => !n.read).length;
+
+            if (mobileDot) mobileDot.style.display = unreadCount > 0 ? 'block' : 'none';
+            if (profileNotificationsBtn) {
+                profileNotificationsBtn.textContent = unreadCount > 0 ? `🔔 Уведомления (${unreadCount})` : '🔔 Уведомления';
+            }
+            if (!bell) return;
+
             if (unreadCount > 0) {
                 bell.classList.add('has-unread');
                 bell.textContent = `🔔 ${unreadCount}`;
             } else {
                 bell.classList.remove('has-unread');
-                bell.textContent = `🔔`;
+                bell.textContent = '🔔';
             }
         }
+
+        function toggleMobileMore(event) {
+            if (event) event.stopPropagation();
+            const menu = document.getElementById('mobile-more-menu');
+            const button = document.getElementById('mobile-more-btn');
+            if (!menu) return;
+            const open = !menu.classList.contains('open');
+            menu.classList.toggle('open', open);
+            if (button) button.setAttribute('aria-expanded', String(open));
+        }
+
+        function closeMobileMoreMenu() {
+            const menu = document.getElementById('mobile-more-menu');
+            const button = document.getElementById('mobile-more-btn');
+            if (menu) menu.classList.remove('open');
+            if (button) button.setAttribute('aria-expanded', 'false');
+        }
+
+        function openMobileProfile() {
+            if (!currentUser) {
+                openAuthModal();
+                return;
+            }
+            closeMobileMoreMenu();
+            openMyProfile();
+        }
+
+        document.addEventListener('click', function(event) {
+            const wrap = document.getElementById('mobile-more-wrap');
+            if (wrap && !wrap.contains(event.target)) closeMobileMoreMenu();
+        });
 
         function setTab(event, tabId, name) {
             if (tabId === 'proto' && !currentUser) {
@@ -3114,6 +3383,7 @@
                 renderReportsInbox();
             }
 
+            closeMobileMoreMenu();
             currentTab = tabId;
             if (!window.__staralgoRestoringRoute) {
                 const route = window.starAlgoRouteForTab ? window.starAlgoRouteForTab(tabId) : '/';
@@ -3131,10 +3401,15 @@
                 const navTabId = tabId === 'star-editor'
                     ? (starOpenSource === 'hall' ? 'hall' : 'proto')
                     : tabId === 'dwarf-viewer' ? 'telescope' : tabId;
-                const navBtn = Array.from(document.querySelectorAll('#main-nav .nav-item'))
+                const navBtn = Array.from(document.querySelectorAll('#main-nav .nav-item, #mobile-bottom-nav .nav-item, #mobile-more-menu .nav-item'))
                     .find(button => (button.getAttribute('onclick') || '').includes("'" + navTabId + "'"));
                 if (navBtn) navBtn.classList.add('active');
             }
+
+            const mobileMoreBtn = document.getElementById('mobile-more-btn');
+            const mobileProfileBtn = document.getElementById('mobile-profile-btn');
+            if (mobileMoreBtn) mobileMoreBtn.classList.toggle('active', ['proto', 'reports'].includes(tabId) || (tabId === 'star-editor' && starOpenSource === 'proto'));
+            if (mobileProfileBtn) mobileProfileBtn.classList.toggle('active', tabId === 'profile');
 
             const breadcrumb = document.getElementById('breadcrumb');
             if (breadcrumb) {
