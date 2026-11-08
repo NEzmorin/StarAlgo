@@ -146,7 +146,7 @@ async function getProfile(env, profile, viewer) {
   const followerRows = await env.DB.prepare('SELECT u.username FROM follows f JOIN users u ON u.id=f.follower_id WHERE f.followed_id=? ORDER BY u.username').bind(profile.id).all();
   const followingRows = await env.DB.prepare('SELECT u.username FROM follows f JOIN users u ON u.id=f.followed_id WHERE f.follower_id=? ORDER BY u.username').bind(profile.id).all();
   const own = !!viewer && viewer.id === profile.id;
-  const projectRows = await env.DB.prepare(`SELECT p.id,p.user_id,p.name,p.category,p.description,p.published,p.cover_url,p.project_url,p.views,p.deleted_at,p.was_published,p.created_at,p.updated_at,u.username author,
+  const projectRows = await env.DB.prepare(`SELECT ${own ? 'p.*' : 'p.id,p.user_id,p.name,p.category,p.description,p.published,p.cover_url,p.project_url,p.views,p.deleted_at,p.was_published,p.created_at,p.updated_at'},u.username author,
     (SELECT COUNT(*) FROM project_likes l WHERE l.project_id=p.id) likes_count,
     (SELECT COUNT(*) FROM comments c WHERE c.project_id=p.id) comments_count
     FROM projects p JOIN users u ON u.id=p.user_id
