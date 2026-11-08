@@ -405,13 +405,47 @@ async function handle(request, env) {
     const tickets=await env.DB.prepare('SELECT * FROM guest_support_tickets WHERE access_key=? ORDER BY updated_at DESC LIMIT 20').bind(key).all();
     const result=[];
     for(const t of tickets.results){
-      const msgs=await env.DB.prepare('SELECT * FROM guest_support_messages WHERE ticket_id=? ORDER BY created_at').bind(t.id).all();
-      result.push({id:t.id,subject:t.subject,status:t.status,username:t.guest_name,createdAt:Number(t.created_at),messages:msgs.results.map(m=>({username:m.sender_name,role:m.sender_role,body:m.body,date:Number(m.created_at)}))});
+      // Recovery credentials are atomically consumed by the first browser holding this ticket key.
+      const [msgs,secrets]=await Promise.all([
+        env.DB.prepare("SELECT * FROM guest_support_messages WHERE ticket_id=? AND sender_role!='Временный пароль' ORDER BY created_at").bind(t.id).all(),
+        env.DB.prepare("DELETE FROM guest_support_messages WHERE ticket_id=? AND sender_role='Временный пароль' RETURNING *").bind(t.id).all()
+      ]);
+      const allMessages=[...(msgs.results||[]),...(secrets.results||[])].sort((a,b)=>Number(a.created_at)-Number(b.created_at));
+      result.push({id:t.id,subject:t.subject,status:t.status,username:t.guest_name,createdAt:Number(t.created_at),messages:allMessages.map(m=>({username:m.sender_name,role:m.sender_role,body:m.body,date:Number(m.created_at)}))});
     }
     return json({tickets:result});
   }
 
   const user = await authUser(request, env);
+
+  // Account recovery through a guest support ticket. Staff must verify ownership
+  // independently before triggering this action; the secret is delivered once
+  // to the browser that owns the ticket access key, never to the compromised account.
+  const guestPasswordReset=path.match(/^\\/api\\/support\\/guest\\/([\\w-]+)\\/reset-password$/);
+  if(guestPasswordReset && method==='POST'){
+    await ensureSupportSchema(env);
+    if(!isAdmin(user)) fail(403,'Сброс пароля через гостевое обращение доступен только администратору');
+    const body=await readBody(request);
+    if(body.identityVerified!==true) fail(400,'Сначала подтвердите проверку личности владельца');
+    const username=text(body.username,24,'Никнейм');
+    const target=await userByName(env,username);
+    if(!target) fail(404,'Аккаунт с таким никнеймом не найден');
+    if(isSingularity(target)) fail(403,'Аккаунт Сингулярности нельзя сбросить этим способом');
+    const ticket=await env.DB.prepare('SELECT * FROM guest_support_tickets WHERE id=?').bind(guestPasswordReset[1]).first();
+    if(!ticket) fail(404,'Гостевое обращение не найдено');
+    const generated='SA-'+Array.from(crypto.getRandomValues(new Uint8Array(18)),b=>(b%36).toString(36)).join('')+'!';
+    const salt=b64(crypto.getRandomValues(new Uint8Array(16))),iterations=100000;
+    const hash=await passwordHash(generated,salt,iterations);
+    const stamp=now();
+    await env.DB.prepare('UPDATE users SET password_hash=?,password_salt=?,password_iterations=?,updated_at=? WHERE id=?').bind(hash,salt,iterations,stamp,target.id).run();
+    await env.DB.prepare('DELETE FROM sessions WHERE user_id=?').bind(target.id).run();
+    // Replace any unread recovery secret for this ticket instead of stacking credentials.
+    await env.DB.prepare("DELETE FROM guest_support_messages WHERE ticket_id=? AND sender_role='Временный пароль'").bind(ticket.id).run();
+    const message='Аккаунт @'+target.username+' восстановлен. Временный пароль: '+generated+'. Войдите с ним и сразу установите новый пароль.';
+    await env.DB.prepare('INSERT INTO guest_support_messages(id,ticket_id,sender_name,sender_role,body,created_at) VALUES(?,?,?,?,?,?)').bind(makeId(),ticket.id,'StarAlgo','Временный пароль',message,stamp).run();
+    await env.DB.prepare("UPDATE guest_support_tickets SET status='waiting_user',updated_at=? WHERE id=?").bind(stamp,ticket.id).run();
+    return json({ok:true,username:target.username,deliveredToGuestBrowser:true});
+  }
 
   if (path === '/api/avatar/upload' && method === 'POST') {
     if (!user) fail(401, 'Войдите в аккаунт, чтобы загружать изображения');
@@ -544,9 +578,9 @@ async function handle(request, env) {
     const hash=await passwordHash(generated,salt,iterations);
     await env.DB.prepare('UPDATE users SET password_hash=?,password_salt=?,password_iterations=?,updated_at=? WHERE id=?').bind(hash,salt,iterations,now(),target.id).run();
     await env.DB.prepare('DELETE FROM sessions WHERE user_id=?').bind(target.id).run();
-    const encryptedForRecipient={temporaryPassword:generated,forcePasswordChange:true};
-    await addNotification(env,target.id,user.id,'password_reset','Администратор сбросил пароль. Скопируйте временный пароль и сразу смените его в профиле.',encryptedForRecipient);
-    return json({ok:true,notified:true});
+    // Return the one-time password only to the authenticated administrator's browser.
+    // Never place a usable password in the target account's notifications.
+    return json({ok:true,username:target.username,temporaryPassword:generated});
   }
   const singularityPassword=path.match(/^\/api\/singularity\/users\/([^/]+)\/password$/);
   if(singularityPassword && method==='POST'){
@@ -943,7 +977,7 @@ async function handle(request, env) {
     const guestMessagesByTicket=new Map();
     if(guestRows.results.length){
       const ids=guestRows.results.map(t=>t.id);
-      const messages=await env.DB.prepare(`SELECT * FROM guest_support_messages WHERE ticket_id IN (${ids.map(()=>'?').join(',')}) ORDER BY ticket_id,created_at`).bind(...ids).all();
+      const messages=await env.DB.prepare(`SELECT * FROM guest_support_messages WHERE ticket_id IN (${ids.map(()=>'?').join(',')}) AND sender_role!='Временный пароль' ORDER BY ticket_id,created_at`).bind(...ids).all();
       for(const m of messages.results){const key=String(m.ticket_id);if(!guestMessagesByTicket.has(key))guestMessagesByTicket.set(key,[]);guestMessagesByTicket.get(key).push(m);}
     }
     for(const t of guestRows.results){
