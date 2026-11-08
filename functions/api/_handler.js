@@ -373,7 +373,9 @@ async function handle(request, env) {
     const guestName=text(body.name || 'Гость',60,'Имя');
     const subject=text(body.subject || 'Обращение в техподдержку',120,'Тема');
     const message=text(body.message,4000,'Сообщение');
-    const id=makeId(), accessKey=b64(crypto.getRandomValues(new Uint8Array(24))).replace(/[^A-Za-z0-9]/g,'');
+    const id=makeId();
+    const suppliedKey=String(body.accessKey||'');
+    const accessKey=/^[A-Za-z0-9]{20,80}$/.test(suppliedKey) ? suppliedKey : b64(crypto.getRandomValues(new Uint8Array(24))).replace(/[^A-Za-z0-9]/g,'');
     const stamp=now();
     await env.DB.prepare("INSERT INTO guest_support_tickets(id,access_key,guest_name,subject,status,created_at,updated_at) VALUES(?,?,?,?,'open',?,?)").bind(id,accessKey,guestName,subject,stamp,stamp).run();
     await env.DB.prepare("INSERT INTO guest_support_messages(id,ticket_id,sender_name,sender_role,body,created_at) VALUES(?,?,?,'Гость',?,?)").bind(makeId(),id,guestName,message,stamp).run();
@@ -398,6 +400,25 @@ async function handle(request, env) {
     }
     return json({ok:true});
   }
+  const guestSupportDelete=path.match(/^\/api\/support\/guest\/([\w-]+)$/);
+  if(guestSupportDelete && method==='DELETE'){
+    await ensureSupportSchema(env);
+    const requester=await authUser(request,env);
+    const body=await readBody(request);
+    if(!isAdmin(requester)){
+      const key=String(body.accessKey||'');
+      if(!/^[A-Za-z0-9]{20,80}$/.test(key)) fail(400,'Не указан ключ доступа к обращению');
+      const ticket=await env.DB.prepare('SELECT id FROM guest_support_tickets WHERE id=? AND access_key=?').bind(guestSupportDelete[1],key).first();
+      if(!ticket) fail(404,'Обращение не найдено или нет доступа');
+    }else{
+      const ticket=await env.DB.prepare('SELECT id FROM guest_support_tickets WHERE id=?').bind(guestSupportDelete[1]).first();
+      if(!ticket) fail(404,'Обращение не найдено');
+    }
+    await env.DB.prepare('DELETE FROM guest_support_messages WHERE ticket_id=?').bind(guestSupportDelete[1]).run();
+    await env.DB.prepare('DELETE FROM guest_support_tickets WHERE id=?').bind(guestSupportDelete[1]).run();
+    return json({ok:true});
+  }
+
   if (path === '/api/support/guest' && method === 'GET') {
     await ensureSupportSchema(env);
     const key=url.searchParams.get('key')||'';
@@ -641,22 +662,12 @@ async function handle(request, env) {
     }
     return json({tickets});
   }
-  const guestSupportDelete=path.match(/^\/api\/support\/guest\/([\w-]+)$/);
-  if(guestSupportDelete && method==='DELETE'){
-    await ensureSupportSchema(env);
-    if(!isAdmin(user)) fail(403,'Удалять гостевые обращения может только администратор или Сингулярность');
-    const ticket=await env.DB.prepare('SELECT id FROM guest_support_tickets WHERE id=?').bind(guestSupportDelete[1]).first();
-    if(!ticket) fail(404,'Обращение не найдено');
-    await env.DB.prepare('DELETE FROM guest_support_messages WHERE ticket_id=?').bind(ticket.id).run();
-    await env.DB.prepare('DELETE FROM guest_support_tickets WHERE id=?').bind(ticket.id).run();
-    return json({ok:true});
-  }
   const supportDelete=path.match(/^\/api\/support\/([\w-]+)$/);
   if(supportDelete && method==='DELETE'){
     await ensureSupportSchema(env);
-    if(!isAdmin(user)) fail(403,'Удалять обращения может только администратор или Сингулярность');
-    const ticket=await env.DB.prepare('SELECT id FROM support_tickets WHERE id=?').bind(supportDelete[1]).first();
+    const ticket=await env.DB.prepare('SELECT id,user_id FROM support_tickets WHERE id=?').bind(supportDelete[1]).first();
     if(!ticket) fail(404,'Обращение не найдено');
+    if(String(ticket.user_id)!==String(user.id) && !isAdmin(user)) fail(403,'Удалять можно только собственное обращение');
     await env.DB.prepare('DELETE FROM support_messages WHERE ticket_id=?').bind(ticket.id).run();
     await env.DB.prepare('DELETE FROM support_tickets WHERE id=?').bind(ticket.id).run();
     return json({ok:true});
