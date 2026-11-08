@@ -94,6 +94,7 @@ CREATE TABLE IF NOT EXISTS yellow_dwarfs (
   image_url TEXT,
   created_at INTEGER NOT NULL
 );
+CREATE INDEX IF NOT EXISTS yellow_dwarfs_created_idx ON yellow_dwarfs(created_at DESC);
 CREATE TABLE IF NOT EXISTS dwarf_likes (
   dwarf_id TEXT NOT NULL REFERENCES yellow_dwarfs(id) ON DELETE CASCADE,
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -107,6 +108,7 @@ CREATE TABLE IF NOT EXISTS dwarf_comments (
   body TEXT NOT NULL,
   created_at INTEGER NOT NULL
 );
+CREATE INDEX IF NOT EXISTS dwarf_comments_feed_idx ON dwarf_comments(dwarf_id, created_at);
 
 CREATE TABLE IF NOT EXISTS reports (
   id TEXT PRIMARY KEY,
