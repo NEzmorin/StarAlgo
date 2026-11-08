@@ -16,7 +16,7 @@
       "name": "API_EDGE_LIMITER",
       "namespace_id": "8100801",
       "simple": {
-        "limit": 600,
+        "limit": 1200,
         "period": 60
       }
     },
@@ -24,7 +24,7 @@
       "name": "AUTH_EDGE_LIMITER",
       "namespace_id": "8100802",
       "simple": {
-        "limit": 20,
+        "limit": 60,
         "period": 60
       }
     },
@@ -32,7 +32,7 @@
       "name": "SCRATCH_PROXY_LIMITER",
       "namespace_id": "8100803",
       "simple": {
-        "limit": 60,
+        "limit": 120,
         "period": 60
       }
     }
