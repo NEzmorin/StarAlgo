@@ -1775,9 +1775,181 @@
                 grid-template-columns: 1fr;
             }
         }
+
+        /* StarAlgo initial loading screen */
+        .staralgo-loader {
+            position: fixed;
+            inset: 0;
+            z-index: 100000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 13px;
+            overflow: hidden;
+            background:
+                radial-gradient(ellipse at 50% 44%, rgba(212, 178, 54, 0.13) 0%, rgba(12, 11, 8, 0.98) 42%, #060503 100%);
+            color: var(--gold-main);
+            opacity: 1;
+            visibility: visible;
+            transition: opacity 420ms ease, visibility 420ms ease;
+        }
+        .staralgo-loader::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            opacity: .42;
+            background-image:
+                linear-gradient(rgba(212, 178, 54, .035) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(212, 178, 54, .035) 1px, transparent 1px);
+            background-size: 28px 28px;
+            mask-image: radial-gradient(ellipse at center, #000 12%, transparent 78%);
+        }
+        .staralgo-loader.is-hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+        .staralgo-loader-scene {
+            position: relative;
+            width: 190px;
+            height: 190px;
+            display: grid;
+            place-items: center;
+            isolation: isolate;
+        }
+        .staralgo-loader-orbit {
+            position: absolute;
+            width: 158px;
+            height: 158px;
+            border: 1px solid rgba(212, 178, 54, .28);
+            border-radius: 50%;
+            box-shadow: 0 0 22px rgba(212, 178, 54, .08), inset 0 0 18px rgba(212, 178, 54, .04);
+        }
+        .staralgo-loader-orbit::before,
+        .staralgo-loader-orbit::after {
+            content: "";
+            position: absolute;
+            border: 1px solid rgba(212, 178, 54, .10);
+            border-radius: 50%;
+        }
+        .staralgo-loader-orbit::before { inset: -12px; }
+        .staralgo-loader-orbit::after { inset: 10px; border-style: dashed; }
+        .staralgo-loader-satellite {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 34px;
+            height: 34px;
+            display: grid;
+            place-items: center;
+            color: #ffe88a;
+            filter: drop-shadow(0 0 8px rgba(245, 214, 92, .9));
+            animation: staralgo-orbit 2.8s linear infinite;
+            will-change: transform;
+        }
+        .staralgo-loader-satellite svg { width: 25px; height: 25px; }
+        .staralgo-loader-core {
+            position: relative;
+            z-index: 1;
+            width: 88px;
+            height: 88px;
+            display: grid;
+            place-items: center;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(245, 214, 92, .16), rgba(12, 11, 8, .06) 68%);
+            filter: drop-shadow(0 0 18px rgba(212, 178, 54, .35));
+            animation: staralgo-star-pulse 2.2s ease-in-out infinite;
+        }
+        .staralgo-loader-core svg {
+            width: 76px;
+            height: 76px;
+            overflow: visible;
+        }
+        .staralgo-loader-core path {
+            fill: #e3c044;
+            stroke: #ffe88a;
+            stroke-width: 1.5;
+            filter: drop-shadow(0 0 8px rgba(245, 214, 92, .7));
+        }
+        .staralgo-loader-brand {
+            position: relative;
+            font-family: var(--font-roblox);
+            font-size: clamp(2rem, 7vw, 2.8rem);
+            line-height: 1;
+            letter-spacing: 5px;
+            color: var(--gold-bright);
+            text-shadow: 0 0 14px rgba(212, 178, 54, .42);
+        }
+        .staralgo-loader-caption {
+            position: relative;
+            padding: 0 18px;
+            text-align: center;
+            font-family: var(--font-undertale);
+            font-size: .82rem;
+            letter-spacing: 2px;
+            color: rgba(245, 214, 92, .72);
+        }
+        .staralgo-loader-progress {
+            position: relative;
+            width: 174px;
+            height: 2px;
+            margin-top: 8px;
+            overflow: hidden;
+            background: rgba(212, 178, 54, .17);
+            border-radius: 2px;
+        }
+        .staralgo-loader-progress::after {
+            content: "";
+            position: absolute;
+            inset: 0 auto 0 0;
+            width: 42%;
+            background: linear-gradient(90deg, transparent, #ffe88a, transparent);
+            box-shadow: 0 0 9px rgba(245, 214, 92, .8);
+            animation: staralgo-loading-sweep 1.35s ease-in-out infinite;
+        }
+        @keyframes staralgo-orbit {
+            from { transform: translate(-50%, -50%) rotate(0deg) translateX(79px) rotate(0deg); }
+            to { transform: translate(-50%, -50%) rotate(360deg) translateX(79px) rotate(-360deg); }
+        }
+        @keyframes staralgo-star-pulse {
+            0%, 100% { transform: scale(.94); opacity: .88; }
+            50% { transform: scale(1.06); opacity: 1; }
+        }
+        @keyframes staralgo-loading-sweep {
+            0% { transform: translateX(-110%); }
+            100% { transform: translateX(250%); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .staralgo-loader-satellite,
+            .staralgo-loader-core,
+            .staralgo-loader-progress::after { animation-duration: 8s; }
+        }
+
     </style>
 </head>
 <body>
+
+    <div class="staralgo-loader" id="staralgo-loading-screen" role="status" aria-live="polite" aria-label="Загрузка StarAlgo">
+        <div class="staralgo-loader-scene" aria-hidden="true">
+            <div class="staralgo-loader-orbit"></div>
+            <div class="staralgo-loader-satellite">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="9.2"></circle>
+                    <path d="M2.9 12h18.2M12 2.8c2.5 2.5 3.7 5.6 3.7 9.2s-1.2 6.7-3.7 9.2c-2.5-2.5-3.7-5.6-3.7-9.2S9.5 5.3 12 2.8Z"></path>
+                </svg>
+            </div>
+            <div class="staralgo-loader-core">
+                <svg viewBox="0 0 100 100">
+                    <path d="M50 5 C53 34 66 47 95 50 C66 53 53 66 50 95 C47 66 34 53 5 50 C34 47 47 34 50 5Z"></path>
+                </svg>
+            </div>
+        </div>
+        <div class="staralgo-loader-brand">STARALGO</div>
+        <div class="staralgo-loader-caption">СОЕДИНЕНИЕ СО ЗВЁЗДНОЙ СЕТЬЮ</div>
+        <div class="staralgo-loader-progress" aria-hidden="true"></div>
+    </div>
 
     <audio id="click-sound" src="/click.mp3" preload="auto"></audio>
     <input type="file" id="avatar-file-input" accept="image/*" style="display: none;" onchange="handleAvatarUpload(event)">
