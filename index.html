@@ -4618,12 +4618,24 @@
         }
 
         function getProtoProjectDate(project) {
-            const value = project.date ?? project.createdAt ?? project.updatedAt ?? project.id ?? 0;
-            const numeric = Number(value);
-            if (Number.isFinite(numeric)) return numeric;
-            const parsed = Date.parse(value);
-            return Number.isFinite(parsed) ? parsed : 0;
+            const values = [project.date, project.createdAt, project.created_at, project.updatedAt, project.updated_at, project.id];
+            for (const value of values) {
+                if (value === null || value === undefined || value === '') continue;
+                if (typeof value === 'number' && Number.isFinite(value)) return value;
+                if (typeof value === 'string' && value.trim()) {
+                    const numeric = Number(value);
+                    if (Number.isFinite(numeric)) return numeric;
+                }
+                const parsed = Date.parse(value);
+                if (Number.isFinite(parsed)) return parsed;
+            }
+            return 0;
         }
+
+        const protoNameCollator = new Intl.Collator(['ru', 'en'], {
+            numeric: true,
+            sensitivity: 'base'
+        });
 
         function switchProtoSection(event, sectionName) {
             activeProtoSectionName = sectionName;
@@ -4664,10 +4676,7 @@
             const sortedFiltered = [...filtered].sort((a, b) => {
                 if (protoSortMode.startsWith('name-')) {
                     const direction = protoSortMode === 'name-asc' ? 1 : -1;
-                    return String(a.name || '').localeCompare(String(b.name || ''), undefined, {
-                        numeric: true,
-                        sensitivity: 'base'
-                    }) * direction;
+                    return protoNameCollator.compare(String(a.name || ''), String(b.name || '')) * direction;
                 }
 
                 const direction = protoSortMode === 'date-desc' ? -1 : 1;
@@ -4699,20 +4708,32 @@
                             class="proto-btn-pill ${protoSortMode.startsWith('date-') ? 'active' : ''}"
                             type="button"
                             aria-pressed="${protoSortMode.startsWith('date-')}"
-                            onclick="toggleProtoSort('date')"
+                            data-proto-sort="date"
+                            aria-label="Изменить порядок сортировки по дате"
                         >${protoSortMode === 'date-asc' ? '↑ Старые' : '↓ Новые'}</button>
                         <button
                             class="proto-btn-pill ${protoSortMode.startsWith('name-') ? 'active' : ''}"
                             type="button"
                             aria-pressed="${protoSortMode.startsWith('name-')}"
-                            onclick="toggleProtoSort('name')"
-                        >${protoSortMode === 'name-desc' ? 'Я–А' : 'А–Я'}</button>
+                            data-proto-sort="name"
+                            aria-label="Изменить алфавитный порядок сортировки"
+                        >${protoSortMode === 'name-desc' ? 'Я–А / Z–A' : 'А–Я / A–Z'}</button>
                         <button class="proto-create-btn" onclick="openCreateProjectModal()">+ Создать</button>
                     </div>
                 </div>
                 <div class="proto-tabs-row" id="proto-category-tabs">${tabsHtml}</div>
                 <div class="proto-projects-grid" id="proto-projects-grid">${gridHtml}</div>
             `;
+
+            // Bind directly after each render, instead of relying on inline onclick
+            // attributes injected via innerHTML.
+            container.querySelectorAll('[data-proto-sort]').forEach(button => {
+                button.addEventListener('click', event => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    toggleProtoSort(button.dataset.protoSort);
+                });
+            });
         }
 
         function renderProtoVacuumView(container) {
