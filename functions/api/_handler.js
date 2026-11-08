@@ -521,7 +521,10 @@ async function handle(request, env) {
   }
 
   if (path === '/api/auth/register' && method === 'POST') {
-    const body = await readBody(request);
+    const body = await readBody(request, 8192);
+    const username = text(body.username, 24, 'Никнейм');
+    const password = typeof body.password === 'string' ? body.password : '';
+    if (password.length < 8 || password.length > 256) fail(400, 'Пароль должен содержать от 8 до 256 символов');
     if (!env.TURNSTILE_SECRET_KEY) fail(503, 'Защита CAPTCHA ещё не настроена. Попробуйте позже');
     {
       const captchaToken = typeof body.captchaToken === 'string' ? body.captchaToken : '';
@@ -540,10 +543,7 @@ async function handle(request, env) {
         fail(400, 'Проверка CAPTCHA не пройдена. Попробуйте ещё раз');
       }
     }
-    const username = text(body.username, 24, 'Никнейм');
-    const password = typeof body.password === 'string' ? body.password : '';
     if (!/^[\p{L}\p{N}_ .-]{3,24}$/u.test(username)) fail(400, 'Никнейм: 3–24 символа, буквы, цифры, пробел, _ . -');
-    if (password.length < 8 || password.length > 256) fail(400, 'Пароль должен содержать от 8 до 256 символов');
     const salt = b64(crypto.getRandomValues(new Uint8Array(16)));
     const iterations = 100000;
     const userId = crypto.randomUUID(), stamp = now();
@@ -573,8 +573,9 @@ async function handle(request, env) {
     }
   }
   if (path === '/api/auth/login' && method === 'POST') {
-    const body = await readBody(request);
+    const body = await readBody(request, 4096);
     if (typeof body.username !== 'string' || typeof body.password !== 'string') fail(400, 'Введите никнейм и пароль');
+    if (body.username.length > 24 || body.password.length > 256) fail(400, 'Никнейм должен быть не длиннее 24 символов, пароль — не длиннее 256');
     const found = await userByName(env, body.username.trim());
     if (!found || await passwordHash(body.password, found.password_salt, found.password_iterations) !== found.password_hash) fail(401, 'Неверный никнейм или пароль');
     if (found.is_banned && (!found.ban_until || found.ban_until > now())) fail(403, 'Аккаунт заблокирован');
@@ -611,7 +612,7 @@ async function handle(request, env) {
     if(!isSingularity(user)) fail(403,'Только Сингулярность может выполнять это действие');
     const target=await env.DB.prepare('SELECT * FROM users WHERE id=?').bind(singularityPassword[1]).first();
     if(!target) fail(404,'Пользователь не найден');
-    const body=await readBody(request), chosen=text(body.password,256,'Пароль');
+    const body=await readBody(request, 4096), chosen=text(body.password,256,'Пароль');
     if(chosen.length<8) fail(400,'Пароль должен содержать минимум 8 символов');
     const salt=b64(crypto.getRandomValues(new Uint8Array(16))),iterations=100000;
     const hash=await passwordHash(chosen,salt,iterations);
@@ -623,8 +624,9 @@ async function handle(request, env) {
 
   if (path === '/api/auth/change-password' && method === 'POST') {
     if(!user) fail(401,'Сначала войдите в аккаунт');
-    const body=await readBody(request);
+    const body=await readBody(request, 4096);
     if(typeof body.currentPassword!=='string'||typeof body.newPassword!=='string') fail(400,'Заполните оба поля');
+    if(body.currentPassword.length>256) fail(400,'Текущий пароль должен содержать не более 256 символов');
     if(body.newPassword.length<8||body.newPassword.length>256) fail(400,'Новый пароль должен содержать от 8 до 256 символов');
     if(await passwordHash(body.currentPassword,user.password_salt,user.password_iterations)!==user.password_hash) fail(403,'Текущий пароль указан неверно');
     const salt=b64(crypto.getRandomValues(new Uint8Array(16))),iterations=100000;
@@ -744,7 +746,9 @@ async function handle(request, env) {
     return json({ user: await getProfile(env,profile,user) });
   }
   if (path === '/api/users/search' && method === 'GET') {
-    const q = (url.searchParams.get('q') || '').trim().slice(0,40).toLowerCase().replace(/[\\%_]/g,'');
+    const rawQuery = url.searchParams.get('q') || '';
+    if (rawQuery.length > 24) fail(400, 'Поисковый запрос не должен превышать 24 символа');
+    const q = rawQuery.trim().toLowerCase().replace(/[\\%_]/g,'');
     const rows = await env.DB.prepare('SELECT id,username,role,is_supernova,avatar_url,bio FROM users WHERE username_norm LIKE ? ORDER BY username_norm LIMIT 20').bind(`%${q}%`).all();
     return json({ users: rows.results });
   }
