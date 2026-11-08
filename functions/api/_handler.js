@@ -421,7 +421,7 @@ async function handle(request, env) {
   // Account recovery through a guest support ticket. Staff must verify ownership
   // independently before triggering this action; the secret is delivered once
   // to the browser that owns the ticket access key, never to the compromised account.
-  const guestPasswordReset=path.match(/^\\/api\\/support\\/guest\\/([\\w-]+)\\/reset-password$/);
+  const guestPasswordReset=path.match(/^\/api\/support\/guest\/([\w-]+)\/reset-password$/);
   if(guestPasswordReset && method==='POST'){
     await ensureSupportSchema(env);
     if(!isAdmin(user)) fail(403,'Сброс пароля через гостевое обращение доступен только администратору');
