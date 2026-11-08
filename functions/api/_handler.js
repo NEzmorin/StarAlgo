@@ -375,7 +375,10 @@ async function handle(request, env) {
     const message=text(body.message,4000,'Сообщение');
     const id=makeId();
     const suppliedKey=String(body.accessKey||'');
-    const accessKey=/^[A-Za-z0-9]{20,80}$/.test(suppliedKey) ? suppliedKey : b64(crypto.getRandomValues(new Uint8Array(24))).replace(/[^A-Za-z0-9]/g,'');
+    const existingKey=/^[A-Za-z0-9]{20,80}$/.test(suppliedKey)
+      ? await env.DB.prepare('SELECT access_key FROM guest_support_tickets WHERE access_key=? LIMIT 1').bind(suppliedKey).first()
+      : null;
+    const accessKey=existingKey ? suppliedKey : b64(crypto.getRandomValues(new Uint8Array(24))).replace(/[^A-Za-z0-9]/g,'');
     const stamp=now();
     await env.DB.prepare("INSERT INTO guest_support_tickets(id,access_key,guest_name,subject,status,created_at,updated_at) VALUES(?,?,?,?,'open',?,?)").bind(id,accessKey,guestName,subject,stamp,stamp).run();
     await env.DB.prepare("INSERT INTO guest_support_messages(id,ticket_id,sender_name,sender_role,body,created_at) VALUES(?,?,?,'Гость',?,?)").bind(makeId(),id,guestName,message,stamp).run();
