@@ -116,12 +116,9 @@ async function projectRow(env, projectId) {
     FROM projects p JOIN users u ON u.id=p.user_id WHERE p.id=?`).bind(String(projectId)).first();
 }
 async function projectDetail(env, row, user) {
-  const [comments, likes] = await Promise.all([
-    env.DB.prepare(`SELECT c.*,u.username FROM comments c JOIN users u ON u.id=c.user_id WHERE c.project_id=? ORDER BY c.created_at ASC`).bind(row.id).all(),
-    env.DB.prepare(`SELECT u.username FROM project_likes l JOIN users u ON u.id=l.user_id WHERE l.project_id=? ORDER BY l.created_at`).bind(row.id).all()
-  ]);
-  const mapped = mapProject({ ...row, comments_data: comments.results.map(mapComment), liked_by: likes.results.map(x => x.username) }, true);
-  mapped.isLiked = !!user && likes.results.some(x => x.username.toLowerCase() === user.username.toLowerCase());
+  const mapped = mapProject({ ...row, comments_data: [], liked_by: [] }, true);
+  mapped.commentsCount = Number(row.comments_count || 0);
+  mapped.isLiked = !!user && !!(await env.DB.prepare('SELECT 1 AS liked FROM project_likes WHERE project_id=? AND user_id=?').bind(row.id,user.id).first());
   return mapped;
 }
 async function addNotification(env, recipientId, actorId, kind, message, payload = {}) {
@@ -785,7 +782,7 @@ async function handle(request, env) {
   }
   const commentsMatch = path.match(/^\/api\/projects\/([\w-]+)\/comments$/);
   if (commentsMatch && method === 'GET') {
-    const parentProject = await projectRow(env,commentsMatch[1]);
+    const parentProject = await env.DB.prepare('SELECT id,user_id,published,deleted_at FROM projects WHERE id=?').bind(commentsMatch[1]).first();
     if (!parentProject || parentProject.deleted_at || (!parentProject.published && (!user || parentProject.user_id !== user.id))) fail(404,'Проект не найден');
     const rows = await env.DB.prepare('SELECT c.*,u.username FROM comments c JOIN users u ON u.id=c.user_id WHERE c.project_id=? ORDER BY c.created_at').bind(commentsMatch[1]).all();
     return json({ comments:rows.results.map(mapComment) });
