@@ -693,9 +693,11 @@ async function handle(request, env) {
     const row = await projectRow(env,projectMatch[1]);
     if (!row || row.deleted_at || (!row.published && (!user || row.user_id !== user.id))) fail(404,'Проект не найден');
     const editorView = url.searchParams.get('edit') === '1' && user && row.user_id === user.id;
-    if (!editorView) await env.DB.prepare('UPDATE projects SET views=views+1 WHERE id=?').bind(row.id).run();
-    const updated = await projectRow(env,row.id);
-    return json({ project: await projectDetail(env,updated,user) });
+    if (!editorView) {
+      await env.DB.prepare('UPDATE projects SET views=views+1 WHERE id=?').bind(row.id).run();
+      row.views = Number(row.views || 0) + 1;
+    }
+    return json({ project: await projectDetail(env,row,user) });
   }
   if (projectMatch && method === 'PATCH') {
     const body = await readBody(request), row = await projectRow(env,projectMatch[1]);
