@@ -116,8 +116,10 @@ async function projectRow(env, projectId) {
     FROM projects p JOIN users u ON u.id=p.user_id WHERE p.id=?`).bind(String(projectId)).first();
 }
 async function projectDetail(env, row, user) {
-  const comments = await env.DB.prepare(`SELECT c.*,u.username FROM comments c JOIN users u ON u.id=c.user_id WHERE c.project_id=? ORDER BY c.created_at ASC`).bind(row.id).all();
-  const likes = await env.DB.prepare(`SELECT u.username FROM project_likes l JOIN users u ON u.id=l.user_id WHERE l.project_id=? ORDER BY l.created_at`).bind(row.id).all();
+  const [comments, likes] = await Promise.all([
+    env.DB.prepare(`SELECT c.*,u.username FROM comments c JOIN users u ON u.id=c.user_id WHERE c.project_id=? ORDER BY c.created_at ASC`).bind(row.id).all(),
+    env.DB.prepare(`SELECT u.username FROM project_likes l JOIN users u ON u.id=l.user_id WHERE l.project_id=? ORDER BY l.created_at`).bind(row.id).all()
+  ]);
   const mapped = mapProject({ ...row, comments_data: comments.results.map(mapComment), liked_by: likes.results.map(x => x.username) }, true);
   mapped.isLiked = !!user && likes.results.some(x => x.username.toLowerCase() === user.username.toLowerCase());
   return mapped;
