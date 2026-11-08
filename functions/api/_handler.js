@@ -88,7 +88,7 @@ function mapNotification(row) {
   return { id: Number(row.id), kind: row.kind || '', actor: row.actor || 'Система', text: row.text || '',
     linkType: p.linkType || '', targetUser: p.targetUser || '', targetAuthor: p.targetAuthor || '',
     targetStarId: p.targetStarId ? Number(p.targetStarId) : 0,
-    date: Number(row.created_at), read: !!row.read_at, temporaryPassword: p.temporaryPassword || '' };
+    date: Number(row.created_at), read: !!row.read_at };
 }
 async function authUser(request, env) {
   const token = (request.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
