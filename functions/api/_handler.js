@@ -154,8 +154,8 @@ async function getProfile(env, profile, viewer) {
   const notifs = own ? await env.DB.prepare(`SELECT n.*,a.username actor,json_extract(n.payload,'$.text') text FROM notifications n LEFT JOIN users a ON a.id=n.actor_id WHERE n.user_id=? ORDER BY n.created_at DESC LIMIT 100`).bind(profile.id).all() : { results: [] };
   const base = publicUser({ ...profile, likes_received: stats.likes_received, projects_count: stats.projects });
   return {
-    ...base, projectsList: projectRows.results.filter(p => !p.deleted_at).map(p => mapProject(p)),
-    vacuumList: projectRows.results.filter(p => !!p.deleted_at).map(p => mapProject(p)),
+    ...base, projectsList: projectRows.results.filter(p => !p.deleted_at).map(p => mapProject(p, own)),
+    vacuumList: projectRows.results.filter(p => !!p.deleted_at).map(p => mapProject(p, own)),
     followersList: followerRows.results.map(x => x.username.toLowerCase()),
     followingList: followingRows.results.map(x => x.username.toLowerCase()),
     notifications: notifs.results.map(mapNotification)
