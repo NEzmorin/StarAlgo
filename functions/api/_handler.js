@@ -642,7 +642,7 @@ async function handle(request, env) {
     return json({ ok:true });
   }
   if (path === '/api/bootstrap' && method === 'GET') return json(await bootstrap(env, user));
-  if (path.startsWith('/api/') && !user && !(method === 'GET' && (path === '/api/feed' || path === '/api/projects' || path === '/api/dwarfs' || path.startsWith('/api/users/') || /^\/api\/projects\/[\w-]+$/.test(path) || /^\/api\/projects\/[\w-]+\/comments$/.test(path) || /^\/api\/dwarfs\/[\w-]+$/.test(path) || /^\/api\/dwarfs\/[\w-]+\/comments$/.test(path)))) fail(401, 'Необходима авторизация');
+  if (path.startsWith('/api/') && !user && !(method === 'GET' && (path === '/api/feed' || path === '/api/projects' || path === '/api/dwarfs' || path.startsWith('/api/users/') || /^\/api\/projects\/[\w-]+$/.test(path) || /^\/api\/projects\/[\w-]+\/comments$/.test(path) || /^\/api\/dwarfs\/[\w-]+$/.test(path) || /^\/api\/dwarfs\/[\w-]+\/comments$/.test(path)) || (method === 'DELETE' && /^\/api\/support\/guest\/[\w-]+$/.test(path)))) fail(401, 'Необходима авторизация');
   if (user?.is_banned && (!user.ban_until || user.ban_until > now()) && !isSingularity(user)) fail(403, 'Аккаунт заблокирован');
   if (path === '/api/support' && method === 'POST') {
     await ensureSupportSchema(env);
