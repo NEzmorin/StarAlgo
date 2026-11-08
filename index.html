@@ -4379,7 +4379,7 @@
             document.getElementById('star-detail-desc').textContent = project.description || 'Без описания...';
             document.getElementById('star-likes-counter').textContent = project.likes || 0;
             document.getElementById('star-views-counter').textContent = project.views || 0;
-            document.getElementById('star-comments-counter').textContent = (project.comments || []).length;
+            document.getElementById('star-comments-counter').textContent = Number(project.commentsCount ?? (project.comments || []).length);
 
             renderCommentsList(project);
 
