@@ -28,6 +28,9 @@ function text(v, max, label, allowEmpty = false) {
   return s;
 }
 function parseJson(value, fallback = {}) { try { return JSON.parse(value || ''); } catch { return fallback; } }
+function escapeHtmlAttribute(value) {
+  return String(value ?? '').replace(/[&<>"']/g, ch => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[ch]));
+}
 function publicUser(row) {
   return {
     id: row.id, username: row.username, originalUsername: row.original_username || row.username, role: row.role || '[Начинающий]',
@@ -170,7 +173,7 @@ async function bootstrap(env, user) {
     ORDER BY p.updated_at DESC LIMIT 250`).all();
   const users = {};
   for (const row of usersRows.results) users[row.username.toLowerCase()] = {
-    ...publicUser(row), avatarHtml: row.avatar_url ? `<img src="${String(row.avatar_url).replace(/"/g, '&quot;')}" alt="Avatar">` : '',
+    ...publicUser(row), avatarHtml: row.avatar_url ? `<img src="${escapeHtmlAttribute(row.avatar_url)}" alt="Avatar">` : '',
     projectsList: [], vacuumList: [], followersList: [], followingList: [], notifications: []
   };
   for (const row of projectsRows.results) {
@@ -180,7 +183,7 @@ async function bootstrap(env, user) {
   let current = null, dwarfs = [], reports = [];
   if (user) {
     current = await getProfile(env, user, user);
-    current.avatarHtml = user.avatar_url ? `<img src="${String(user.avatar_url).replace(/"/g, '&quot;')}" alt="Avatar">` : '';
+    current.avatarHtml = user.avatar_url ? `<img src="${escapeHtmlAttribute(user.avatar_url)}" alt="Avatar">` : '';
     users[user.username.toLowerCase()] = current;
     const follows = await env.DB.prepare(`SELECT f.followed_id,u.username FROM follows f JOIN users u ON u.id=f.followed_id WHERE f.follower_id=?`).bind(user.id).all();
     const followers = await env.DB.prepare(`SELECT f.follower_id,u.username FROM follows f JOIN users u ON u.id=f.follower_id WHERE f.followed_id=?`).bind(user.id).all();
