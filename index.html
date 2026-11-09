@@ -5397,14 +5397,16 @@
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
                             <div style="color: var(--gold-bright);">Python Редактор · изолированная среда</div>
                             <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                                <button class="auth-btn" type="button" onclick="runPythonWithTurtle()">▶ Запустить (Ctrl + Enter)</button>
-                                <button class="auth-btn" type="button" onclick="stopPythonSandbox()">■ Остановить</button>
+                                <button class="auth-btn" type="button" onclick="runPythonWithTurtle()">▶ Запустить Brython</button>
+                                <button class="auth-btn" type="button" onclick="stopPythonSandbox()">■ Стоп Brython</button>
+                                <button class="auth-btn" type="button" onclick="runPythonWithPyodide()">▶ Pyodide (тест)</button>
+                                <button class="auth-btn" type="button" onclick="stopPythonPyodideSandbox()">■ Стоп Pyodide</button>
                             </div>
                         </div>
                         <div style="display: grid; grid-template-columns: 1fr; gap: 12px;">
                             <textarea id="python-code-textarea">${window.saEscapeHTML(project.data || '')}</textarea>
                             <div style="color: var(--gold-bright);">Графика Turtle и вывод консоли · сетевые запросы отключены</div>
-                            <div style="font-size:.9rem;opacity:.75;line-height:1.45;">Python 3 в браузере (Brython). Доступны поддерживаемые стандартные модули и базовые команды Turtle. Интернет, файловая система и доступ к странице StarAlgo отключены.</div>
+                            <div style="font-size:.9rem;opacity:.75;line-height:1.45;">Старый режим: Brython + Turtle. Новый экспериментальный режим: Pyodide 314.0.7 (CPython 3.14) с поддержкой пакетов из сборки Pyodide. Первый запуск загружает runtime; вычисления выполняются в отдельном изолированном iframe браузера.</div>
                             <div id="turtle-graphics-canvas-container" style="width: 100%; height: 320px; background: #ffffff; border: 2px solid var(--gold-main); border-radius: 6px; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center;">
                                 <span style="color: #000; font-size: 1rem;" id="turtle-placeholder">Графика turtle...</span>
                             </div>
@@ -6002,6 +6004,21 @@
             window.runPythonSandbox(code);
         }
 
+        function runPythonWithPyodide() {
+            const code = codeMirrorEditor ? codeMirrorEditor.getValue() : '';
+            if (code.length > 200000) {
+                const output = document.getElementById('python-console-output');
+                if (output) output.textContent = 'Код слишком большой для запуска (лимит 200 КБ).';
+                return;
+            }
+            if (typeof window.runPythonPyodideSandbox !== 'function') {
+                const output = document.getElementById('python-console-output');
+                if (output) output.textContent = 'Тестовая среда Pyodide не загрузилась. Обновите страницу.';
+                return;
+            }
+            window.runPythonPyodideSandbox(code);
+        }
+
         function saveRobloxLink(val) {
             if (activeStarObject) {
                 if (activeStarObject.author.toLowerCase() !== currentUser?.username?.toLowerCase()) return;
@@ -6126,5 +6143,6 @@
     <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?onload=starAlgoTurnstileReady&render=explicit" async defer></script>
     <script src="/assets/api-config.js"></script>
     <script src="/assets/staralgo-cloud.js"></script>
+    <script src="/assets/staralgo-python-pyodide.js"></script>
 </body>
 </html>
