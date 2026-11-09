@@ -5551,7 +5551,13 @@
                         </div>
                         <div class="console-box" id="python-console-output" style="display:none;">Выполнение...</div>
                     `;
-                    setTimeout(() => runPythonReadonlyResult(project.data), 100);
+                    setTimeout(() => {
+                        if (typeof window.runPythonAutoSandbox === 'function') {
+                            window.runPythonAutoSandbox(project.data || '');
+                        } else {
+                            runPythonReadonlyResult(project.data);
+                        }
+                    }, 100);
                 } else {
                     container.innerHTML = `
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
