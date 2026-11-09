@@ -166,7 +166,7 @@
       '        _sa_pygame.mixer.quit()',
       '    except Exception:',
       '        pass'
-    ].join('\\n');
+    ].join('\n');
 
     return [
       '<!doctype html><html lang="ru"><head><meta charset="utf-8">',
