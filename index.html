@@ -1551,85 +1551,7 @@
                 grid-template-columns: 1fr;
             }
         }
-    
-        /* Встроенный браузер сайтов StarAlgo */
-        .site-launcher-page, .site-launcher-page * { box-sizing: border-box; }
-        .site-launcher-page { width: 100%; min-width: 0; }
-        .site-launcher-intro { max-width: 900px; line-height: 1.55; }
-        .site-launcher-notice {
-            display:flex; align-items:flex-start; gap:12px; max-width:1000px;
-            margin:16px 0; padding:14px 16px; border:1px solid rgba(212,178,54,.7);
-            border-radius:10px; background:rgba(212,178,54,.08);
-            line-height:1.45; overflow-wrap:anywhere;
-        }
-        .site-launcher-notice strong { color:var(--gold-bright); }
-        .site-launcher-form {
-            display:flex; flex-wrap:wrap; align-items:stretch; gap:10px; max-width:1000px;
-        }
-        .site-launcher-url {
-            flex:1 1 320px; width:100%; min-width:0; min-height:44px;
-            padding:10px 12px; border:1px solid var(--gold-main); border-radius:7px;
-            outline:none; background:#080705; color:var(--gold-bright);
-            font:inherit; letter-spacing:normal;
-        }
-        .site-launcher-url:focus { border-color:var(--gold-bright); box-shadow:0 0 0 2px rgba(245,214,92,.16); }
-        .site-launcher-form .auth-btn { min-height:44px; white-space:normal; }
-        .site-launcher-confirm {
-            max-width:1000px; margin-top:16px; padding:16px;
-            border:1px solid var(--gold-main); border-radius:10px;
-            background:rgba(20,18,10,.97); box-shadow:0 8px 24px rgba(0,0,0,.3);
-        }
-        .site-launcher-confirm h2 { margin-bottom:8px; color:var(--gold-bright); font-size:1.35rem; font-weight:normal; }
-        .site-launcher-confirm p { line-height:1.5; overflow-wrap:anywhere; }
-        .site-launcher-confirm-actions, .site-launcher-toolbar {
-            display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between;
-            gap:10px; margin-top:14px;
-        }
-        .site-launcher-confirm-actions > *, .site-launcher-toolbar > * { min-width:0; max-width:100%; }
-        .site-launcher-confirm[hidden], .site-launcher-viewer[hidden] { display:none !important; }
-        .site-launcher-viewer { min-width:0; margin-top:18px; }
-        .site-launcher-toolbar {
-            margin:0; padding:10px 12px; border:1px solid rgba(212,178,54,.65);
-            border-bottom:0; border-radius:10px 10px 0 0; background:rgba(20,18,10,.96);
-        }
-        .site-launcher-host { flex:1 1 220px; min-width:0; color:var(--gold-bright); overflow-wrap:anywhere; }
-        .site-launcher-external-link {
-            display:inline-flex; align-items:center; justify-content:center; min-height:38px;
-            padding:7px 12px; border:1px solid var(--gold-main); border-radius:6px;
-            color:var(--gold-bright); text-decoration:none; background:rgba(212,178,54,.08);
-            white-space:nowrap;
-        }
-        .site-launcher-external-link:hover { background:rgba(212,178,54,.18); }
-        .site-launcher-close { min-height:38px; padding:7px 12px; }
-        .site-launcher-frame-wrap {
-            width:100%; min-width:0; overflow:hidden; border:1px solid rgba(212,178,54,.65);
-            border-radius:0 0 10px 10px; background:#fff;
-        }
-        .site-launcher-frame { display:block; width:100%; height:min(76vh,900px); min-height:440px; border:0; background:#fff; }
-        .site-launcher-frame-note, .site-launcher-status {
-            margin-top:10px; color:var(--gold-main); font-size:.95rem; line-height:1.45;
-            overflow-wrap:anywhere;
-        }
-        .site-launcher-status { min-height:1.3em; color:var(--gold-bright); }
-        .site-launcher-home-card {
-            max-width:900px; margin:18px 0; border-color:rgba(245,214,92,.85);
-            background:linear-gradient(135deg,rgba(212,178,54,.1),rgba(20,18,10,.94) 58%);
-        }
-        .site-launcher-home-actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:12px; }
-        .site-launcher-home-actions .auth-btn { min-height:42px; white-space:normal; }
-        @media (max-width:760px) {
-            .site-launcher-notice, .site-launcher-confirm { padding:12px; }
-            .site-launcher-form { flex-direction:column; }
-            .site-launcher-form .auth-btn, .site-launcher-confirm-actions .auth-btn,
-            .site-launcher-home-actions .auth-btn { width:100%; }
-            .site-launcher-confirm-actions { flex-direction:column; align-items:stretch; }
-            .site-launcher-toolbar { align-items:stretch; }
-            .site-launcher-host { flex-basis:100%; }
-            .site-launcher-external-link, .site-launcher-close { flex:1 1 auto; }
-            .site-launcher-frame { height:68vh; min-height:320px; }
-        }
-
-</style>
+    </style>
 </head>
 <body onload="brython()">
 
@@ -1689,7 +1611,6 @@
                 <button class="nav-item" onclick="setTab(event, 'hall', 'Звёздный Зал')">Звёздный Зал</button>
                 <button class="nav-item" id="nav-proto-btn" style="display: none;" onclick="setTab(event, 'proto', 'Протозвездие')">Протозвездие</button>
                 <button class="nav-item" onclick="setTab(event, 'telescope', 'Телескоп Новостей')">Телескоп Новостей</button>
-                <button class="nav-item" onclick="setTab(event, 'site-launcher', 'Сайты')">Сайты</button>
                 <button class="nav-item" id="nav-reports-btn" style="display: none; color: #ff5555;" onclick="setTab(event, 'reports', 'Ящик жалований')">Жалобы</button>
             </nav>
 
@@ -1748,15 +1669,6 @@
         <section class="content-section">
             <!-- Главная -->
             <div id="tab-main" class="tab-page active">
-
-                <div class="search-container site-launcher-home-card">
-                    <div class="search-title">🌐 Сайты внутри StarAlgo</div>
-                    <p class="page-text" style="font-size:1.05rem;margin:0;">Открывай сайты прямо здесь, не покидая StarAlgo. Перед переходом покажем адрес и предупреждение. Можно также запустить StarAlgo внутри самого StarAlgo.</p>
-                    <div class="site-launcher-home-actions">
-                        <button class="auth-btn" type="button" onclick="setTab(event, 'site-launcher', 'Сайты')">Открыть браузер сайтов →</button>
-                    </div>
-                </div>
-
                 <h1 class="page-title">О сайте</h1>
                 <p class="page-text">Staralgo это фан проект по алгоритмике созданный из за проблем с его аналогом AlgoVive! Сам проект создан НЕзморином и Никролом В данной версии имеется:
  
@@ -2076,55 +1988,6 @@
 
                 </div>
             </div>
-
-            <!-- Встроенный браузер сайтов -->
-            <div id="tab-site-launcher" class="tab-page site-launcher-page">
-                <h1 class="page-title">Сайты внутри StarAlgo</h1>
-                <p class="page-text site-launcher-intro">Введи адрес сайта, проверь предупреждение и открой страницу во встроенном окне. Если сайт запрещает iframe, нажми «Пойти на сайт».</p>
-
-                <div class="site-launcher-notice" role="note">
-                    <span aria-hidden="true" style="font-size:1.5rem;">⚠</span>
-                    <div><strong>Внимание: внешний сайт.</strong><br>StarAlgo не контролирует содержимое сторонних страниц. Проверяй адрес и не вводи пароли или личные данные на незнакомых сайтах. Некоторые сайты блокируют встроенное отображение.</div>
-                </div>
-
-                <div class="search-container" style="max-width:1000px;">
-                    <form class="site-launcher-form" onsubmit="event.preventDefault(); prepareSiteLauncher();">
-                        <input id="site-launcher-url" class="site-launcher-url" type="text" inputmode="url" autocomplete="url" spellcheck="false" placeholder="https://example.com" aria-label="Адрес сайта" required>
-                        <button class="auth-btn" type="submit">Открыть внутри StarAlgo</button>
-                    </form>
-                    <div class="site-launcher-form" style="margin-top:10px;">
-                        <button class="auth-btn" type="button" onclick="openStarAlgoInside()">✦ Открыть StarAlgo внутри StarAlgo</button>
-                    </div>
-                    <div id="site-launcher-status" class="site-launcher-status" role="status" aria-live="polite"></div>
-                </div>
-
-                <div id="site-launcher-confirm" class="site-launcher-confirm" hidden role="region" aria-live="polite">
-                    <h2>Ты переходишь на сайт</h2>
-                    <p>Адрес: <strong id="site-launcher-confirm-host"></strong></p>
-                    <p>Продолжай только если доверяешь этому адресу.</p>
-                    <div id="site-launcher-same-origin-warning" class="site-launcher-notice" hidden>
-                        <span aria-hidden="true" style="font-size:1.4rem;">🔐</span>
-                        <div><strong>Открывается сам StarAlgo.</strong><br>Вложенная копия будет работать на том же домене и сможет использовать текущую сессию. Она также сможет взаимодействовать с основной страницей. Это исключение предназначено только для официального StarAlgo.</div>
-                    </div>
-                    <div class="site-launcher-confirm-actions">
-                        <button class="auth-btn" type="button" onclick="confirmSiteLauncher()">Продолжить и открыть внутри</button>
-                        <button class="auth-btn" type="button" onclick="cancelSiteLauncher()">Отмена</button>
-                    </div>
-                </div>
-
-                <div id="site-launcher-viewer" class="site-launcher-viewer" hidden>
-                    <div class="site-launcher-toolbar">
-                        <div id="site-launcher-host" class="site-launcher-host"></div>
-                        <a id="site-launcher-external-link" class="site-launcher-external-link" href="#" target="_blank" rel="noopener noreferrer">Пойти на сайт ↗</a>
-                        <button class="auth-btn site-launcher-close" type="button" onclick="stopSiteLauncher()">Закрыть</button>
-                    </div>
-                    <div class="site-launcher-frame-wrap">
-                        <iframe id="site-launcher-frame" class="site-launcher-frame" title="Внешний сайт" loading="lazy" referrerpolicy="no-referrer"></iframe>
-                    </div>
-                    <p class="site-launcher-frame-note">Если сайт блокирует iframe или внутри пустой экран, воспользуйся кнопкой «Пойти на сайт».</p>
-                </div>
-            </div>
-
         </section>
 
         <!-- Уменьшенная панель Сингулярности (Админ) справа -->
@@ -2628,89 +2491,6 @@
             }
         }
 
-
-        let pendingSiteLauncherURL = null;
-
-        function parseSiteLauncherURL(value) {
-            let raw = String(value || '').trim();
-            if (!raw) throw new Error('Сначала введи адрес сайта.');
-            if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(raw)) raw = 'https://' + raw;
-            let parsed;
-            try { parsed = new URL(raw); }
-            catch (error) { throw new Error('Не удалось распознать адрес. Проверь ссылку.'); }
-            if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('Разрешены только HTTP и HTTPS.');
-            if (!parsed.hostname || parsed.username || parsed.password) throw new Error('Проверь адрес сайта.');
-            return parsed;
-        }
-
-        function prepareSiteLauncher() {
-            const status=document.getElementById('site-launcher-status');
-            const panel=document.getElementById('site-launcher-confirm');
-            try {
-                pendingSiteLauncherURL=parseSiteLauncherURL(document.getElementById('site-launcher-url')?.value);
-                const host=document.getElementById('site-launcher-confirm-host');
-                const warning=document.getElementById('site-launcher-same-origin-warning');
-                if(host) host.textContent=pendingSiteLauncherURL.href;
-                if(warning) warning.hidden=pendingSiteLauncherURL.origin!==window.location.origin;
-                if(panel) panel.hidden=false;
-                if(status) status.textContent='Проверь адрес и подтверди переход.';
-            } catch(error) {
-                pendingSiteLauncherURL=null;
-                if(panel) panel.hidden=true;
-                if(status) status.textContent=error.message||'Не удалось распознать адрес.';
-            }
-        }
-
-        function openStarAlgoInside() {
-            const input=document.getElementById('site-launcher-url');
-            if(input) input.value=window.location.origin;
-            prepareSiteLauncher();
-        }
-
-        function confirmSiteLauncher() {
-            if(!pendingSiteLauncherURL) return;
-            const frame=document.getElementById('site-launcher-frame');
-            const viewer=document.getElementById('site-launcher-viewer');
-            if(!frame||!viewer) return;
-            const sameOrigin=pendingSiteLauncherURL.origin===window.location.origin;
-            frame.setAttribute('sandbox',sameOrigin
-                ? 'allow-scripts allow-forms allow-same-origin allow-popups allow-presentation'
-                : 'allow-scripts allow-forms allow-popups allow-presentation');
-            frame.title='Сайт: '+pendingSiteLauncherURL.hostname;
-            frame.src=pendingSiteLauncherURL.href;
-            const host=document.getElementById('site-launcher-host');
-            const link=document.getElementById('site-launcher-external-link');
-            const confirm=document.getElementById('site-launcher-confirm');
-            const status=document.getElementById('site-launcher-status');
-            if(host) host.textContent='Открыт сайт: '+pendingSiteLauncherURL.hostname;
-            if(link) link.href=pendingSiteLauncherURL.href;
-            if(confirm) confirm.hidden=true;
-            viewer.hidden=false;
-            if(status) status.textContent=sameOrigin
-                ? 'Открывается официальный StarAlgo с текущей сессией.'
-                : 'Сайт загружается в изолированном окне.';
-        }
-
-        function cancelSiteLauncher() {
-            pendingSiteLauncherURL=null;
-            const panel=document.getElementById('site-launcher-confirm');
-            const status=document.getElementById('site-launcher-status');
-            if(panel) panel.hidden=true;
-            if(status) status.textContent='Переход отменён.';
-        }
-
-        function stopSiteLauncher() {
-            pendingSiteLauncherURL=null;
-            const frame=document.getElementById('site-launcher-frame');
-            const viewer=document.getElementById('site-launcher-viewer');
-            const panel=document.getElementById('site-launcher-confirm');
-            const status=document.getElementById('site-launcher-status');
-            if(frame) frame.src='about:blank';
-            if(viewer) viewer.hidden=true;
-            if(panel) panel.hidden=true;
-            if(status) status.textContent='Встроенный сайт закрыт.';
-        }
-
         function setTab(event, tabId, name) {
             if (tabId === 'proto' && !currentUser) {
                 openAuthModal();
@@ -2725,7 +2505,6 @@
                 renderReportsInbox();
             }
 
-            if (currentTab === 'site-launcher' && tabId !== 'site-launcher') stopSiteLauncher();
             currentTab = tabId;
             document.querySelectorAll('.tab-page').forEach(page => page.classList.remove('active'));
             document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
