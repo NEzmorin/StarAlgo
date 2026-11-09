@@ -124,6 +124,8 @@
       '_sa_sys.modules["pgzrun"] = _sa_pgzrun',
       'from pgzero.runner import prepare_mod as _sa_prepare_mod',
       'from pgzero.game import PGZeroGame as _sa_PGZeroGame',
+      // Browser Canvas has no native window icon resource; skip PGZero's default-icon loader.
+      ' _sa_PGZeroGame.show_default_icon = staticmethod(lambda: None)',
       'from pgzero import clock as _sa_pgzero_clock',
       '_sa_mod = _sa_types.ModuleType("staralgo_game")',
       '_sa_mod.__file__ = _sa_game_path',
