@@ -193,3 +193,16 @@
     flex: 1 1 130px;
   }
 }
+
+@media (max-width: 1200px) and (hover: hover) {
+  main.layout-sidebar-content {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  main.layout-sidebar-content > *,
+  main.layout-sidebar-content-admin > *,
+  main.layout-content-admin > * {
+    min-width: 0;
+    max-width: 100%;
+  }
+}
