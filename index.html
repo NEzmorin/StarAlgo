@@ -2419,6 +2419,76 @@
             }
         }
 
+
+        /* Предпросмотр внешних сайтов внутри окна проекта */
+        .project-site-workspace { display:flex; flex-direction:column; gap:14px; width:100%; min-width:0; }
+        .project-site-browser {
+            display:flex; flex-direction:column; width:100%; min-width:0;
+            overflow:hidden; border:2px solid var(--gold-main); border-radius:10px;
+            background:#090807; box-shadow:0 8px 24px rgba(0,0,0,.22);
+        }
+        .project-site-addressbar {
+            display:flex; align-items:center; flex-wrap:wrap; gap:8px 14px;
+            min-width:0; padding:11px 14px; border-bottom:1px solid rgba(212,178,54,.55);
+            background:rgba(15,13,9,.98);
+        }
+        .project-site-address-label { flex:0 0 auto; color:var(--gold-main); font-size:.76rem; letter-spacing:1.5px; }
+        .project-site-address-link { min-width:0; color:var(--gold-bright); overflow-wrap:anywhere; text-decoration:underline; text-underline-offset:3px; }
+        .project-site-address-empty { color:var(--gold-bright); opacity:.7; }
+        .project-site-stage {
+            position:relative; width:100%; height:clamp(360px, 62vh, 700px);
+            min-height:320px; overflow:hidden; background:#fff;
+        }
+        .project-site-stage iframe { display:block; width:100%; height:100%; min-height:100%; border:0; background:#fff; }
+        .project-site-consent {
+            position:absolute; inset:0; z-index:2; display:flex; align-items:center; justify-content:center;
+            padding:20px; overflow:auto; background:rgba(5,5,5,.76); backdrop-filter:blur(5px);
+        }
+        .project-site-consent[hidden], .project-site-cancelled[hidden] { display:none !important; }
+        .project-site-consent-card {
+            width:min(520px, 100%); padding:22px; border:1px solid var(--gold-main);
+            border-radius:12px; background:rgba(18,16,11,.97); color:var(--gold-main);
+            box-shadow:0 12px 36px rgba(0,0,0,.45); text-align:center;
+        }
+        .project-site-consent-icon { font-size:1.8rem; margin-bottom:5px; }
+        .project-site-consent-card h3 { margin:0 0 10px; color:var(--gold-bright); font-size:1.25rem; font-weight:normal; }
+        .project-site-consent-card p { margin:0; line-height:1.5; overflow-wrap:anywhere; }
+        .project-site-consent-card strong { color:var(--gold-bright); }
+        .project-site-consent-actions { display:flex; justify-content:center; flex-wrap:wrap; gap:9px; margin-top:17px; }
+        .project-site-cancelled, .project-site-empty {
+            position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+            gap:12px; padding:24px; color:#222; text-align:center; background:#f2f2f2;
+        }
+        .project-site-footer {
+            display:flex; align-items:center; justify-content:space-between; gap:12px;
+            min-height:48px; padding:5px 10px 5px 14px; background:rgba(15,13,9,.98);
+            border-top:1px solid rgba(212,178,54,.28);
+        }
+        .project-site-footer-note { min-width:0; color:var(--gold-main); font-size:.82rem; line-height:1.35; opacity:.72; }
+        .project-site-zoom {
+            flex:0 0 auto; display:inline-flex; align-items:center; justify-content:center;
+            width:42px; height:38px; border:1px solid rgba(212,178,54,.32); border-radius:8px;
+            background:rgba(212,178,54,.12); color:var(--gold-bright); font-size:1.15rem;
+            opacity:.38; cursor:pointer; transition:opacity .18s ease, background .18s ease;
+        }
+        .project-site-zoom:hover, .project-site-zoom:focus-visible { opacity:.95; background:rgba(212,178,54,.24); }
+        .project-site-edit-url { display:flex; flex-direction:column; gap:8px; }
+        .project-site-edit-url label { color:var(--gold-bright); }
+        .project-site-browser.is-expanded {
+            position:fixed !important; inset:12px !important; z-index:5000;
+            width:auto !important; height:auto !important; max-height:none !important; margin:0 !important;
+            border-radius:12px; box-shadow:0 0 0 100vmax rgba(0,0,0,.78), 0 15px 48px rgba(0,0,0,.55);
+        }
+        .project-site-browser.is-expanded .project-site-stage { flex:1 1 auto; height:auto; min-height:0; }
+        @media (max-width:760px) {
+            .project-site-stage { height:58vh; min-height:300px; }
+            .project-site-consent { padding:12px; }
+            .project-site-consent-card { padding:17px; }
+            .project-site-browser.is-expanded { inset:5px !important; border-radius:8px; }
+            .project-site-browser.is-expanded .project-site-stage { min-height:0; }
+            .project-site-footer-note { font-size:.72rem; }
+        }
+
     </style>
     <link rel="stylesheet" href="/assets/responsive.css?v=20261109">
 </head>
@@ -5309,13 +5379,76 @@
                             <button class="auth-btn" onclick="saveProjectMediaUrl()">Сохранить ссылку</button>
                         ` : ''}
                     </div>`;
-            } else if (project.category === 'Сайт' || project.category === 'Разговорник') {
+            } else if (project.category === 'Сайт') {
+                const rawSiteUrl = String(project.projectUrl || '').trim();
+                let safeSiteUrl = '';
+                try {
+                    const parsedSiteUrl = new URL(rawSiteUrl);
+                    if (['https:', 'http:'].includes(parsedSiteUrl.protocol) && parsedSiteUrl.hostname && !parsedSiteUrl.username && !parsedSiteUrl.password) {
+                        safeSiteUrl = parsedSiteUrl.href;
+                    }
+                } catch (_) {}
+                const safeSiteUrlHtml = window.saEscapeHTML(safeSiteUrl);
+                const rawSiteUrlHtml = window.saEscapeHTML(rawSiteUrl);
+                container.innerHTML = `
+                    <div class="project-site-workspace">
+                        <div class="project-site-browser" id="project-site-browser">
+                            <div class="project-site-addressbar">
+                                <span class="project-site-address-label">АДРЕС САЙТА</span>
+                                ${safeSiteUrl ? `<a class="project-site-address-link" href="${safeSiteUrlHtml}" target="_blank" rel="noopener noreferrer">${safeSiteUrlHtml}</a>` : '<span class="project-site-address-empty">Ссылка на сайт не добавлена</span>'}
+                            </div>
+                            <div class="project-site-stage">
+                                ${safeSiteUrl ? `
+                                    <iframe
+                                        id="project-site-frame"
+                                        title="Предпросмотр сайта"
+                                        loading="lazy"
+                                        referrerpolicy="no-referrer"
+                                        sandbox="allow-scripts allow-forms allow-popups allow-presentation"
+                                        data-site-url="${safeSiteUrlHtml}"
+                                    ></iframe>
+                                    <div class="project-site-consent" id="project-site-consent">
+                                        <div class="project-site-consent-card">
+                                            <div class="project-site-consent-icon">⚠</div>
+                                            <h3>Переход на внешний сайт</h3>
+                                            <p>Ты переходишь на <strong>${safeSiteUrlHtml}</strong>. Ты уверен, что хочешь открыть этот сайт внутри StarAlgo?</p>
+                                            <div class="project-site-consent-actions">
+                                                <button class="auth-btn" type="button" onclick="confirmProjectSitePreview()">Да, открыть</button>
+                                                <button class="auth-btn" type="button" onclick="cancelProjectSitePreview()">Отмена</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="project-site-cancelled" id="project-site-cancelled" hidden>
+                                        <span>Предпросмотр не запущен.</span>
+                                        <button class="auth-btn" type="button" onclick="showProjectSiteConsent()">Открыть сайт</button>
+                                    </div>
+                                ` : `
+                                    <div class="project-site-empty">
+                                        ${rawSiteUrl ? 'Ссылка некорректна. Укажи адрес с http:// или https://.' : 'Добавь ссылку на опубликованный сайт, чтобы увидеть его здесь.'}
+                                    </div>
+                                `}
+                            </div>
+                            ${safeSiteUrl ? `
+                                <div class="project-site-footer">
+                                    <span class="project-site-footer-note">Если сайт запрещает встроенный просмотр, открой адрес сверху в новой вкладке.</span>
+                                    <button class="project-site-zoom" id="project-site-zoom" type="button" onclick="toggleProjectSiteExpand()" aria-label="Развернуть предпросмотр" aria-expanded="false" title="Развернуть предпросмотр">🔍</button>
+                                </div>
+                            ` : ''}
+                        </div>
+                        ${!isReadOnly ? `
+                            <div class="project-site-edit-url">
+                                <label for="project-resource-url">Ссылка на сайт:</label>
+                                <input class="form-input" id="project-resource-url" type="url" placeholder="https://example.com" value="${rawSiteUrlHtml}">
+                                <button class="auth-btn" type="button" onclick="saveProjectResourceUrl()">Сохранить ссылку</button>
+                            </div>
+                        ` : ''}
+                    </div>`;
+            } else if (project.category === 'Разговорник') {
                 const resourceUrl = window.saEscapeHTML(project.projectUrl || '');
-                const label = project.category === 'Сайт' ? 'Открыть сайт' : 'Открыть разговорник';
                 container.innerHTML = `
                     <div style="display:flex; flex-direction:column; gap:12px;">
-                        <div style="color:var(--gold-bright);">${project.category === 'Сайт' ? 'Внешний веб-проект' : 'Документ / разговорник'}</div>
-                        <a class="auth-btn" href="${resourceUrl}" target="_blank" rel="noopener noreferrer" style="text-align:center; text-decoration:none;">🌐 ${label}</a>
+                        <div style="color:var(--gold-bright);">Документ / разговорник</div>
+                        <a class="auth-btn" href="${resourceUrl}" target="_blank" rel="noopener noreferrer" style="text-align:center; text-decoration:none;">🌐 Открыть разговорник</a>
                         ${!isReadOnly ? `<input class="form-input" id="project-resource-url" type="url" placeholder="https://..." value="${resourceUrl}"><button class="auth-btn" onclick="saveProjectResourceUrl()">Сохранить ссылку</button>` : ''}
                     </div>`;
             } else if (project.category === 'Видео' || project.category === 'Медиа') {
@@ -5471,6 +5604,50 @@
                 container.prepend(fullscreenBar);
             }
         }
+
+
+        window.showProjectSiteConsent = function() {
+            const consent = document.getElementById('project-site-consent');
+            const cancelled = document.getElementById('project-site-cancelled');
+            if (cancelled) cancelled.hidden = true;
+            if (consent) consent.hidden = false;
+        };
+
+        window.confirmProjectSitePreview = function() {
+            const frame = document.getElementById('project-site-frame');
+            const consent = document.getElementById('project-site-consent');
+            if (!frame) return;
+            let parsed;
+            try {
+                parsed = new URL(frame.getAttribute('data-site-url') || '');
+                if (!['https:', 'http:'].includes(parsed.protocol) || !parsed.hostname || parsed.username || parsed.password) {
+                    throw new Error('Недопустимый адрес сайта.');
+                }
+            } catch (error) {
+                alert(error.message || 'Не удалось проверить адрес сайта.');
+                return;
+            }
+            frame.src = parsed.href;
+            if (consent) consent.hidden = true;
+        };
+
+        window.cancelProjectSitePreview = function() {
+            const consent = document.getElementById('project-site-consent');
+            const cancelled = document.getElementById('project-site-cancelled');
+            if (consent) consent.hidden = true;
+            if (cancelled) cancelled.hidden = false;
+        };
+
+        window.toggleProjectSiteExpand = function() {
+            const browser = document.getElementById('project-site-browser');
+            const button = document.getElementById('project-site-zoom');
+            if (!browser || !button) return;
+            const expanded = browser.classList.toggle('is-expanded');
+            button.textContent = expanded ? '↙' : '🔍';
+            button.title = expanded ? 'Свернуть предпросмотр' : 'Развернуть предпросмотр';
+            button.setAttribute('aria-label', button.title);
+            button.setAttribute('aria-expanded', String(expanded));
+        };
 
         window.toggleScratchFullscreen = async function() {
             const stage = document.getElementById('scratch-fullscreen-stage');
