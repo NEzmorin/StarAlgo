@@ -3,6 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script>
+    /* Detect phones by device capabilities and the screen's shorter side,
+       so rotating a phone does not switch it back to desktop mode. */
+    (() => {
+        try {
+            const ua = navigator.userAgent || '';
+            const uaMobile = !!(navigator.userAgentData && navigator.userAgentData.mobile);
+            const phoneUA = /iPhone|iPod|Android.*Mobile|Windows Phone|IEMobile|BlackBerry|BB10|Opera Mini/i.test(ua);
+            const screenWidth = Number(window.screen && window.screen.width) || window.innerWidth || 0;
+            const screenHeight = Number(window.screen && window.screen.height) || window.innerHeight || 0;
+            const shortSide = Math.min(screenWidth, screenHeight);
+            const coarsePointer = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+            const touchCapable = (navigator.maxTouchPoints || 0) > 0 || coarsePointer;
+            const isPhone = uaMobile || phoneUA || (touchCapable && shortSide > 0 && shortSide <= 640);
+            document.documentElement.classList.toggle('is-phone', isPhone);
+        } catch (error) {
+            document.documentElement.classList.remove('is-phone');
+        }
+    })();
+    </script>
     <title>STARALGO</title>
     <!-- CodeMirror 5 CSS & Dracula Theme -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
@@ -2053,7 +2073,7 @@
             display: none;
         }
 
-        @media (max-width: 760px) {
+        @media (max-width: 760px) and (pointer: coarse) and (hover: none), (max-height: 600px) and (pointer: coarse) and (hover: none) {
             header {
                 display: none !important;
             }
@@ -2378,7 +2398,7 @@
             }
         }
 
-        @media (max-width: 760px) and (orientation: landscape) {
+        @media (orientation: landscape) and (max-height: 600px) and (pointer: coarse) and (hover: none) {
             #mobile-bottom-nav {
                 padding-top: 3px;
                 padding-bottom: calc(3px + env(safe-area-inset-bottom));
@@ -2400,6 +2420,7 @@
         }
 
     </style>
+    <link rel="stylesheet" href="/assets/responsive.css?v=20261109">
 </head>
 <body>
 
@@ -3530,7 +3551,7 @@
             (target.matches && target.matches('input, textarea, select')) || target.isContentEditable
         );
         document.addEventListener('focusin', function(event) {
-            if (window.matchMedia && window.matchMedia('(max-width: 760px)').matches && isMobileTextEntry(event.target)) {
+            if (document.documentElement.classList.contains('is-phone') && isMobileTextEntry(event.target)) {
                 document.body.classList.add('mobile-keyboard-open');
                 closeMobileMoreMenu();
             }
