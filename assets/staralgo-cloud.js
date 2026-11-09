@@ -1170,20 +1170,9 @@
     const categories=[...new Set(projects.map(p=>p.category))];
     const tabHtml=[`<button class="proto-tab-pill ${activeProtoCategory==='all'?'active':''}" onclick="filterProtoTab(event,'all')">Все</button>`,...categories.map(cat=>`<button class="proto-tab-pill ${activeProtoCategory===cat?'active':''}" onclick="filterProtoTab(event,decodeURIComponent('${jsName(cat)}'))">${esc(cat)}</button>`)].join('');
     const filtered=activeProtoCategory==='all'?projects:projects.filter(p=>p.category===activeProtoCategory);
-    const sortedFiltered=[...filtered].sort((a,b)=>{
-      if(protoSortMode.startsWith('name-')){
-        const direction=protoSortMode==='name-asc'?1:-1;
-        return protoNameCollator.compare(String(a.name||''),String(b.name||''))*direction;
-      }
-      const direction=protoSortMode==='date-desc'?-1:1;
-      return (getProtoProjectDate(a)-getProtoProjectDate(b))*direction;
-    });
+    const sortedFiltered=[...filtered].sort(compareProtoProjects);
     const cards=sortedFiltered.length?sortedFiltered.map(p=>`<div class="project-item-card" onclick="openStarEditor(${Number(p.id)})"><img src="${esc(p.coverUrl||generateRandomPanorama(p.name+p.id))}" class="star-cover-preview" alt="Cover"><div class="project-item-title">${esc(p.name)}</div><div class="project-item-cat">Основа: ${esc(p.category)} ${p.published?'🌐':''}</div></div>`).join(''):'<div class="empty-placeholder" style="grid-column:1/-1;margin-top:20px;">Нет звёзд в этой категории.</div>';
-    const dateActive=protoSortMode.startsWith('date-');
-    const nameActive=protoSortMode.startsWith('name-');
-    const dateLabel=protoSortMode==='date-asc'?'↑ Старые':'↓ Новые';
-    const nameLabel=protoSortMode==='name-desc'?'Я–А / Z–A':'А–Я / A–Z';
-    container.innerHTML=`<div class="proto-top-bar"><h1 class="page-title" style="margin-bottom:0;">Звёзды</h1><div class="proto-controls"><span class="proto-sort-label">Сортировать</span><button class="proto-btn-pill ${dateActive?'active':''}" type="button" aria-pressed="${dateActive}" data-proto-sort="date" onclick="window.toggleProtoSort('date')" aria-label="Изменить порядок сортировки по дате">${dateLabel}</button><button class="proto-btn-pill ${nameActive?'active':''}" type="button" aria-pressed="${nameActive}" data-proto-sort="name" onclick="window.toggleProtoSort('name')" aria-label="Изменить алфавитный порядок сортировки">${nameLabel}</button><button class="proto-create-btn" onclick="openCreateProjectModal()">+ Создать</button></div></div><div class="proto-tabs-row" id="proto-category-tabs">${tabHtml}</div><div class="proto-projects-grid" id="proto-projects-grid">${cards}</div>`;
+    container.innerHTML=`<div class="proto-top-bar"><h1 class="page-title" style="margin-bottom:0;">Звёзды</h1><div class="proto-controls"><span class="proto-sort-label">Сортировать</span><button class="proto-btn-pill" type="button" data-proto-sort="date" onclick="window.toggleProtoSort('date')" aria-label="Изменить порядок сортировки по дате">${getProtoSortLabel('date')}</button><button class="proto-btn-pill" type="button" data-proto-sort="name" onclick="window.toggleProtoSort('name')" aria-label="Изменить алфавитный порядок сортировки">${getProtoSortLabel('name')}</button><button class="proto-create-btn" onclick="openCreateProjectModal()">+ Создать</button></div></div><div class="proto-tabs-row" id="proto-category-tabs">${tabHtml}</div><div class="proto-projects-grid" id="proto-projects-grid">${cards}</div>`;
   };
   window.renderProtoVacuumView = function(container) {
     if(!currentUser||!container)return;
