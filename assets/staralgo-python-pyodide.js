@@ -215,7 +215,7 @@
       '    send("status", {message:MODE === "pgzero" ? "Загрузка Pygame Zero и игровых библиотек…" : "Проверка импортов и загрузка доступных библиотек…"});',
       '    if (MODE === "pgzero") {',
       '      await pyodide.loadPackage(["micropip", "pygame-ce", "numpy"]);',
-      '      await pyodide.runPythonAsync("import micropip\\nawait micropip.install(\\'pgzero==1.2.1\\', deps=False)");',
+      '      await pyodide.runPythonAsync("import micropip\\nawait micropip.install(\'pgzero==1.2.1\', deps=False)");',
       '      const importProbe = source.replace(/^\\s*#!\\s*pgzrun.*$/gm, "").replace(/^\\s*(?:import\\s+pgzrun\\b|(?:import|from)\\s+pgzero\\b).*$/gm, "");',
       '      if (importProbe.trim()) await pyodide.loadPackagesFromImports(importProbe);',
       '    } else {',
