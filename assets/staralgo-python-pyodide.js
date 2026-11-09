@@ -162,9 +162,9 @@
     activeRunCleanup = cleanup;
     window.addEventListener('message', onMessage);
     observer = new MutationObserver(() => {
-      if (!frame.isConnected) cleanup(false);
+      if (!canvasBox.isConnected) cleanup(true);
     });
-    observer.observe(canvasBox, {childList:true});
+    observer.observe(document.body, {childList:true, subtree:true});
 
     timeoutId = window.setTimeout(() => {
       outputBox.textContent = 'Pyodide остановлен по тайм-ауту (90 секунд). Возможно, устройство не успело загрузить среду или программа зациклилась.';
