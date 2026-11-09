@@ -36,7 +36,7 @@
     const policy = [
       "default-src 'none'",
       "script-src 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' https://cdn.jsdelivr.net",
-      'connect-src https://cdn.jsdelivr.net',
+      'connect-src https://cdn.jsdelivr.net https://pypi.org https://files.pythonhosted.org',
       "style-src 'unsafe-inline'",
       'img-src data: blob:',
       'font-src data:',
@@ -91,6 +91,81 @@
       '_sa_plt.show = __staralgo_plot_show'
     ].join('\n');
 
+    const pgzeroBootstrap = [
+      'import asyncio as _sa_asyncio',
+      'import os as _sa_os',
+      'import sys as _sa_sys',
+      'import types as _sa_types',
+      'import time as _sa_time',
+      'import pygame as _sa_pygame',
+      '_sa_os.makedirs("/home/pyodide", exist_ok=True)',
+      '_sa_game_path = "/home/pyodide/main.py"',
+      'with open(_sa_game_path, "w", encoding="utf-8") as _sa_game_file:',
+      '    _sa_game_file.write(__staralgo_user_source)',
+      'if "pyfxr" not in _sa_sys.modules:',
+      '    _sa_pyfxr = _sa_types.ModuleType("pyfxr")',
+      '    class _StarAlgoWaveform:',
+      '        @staticmethod',
+      '        def sine(): return "sine"',
+      '        @staticmethod',
+      '        def square(): return "square"',
+      '        @staticmethod',
+      '        def saw(): return "saw"',
+      '        @staticmethod',
+      '        def triangle(): return "triangle"',
+      '    _sa_pyfxr.Wavetable = _StarAlgoWaveform',
+      '    def _sa_pyfxr_unavailable(*args, **kwargs):',
+      '        raise RuntimeError("Генерация tone.* пока не поддерживается в браузерной сборке StarAlgo. Используй подготовленные звуковые файлы.")',
+      '    _sa_pyfxr.tone = _sa_pyfxr_unavailable',
+      '    _sa_pyfxr.note_to_hertz = _sa_pyfxr_unavailable',
+      '    _sa_sys.modules["pyfxr"] = _sa_pyfxr',
+      '_sa_pgzrun = _sa_types.ModuleType("pgzrun")',
+      '_sa_pgzrun.go = lambda: None',
+      '_sa_sys.modules["pgzrun"] = _sa_pgzrun',
+      'from pgzero.runner import prepare_mod as _sa_prepare_mod',
+      'from pgzero.game import PGZeroGame as _sa_PGZeroGame',
+      'from pgzero import clock as _sa_pgzero_clock',
+      '_sa_mod = _sa_types.ModuleType("staralgo_game")',
+      '_sa_mod.__file__ = _sa_game_path',
+      '_sa_mod.__name__ = "staralgo_game"',
+      '_sa_prepare_mod(_sa_mod)',
+      'import pgzero.tone as _sa_pgzero_tone',
+      'def _sa_tone_unavailable(*args, **kwargs):',
+      '    raise RuntimeError("tone.play/create пока недоступны в браузерной сборке StarAlgo. Используй файлы из папки sounds.")',
+      '_sa_pgzero_tone.play = _sa_tone_unavailable',
+      '_sa_pgzero_tone.create = _sa_tone_unavailable',
+      'exec(compile(__staralgo_user_source, _sa_game_path, "exec"), _sa_mod.__dict__)',
+      '_sa_game = _sa_PGZeroGame(_sa_mod)',
+      '_sa_game.reinit_screen()',
+      '_sa_update = _sa_game.get_update_func()',
+      '_sa_draw = _sa_game.get_draw_func()',
+      '_sa_game.load_handlers()',
+      '_sa_game.inject_global_handlers()',
+      'async def _sa_run_pgzero_loop():',
+      '    _sa_last = _sa_time.perf_counter()',
+      '    while True:',
+      '        _sa_frame_start = _sa_time.perf_counter()',
+      '        _sa_dt = max(0.0, min(_sa_frame_start - _sa_last, 0.1))',
+      '        _sa_last = _sa_frame_start',
+      '        _sa_changed = _sa_game.handle_events(_sa_dt, _sa_update)',
+      '        if _sa_changed:',
+      '            _sa_draw()',
+      '        _sa_pygame.display.flip()',
+      '        _sa_remaining = (1.0 / 60.0) - (_sa_time.perf_counter() - _sa_frame_start)',
+      '        await _sa_asyncio.sleep(max(0.0, _sa_remaining))',
+      'try:',
+      '    await _sa_run_pgzero_loop()',
+      'except (SystemExit, KeyboardInterrupt):',
+      '    print("Pygame Zero: игра остановлена.")',
+      'finally:',
+      '    _sa_pgzero_clock.clock.clear()',
+      '    _sa_pygame.display.quit()',
+      '    try:',
+      '        _sa_pygame.mixer.quit()',
+      '    except Exception:',
+      '        pass'
+    ].join('\\\\n');
+
     return [
       '<!doctype html><html lang="ru"><head><meta charset="utf-8">',
       '<meta name="referrer" content="no-referrer">',
@@ -99,7 +174,7 @@
       '<style>html,body{margin:0;min-height:100%;font:14px monospace;background:#fff;color:#222}body{padding:12px;box-sizing:border-box}#status{color:#765f16;margin-bottom:8px}small{color:#666}#visual-output{display:flex;flex-direction:column;align-items:center;gap:10px;margin-top:8px}#visual-output img{display:block;max-width:100%;max-height:65vh;object-fit:contain;border:1px solid #ddd}#canvas{display:block;width:100%;height:auto;max-height:70vh;min-height:200px;background:#111;border:1px solid #bbb;touch-action:none}</style>',
       '<script src="' + PYODIDE_BASE + 'pyodide.js"><' + '/script>',
       '</head><body><div id="status">Загрузка изолированной среды Pyodide…</div>',
-      mode === 'pygame' ? '<canvas id="canvas" width="640" height="360" aria-label="Окно Pygame"></canvas>' : '',
+      (mode === 'pygame' || mode === 'pgzero') ? '<canvas id="canvas" width="640" height="360" tabindex="0" aria-label="Окно Pygame"></canvas>' : '',
       '<div id="visual-output"></div>',
       '<small>StarAlgo · CPython через WebAssembly · изолированный запуск</small>',
       '<script>',
@@ -129,20 +204,35 @@
       '    const pyodide = await loadPyodide({indexURL:' + JSON.stringify(PYODIDE_BASE) + '});',
       '    pyodide.setStdout({batched:function(line){append(line + "\\n");}});',
       '    pyodide.setStderr({batched:function(line){append(line + "\\n");}});',
-      '    if (MODE === "pygame") {',
+      '    if (MODE === "pygame" || MODE === "pgzero") {',
       '      if (!pyodide.canvas || typeof pyodide.canvas.setCanvas2D !== "function") throw new Error("Эта сборка Pyodide не предоставляет SDL Canvas API.");',
       '      if (pyodide._api) pyodide._api._skip_unwind_fatal_error = true;',
       '      pyodide.canvas.setCanvas2D(document.getElementById("canvas"));',
       '      send("status", {message:"Подготовка игрового Canvas и SDL…"});',
       '    }',
-      '    send("status", {message:"Проверка импортов и загрузка доступных библиотек…"});',
-      '    await pyodide.loadPackagesFromImports(source);',
+      '    send("status", {message:MODE === "pgzero" ? "Загрузка Pygame Zero и игровых библиотек…" : "Проверка импортов и загрузка доступных библиотек…"});',
+      '    if (MODE === "pgzero") {',
+      '      await pyodide.loadPackage(["micropip", "pygame-ce", "numpy"]);',
+      '      await pyodide.runPythonAsync("import micropip\\nawait micropip.install(\\'pgzero==1.2.1\\', deps=False)");',
+      '      const importProbe = source.replace(/^\\s*#!\\s*pgzrun.*$/gm, "").replace(/^\\s*(?:import\\s+pgzrun\\b|(?:import|from)\\s+pgzero\\b).*$/gm, "");',
+      '      if (importProbe.trim()) await pyodide.loadPackagesFromImports(importProbe);',
+      '    } else {',
+      '      await pyodide.loadPackagesFromImports(source);',
+      '    }',
       '    pyodide.runPython(' + JSON.stringify(displayBootstrap) + ');',
       '    if (/\\b(?:import\\s+matplotlib|from\\s+matplotlib)\\b/.test(source)) {',
       '      pyodide.runPython(' + JSON.stringify(matplotlibBootstrap) + ');',
       '    }',
-      '    send("status", {message:MODE === "pygame" ? "Pygame готов. Запуск программы…" : "Библиотеки готовы. Выполнение программы…"});',
-      '    const result = await pyodide.runPythonAsync(source);',
+      '    send("status", {message:MODE === "pgzero" ? "Pygame Zero готов. Запуск игры…" : MODE === "pygame" ? "Pygame готов. Запуск программы…" : "Библиотеки готовы. Выполнение программы…"});',
+      '    let result;',
+      '    if (MODE === "pgzero") {',
+      '      const canvas = document.getElementById("canvas");',
+      '      if (canvas) canvas.addEventListener("pointerdown", function(){canvas.focus();});',
+      '      pyodide.globals.set("__staralgo_user_source", source);',
+      '      result = await pyodide.runPythonAsync(' + JSON.stringify(pgzeroBootstrap) + ');',
+      '    } else {',
+      '      result = await pyodide.runPythonAsync(source);',
+      '    }',
       '    if (result && typeof result.destroy === "function") result.destroy();',
       '    if (/\\b(?:import\\s+matplotlib|from\\s+matplotlib)\\b/.test(source)) pyodide.runPython("__staralgo_capture_figures()");',
       '    const imagesProxy = pyodide.globals.get("__staralgo_images");',
@@ -160,7 +250,7 @@
       '    }',
       '    const version = pyodide.runPython("import sys; sys.version");',
       '    if (truncated) output += "\\n[Вывод обрезан: достигнут лимит 50 000 символов.]";',
-      '    status.textContent = MODE === "pygame" ? "Программа завершена. Игровое окно оставлено для просмотра." : "Выполнение завершено."; ',
+      '    status.textContent = (MODE === "pygame" || MODE === "pgzero") ? "Игра завершена. Игровое окно оставлено для просмотра." : "Выполнение завершено."; ',
       '    send("done", {ok:true, output:output, pythonVersion:String(version)});',
       '  } catch (error) {',
       '    append((output ? "\\n" : "") + String(error && (error.stack || error.message) || error));',
@@ -195,7 +285,7 @@
     const canvasBox = document.getElementById('turtle-graphics-canvas-container');
     const outputBox = document.getElementById('python-console-output');
     const source = String(code || '');
-    const mode = options && options.mode === 'pygame' ? 'pygame' : 'python';
+    const mode = options && (options.mode === 'pygame' || options.mode === 'pgzero') ? options.mode : 'python';
 
     if (!canvasBox || !outputBox) return;
     if (source.length > MAX_CODE_LENGTH) {
@@ -209,7 +299,7 @@
 
     canvasBox.replaceChildren();
     const frame = document.createElement('iframe');
-    frame.title = mode === 'pygame' ? 'Изолированная игровая среда Python' : 'Изолированная среда Pyodide';
+    frame.title = (mode === 'pygame' || mode === 'pgzero') ? 'Изолированная игровая среда Python' : 'Изолированная среда Pyodide';
     frame.setAttribute('sandbox', 'allow-scripts');
     frame.setAttribute('referrerpolicy', 'no-referrer');
     frame.style.cssText = 'display:block;width:100%;height:100%;min-height:280px;border:0;background:#fff;';
@@ -262,7 +352,7 @@
     });
     observer.observe(document.body, {childList:true, subtree:true});
 
-    const timeout = mode === 'pygame' ? GAME_TIMEOUT_MS : RUN_TIMEOUT_MS;
+    const timeout = (mode === 'pygame' || mode === 'pgzero') ? GAME_TIMEOUT_MS : RUN_TIMEOUT_MS;
     timeoutId = window.setTimeout(() => {
       outputBox.textContent = mode === 'pygame'
         ? 'Игровой запуск остановлен по лимиту 10 минут.'
@@ -285,19 +375,19 @@
     const source = String(code || '');
     const importsTurtle = /^\s*(?:import\s+turtle\b|from\s+turtle\s+import\b)/m.test(source) || /\bTurtle\s*\(/.test(source);
     const importsPygame = /^\s*(?:import\s+pygame\b|from\s+pygame\s+import\b)/m.test(source);
-    const importsPygameZero = /^\s*#!\s*pgzrun\b/m.test(source) || /^\s*(?:import|from)\s+pgzero\b/m.test(source);
-    const importsPyodideOnly = /^\s*(?:import|from)\s+(?:numpy|pandas|scipy|sympy|sklearn|matplotlib|PIL|pygame|pydantic|bs4)\b/m.test(source);
+    const importsPygameZero = /^\s*#!\s*pgzrun\b/m.test(source) || /^\s*(?:import\s+pgzrun\b|(?:import|from)\s+pgzero\b)/m.test(source);
+    const importsPyodideOnly = /^\s*(?:import|from)\s+(?:numpy|pandas|scipy|sympy|sklearn|matplotlib|PIL|pygame|pgzero|pgzrun|pydantic|bs4)\b/m.test(source);
 
     if (source.length > MAX_CODE_LENGTH) {
       showNotice('Код слишком большой для запуска (лимит 200 КБ).');
       return;
     }
-    if (importsPygameZero) {
-      showNotice('Обнаружен Pygame Zero (#!pgzrun). Его запуск требует сборки Pygbag; этот игровой runtime пока не подключён к StarAlgo. Код не запускался в неподходящей среде.');
+    if (importsTurtle && (importsPyodideOnly || importsPygameZero)) {
+      showNotice('В этом проекте смешаны Turtle и библиотеки CPython или Pygame Zero. Turtle работает в совместимом Brython, а расширенные библиотеки и игры — в Pyodide. Эти движки пока нельзя смешивать в одном запуске. Старый Turtle-код не изменён.');
       return;
     }
-    if (importsTurtle && importsPyodideOnly) {
-      showNotice('В этом проекте смешаны Turtle и библиотеки CPython. Сейчас Turtle работает в совместимом Brython, а NumPy/Pandas и другие расширения — в Pyodide. Эти движки пока нельзя смешивать в одном запуске. Старый Turtle-код не изменён.');
+    if (importsPygameZero) {
+      window.runPythonPyodideSandbox(source, {mode:'pgzero'});
       return;
     }
     if (importsTurtle) {
