@@ -4641,24 +4641,9 @@
             }
         }
 
-        // Keep the sort handler above the rendered buttons. Event delegation survives
-        // every innerHTML replacement in the Protostars view.
+        // The rendered controls call this global function directly via onclick.
+        // This avoids depending on document-level event bubbling.
         window.toggleProtoSort = toggleProtoSort;
-        if (!window.__starAlgoProtoSortDelegationBound) {
-            document.addEventListener('click', event => {
-                const target = event.target instanceof Element ? event.target : event.target?.parentElement;
-                const button = target?.closest('button[data-proto-sort]');
-                if (!button) return;
-
-                const sortBy = button.getAttribute('data-proto-sort');
-                if (sortBy !== 'date' && sortBy !== 'name') return;
-
-                event.preventDefault();
-                // Do not stop propagation: the global click-sound handler must receive it.
-                toggleProtoSort(sortBy);
-            });
-            window.__starAlgoProtoSortDelegationBound = true;
-        }
 
         function getProtoProjectDate(project) {
             const values = [project.date, project.createdAt, project.created_at, project.updatedAt, project.updated_at, project.id];
@@ -4752,6 +4737,7 @@
                             type="button"
                             aria-pressed="${protoSortMode.startsWith('date-')}"
                             data-proto-sort="date"
+                            onclick="window.toggleProtoSort('date')"
                             aria-label="Изменить порядок сортировки по дате"
                         >${protoSortMode === 'date-asc' ? '↑ Старые' : '↓ Новые'}</button>
                         <button
@@ -4759,6 +4745,7 @@
                             type="button"
                             aria-pressed="${protoSortMode.startsWith('name-')}"
                             data-proto-sort="name"
+                            onclick="window.toggleProtoSort('name')"
                             aria-label="Изменить алфавитный порядок сортировки"
                         >${protoSortMode === 'name-desc' ? 'Я–А / Z–A' : 'А–Я / A–Z'}</button>
                         <button class="proto-create-btn" onclick="openCreateProjectModal()">+ Создать</button>
@@ -4768,8 +4755,7 @@
                 <div class="proto-projects-grid" id="proto-projects-grid">${gridHtml}</div>
             `;
 
-            // Clicks are handled by one document-level delegated listener above.
-            // This remains active if the view's innerHTML is replaced.
+            // Buttons call window.toggleProtoSort directly through onclick.
         }
 
         function renderProtoVacuumView(container) {
