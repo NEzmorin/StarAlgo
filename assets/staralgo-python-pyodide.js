@@ -141,6 +141,8 @@
       '_sa_draw = _sa_game.get_draw_func()',
       '_sa_game.load_handlers()',
       '_sa_game.inject_global_handlers()',
+      '_sa_draw()',
+      '_sa_pygame.display.flip()',
       'async def _sa_run_pgzero_loop():',
       '    _sa_last = _sa_time.perf_counter()',
       '    while True:',
@@ -164,7 +166,7 @@
       '        _sa_pygame.mixer.quit()',
       '    except Exception:',
       '        pass'
-    ].join('\\\\n');
+    ].join('\\n');
 
     return [
       '<!doctype html><html lang="ru"><head><meta charset="utf-8">',
