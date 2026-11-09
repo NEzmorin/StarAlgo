@@ -437,3 +437,28 @@
     min-height: 320px;
   }
 }
+
+
+.site-launcher-home-card {
+  width: 100%;
+  border-color: rgba(245, 214, 92, .85);
+  background: linear-gradient(135deg, rgba(212, 178, 54, .1), rgba(20, 18, 10, .94) 58%);
+}
+
+.site-launcher-home-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.site-launcher-home-actions .auth-btn {
+  min-height: 42px;
+  white-space: normal;
+}
+
+@media (max-width: 760px) {
+  .site-launcher-home-actions .auth-btn {
+    width: 100%;
+  }
+}
