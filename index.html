@@ -2420,7 +2420,7 @@
         }
 
     </style>
-    <link rel="stylesheet" href="/assets/responsive.css?v=20261109">
+    <link rel="stylesheet" href="/assets/responsive.css?v=20261109-sites1">
 </head>
 <body>
 
@@ -2500,6 +2500,7 @@
                 <button class="nav-item" onclick="setTab(event, 'hall', 'Звёздный Зал')">Звёздный Зал</button>
                 <button class="nav-item" id="nav-proto-btn" style="display: none;" onclick="setTab(event, 'proto', 'Протозвездие')">Протозвездие</button>
                 <button class="nav-item" onclick="setTab(event, 'telescope', 'Телескоп Новостей')">Телескоп Новостей</button>
+                <button class="nav-item" onclick="setTab(event, 'site-launcher', 'Сайты')">Сайты</button>
                 <button class="nav-item" id="nav-reports-btn" style="display: none; color: #ff5555;" onclick="setTab(event, 'reports', 'Ящик жалований')">Жалобы</button>
             </nav>
 
@@ -2539,6 +2540,7 @@
             <div class="mobile-more-menu" id="mobile-more-menu" role="menu" aria-label="Дополнительная навигация">
                 <button class="nav-item mobile-more-menu-item" id="mobile-nav-proto-btn" type="button" role="menuitem" style="display:none;" onclick="setTab(event, 'proto', 'Протозвездие')">✧ Протозвездие</button>
                 <button class="nav-item mobile-more-menu-item" id="mobile-nav-reports-btn" type="button" role="menuitem" style="display:none;" onclick="setTab(event, 'reports', 'Ящик жалований')">⚑ Ящик жалований</button>
+                <button class="nav-item mobile-more-menu-item" id="mobile-nav-sites-btn" type="button" role="menuitem" onclick="setTab(event, 'site-launcher', 'Сайты')">🌐 Сайты</button>
                 <button class="mobile-more-menu-item" type="button" role="menuitem" onclick="closeMobileMoreMenu(); openSupportModal();">✉ Поддержка</button>
             </div>
         </div>
@@ -2933,6 +2935,55 @@
 
                 </div>
             </div>
+
+            <!-- Веб-запускатель: внешние сайты открываются только после явного подтверждения. -->
+            <div id="tab-site-launcher" class="tab-page site-launcher-page">
+                <h1 class="page-title">Сайты внутри StarAlgo</h1>
+                <p class="page-text site-launcher-intro">Открывай сайты во встроенном окне, не покидая StarAlgo. Введи HTTPS-адрес или запусти сам StarAlgo внутри StarAlgo.</p>
+
+                <div class="site-launcher-notice" role="note">
+                    <span aria-hidden="true" style="font-size:1.5rem;">⚠</span>
+                    <div><strong>Внимание: внешний сайт.</strong><br>Перед открытием проверь адрес. Содержимое внешнего сайта не контролируется StarAlgo: оно может собирать данные или показывать нежелательные материалы. Не вводи на незнакомых сайтах пароли и личную информацию. Некоторые сайты запрещают открытие внутри iframe — для них используй кнопку «Пойти на сайт».</div>
+                </div>
+
+                <div class="search-container" style="max-width:1000px;">
+                    <form id="site-launcher-form" class="site-launcher-form" onsubmit="event.preventDefault(); prepareSiteLauncher();">
+                        <input id="site-launcher-url" class="site-launcher-url" type="text" inputmode="url" autocomplete="url" spellcheck="false" placeholder="https://example.com" aria-label="Адрес сайта" required>
+                        <button class="auth-btn" type="submit">Открыть внутри StarAlgo</button>
+                    </form>
+                    <div class="site-launcher-form" style="margin-top:10px;">
+                        <button class="auth-btn" type="button" onclick="openStarAlgoInside()">✦ Открыть StarAlgo внутри StarAlgo</button>
+                    </div>
+                    <div id="site-launcher-status" class="site-launcher-status" role="status" aria-live="polite"></div>
+                </div>
+
+                <div id="site-launcher-confirm" class="site-launcher-confirm" hidden role="region" aria-live="polite">
+                    <h2>Ты переходишь на внешний сайт</h2>
+                    <p>Адрес: <strong id="site-launcher-confirm-host"></strong></p>
+                    <p>StarAlgo не проверяет содержимое этой страницы и не отвечает за её действия. Продолжай только если доверяешь адресу.</p>
+                    <div id="site-launcher-same-origin-warning" class="site-launcher-notice" hidden>
+                        <span aria-hidden="true" style="font-size:1.4rem;">🔐</span>
+                        <div><strong>Это тот же домен, что и StarAlgo.</strong><br>Чтобы вложенная копия работала полноценно, она будет использовать тот же origin и текущую сессию. Такая страница может взаимодействовать с основной страницей StarAlgo. Продолжай только для официального сайта StarAlgo.</div>
+                    </div>
+                    <div class="site-launcher-confirm-actions">
+                        <button class="auth-btn" type="button" onclick="confirmSiteLauncher()">Продолжить и открыть внутри</button>
+                        <button class="auth-btn" type="button" onclick="cancelSiteLauncher()">Отмена</button>
+                    </div>
+                </div>
+
+                <div id="site-launcher-viewer" class="site-launcher-viewer" hidden>
+                    <div class="site-launcher-toolbar">
+                        <div id="site-launcher-host" class="site-launcher-host"></div>
+                        <a id="site-launcher-external-link" class="site-launcher-external-link" href="#" target="_blank" rel="noopener noreferrer">Пойти на сайт ↗</a>
+                        <button class="auth-btn site-launcher-close" type="button" onclick="stopSiteLauncher()">Закрыть</button>
+                    </div>
+                    <div class="site-launcher-frame-wrap">
+                        <iframe id="site-launcher-frame" class="site-launcher-frame" title="Внешний сайт" loading="lazy" referrerpolicy="no-referrer"></iframe>
+                    </div>
+                    <p class="site-launcher-frame-note">Если внутри пустой экран или сайт сообщает, что его нельзя встроить, это ограничение самого сайта. Нажми «Пойти на сайт», чтобы открыть его в отдельной вкладке.</p>
+                </div>
+            </div>
+
         </section>
 
         <!-- Уменьшенная панель Сингулярности (Админ) справа -->
@@ -3564,6 +3615,111 @@
             }, 140);
         });
 
+
+        let pendingSiteLauncherURL = null;
+
+        function parseSiteLauncherURL(value) {
+            let raw = String(value || '').trim();
+            if (!raw) throw new Error('Сначала введи адрес сайта.');
+            if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(raw)) raw = 'https://' + raw;
+
+            let parsed;
+            try {
+                parsed = new URL(raw);
+            } catch (error) {
+                throw new Error('Не удалось распознать адрес. Проверь ссылку.');
+            }
+
+            if (!['http:', 'https:'].includes(parsed.protocol)) {
+                throw new Error('Разрешены только ссылки HTTP и HTTPS.');
+            }
+            if (!parsed.hostname || parsed.username || parsed.password) {
+                throw new Error('Адрес должен содержать домен и не должен включать логин или пароль.');
+            }
+            return parsed;
+        }
+
+        function prepareSiteLauncher() {
+            const input = document.getElementById('site-launcher-url');
+            const status = document.getElementById('site-launcher-status');
+            const confirmPanel = document.getElementById('site-launcher-confirm');
+            const confirmHost = document.getElementById('site-launcher-confirm-host');
+            const sameOriginWarning = document.getElementById('site-launcher-same-origin-warning');
+
+            try {
+                const parsed = parseSiteLauncherURL(input?.value);
+                pendingSiteLauncherURL = parsed;
+                if (confirmHost) confirmHost.textContent = parsed.href;
+                if (sameOriginWarning) sameOriginWarning.hidden = parsed.origin !== window.location.origin;
+                if (confirmPanel) confirmPanel.hidden = false;
+                if (status) status.textContent = 'Проверь адрес и подтверди переход.';
+            } catch (error) {
+                pendingSiteLauncherURL = null;
+                if (confirmPanel) confirmPanel.hidden = true;
+                if (status) status.textContent = error.message || 'Не удалось открыть этот адрес.';
+            }
+        }
+
+        function openStarAlgoInside() {
+            const input = document.getElementById('site-launcher-url');
+            if (input) input.value = window.location.origin;
+            prepareSiteLauncher();
+        }
+
+        function confirmSiteLauncher() {
+            if (!pendingSiteLauncherURL) return;
+
+            const frame = document.getElementById('site-launcher-frame');
+            const viewer = document.getElementById('site-launcher-viewer');
+            const confirmPanel = document.getElementById('site-launcher-confirm');
+            const host = document.getElementById('site-launcher-host');
+            const externalLink = document.getElementById('site-launcher-external-link');
+            const status = document.getElementById('site-launcher-status');
+            const isTrustedSameOrigin = pendingSiteLauncherURL.origin === window.location.origin;
+
+            if (!frame || !viewer) return;
+
+            // All third-party pages get an opaque sandbox origin. The same-origin
+            // exception is limited to the exact current StarAlgo origin so its own
+            // login/session can function when the user explicitly confirms it.
+            const sandboxRules = isTrustedSameOrigin
+                ? 'allow-scripts allow-forms allow-same-origin allow-popups allow-presentation'
+                : 'allow-scripts allow-forms allow-popups allow-presentation';
+
+            frame.setAttribute('sandbox', sandboxRules);
+            frame.title = 'Сайт: ' + pendingSiteLauncherURL.hostname;
+            frame.src = pendingSiteLauncherURL.href;
+
+            if (host) host.textContent = 'Открыт сайт: ' + pendingSiteLauncherURL.hostname;
+            if (externalLink) externalLink.href = pendingSiteLauncherURL.href;
+            if (confirmPanel) confirmPanel.hidden = true;
+            viewer.hidden = false;
+
+            if (status) status.textContent = isTrustedSameOrigin
+                ? 'Открывается официальный сайт StarAlgo внутри текущей страницы.'
+                : 'Сайт загружается во встроенном изолированном окне.';
+        }
+
+        function cancelSiteLauncher() {
+            pendingSiteLauncherURL = null;
+            const confirmPanel = document.getElementById('site-launcher-confirm');
+            const status = document.getElementById('site-launcher-status');
+            if (confirmPanel) confirmPanel.hidden = true;
+            if (status) status.textContent = 'Переход отменён.';
+        }
+
+        function stopSiteLauncher() {
+            pendingSiteLauncherURL = null;
+            const frame = document.getElementById('site-launcher-frame');
+            const viewer = document.getElementById('site-launcher-viewer');
+            const confirmPanel = document.getElementById('site-launcher-confirm');
+            const status = document.getElementById('site-launcher-status');
+            if (frame) frame.src = 'about:blank';
+            if (viewer) viewer.hidden = true;
+            if (confirmPanel) confirmPanel.hidden = true;
+            if (status) status.textContent = 'Встроенный сайт закрыт.';
+        }
+
         function setTab(event, tabId, name) {
             if (tabId === 'proto' && !currentUser) {
                 openAuthModal();
@@ -3579,6 +3735,7 @@
             }
 
             closeMobileMoreMenu();
+            if (currentTab === 'site-launcher' && tabId !== 'site-launcher') stopSiteLauncher();
             currentTab = tabId;
             if (!window.__staralgoRestoringRoute) {
                 const route = window.starAlgoRouteForTab ? window.starAlgoRouteForTab(tabId) : '/';
@@ -3600,7 +3757,7 @@
 
             const mobileMoreBtn = document.getElementById('mobile-more-btn');
             const mobileProfileBtn = document.getElementById('mobile-profile-btn');
-            if (mobileMoreBtn) mobileMoreBtn.classList.toggle('active', ['proto', 'reports'].includes(tabId) || (tabId === 'star-editor' && starOpenSource === 'proto'));
+            if (mobileMoreBtn) mobileMoreBtn.classList.toggle('active', ['proto', 'reports', 'site-launcher'].includes(tabId) || (tabId === 'star-editor' && starOpenSource === 'proto'));
             if (mobileProfileBtn) mobileProfileBtn.classList.toggle('active', tabId === 'profile');
 
             const breadcrumb = document.getElementById('breadcrumb');
@@ -3623,13 +3780,13 @@
 
         // Shareable routes for existing views; the site's visual design remains unchanged.
         window.starAlgoRouteForTab = function(tabId) {
-            const routes = { main:'/', hall:'/hall', proto:'/protostars', telescope:'/news', reports:'/moderation', profile: viewingUser ? '/user/id/' + encodeURIComponent(viewingUser.id) : '/settings', 'star-editor': activeStarObject ? '/project/' + encodeURIComponent(activeStarObject.id) : '/editor', 'dwarf-viewer': activeDwarfObject ? '/news/' + encodeURIComponent(activeDwarfObject.id) : '/news' };
+            const routes = { main:'/', hall:'/hall', proto:'/protostars', telescope:'/news', reports:'/moderation', 'site-launcher':'/sites', profile: viewingUser ? '/user/id/' + encodeURIComponent(viewingUser.id) : '/settings', 'star-editor': activeStarObject ? '/project/' + encodeURIComponent(activeStarObject.id) : '/editor', 'dwarf-viewer': activeDwarfObject ? '/news/' + encodeURIComponent(activeDwarfObject.id) : '/news' };
             return routes[tabId] || '/';
         };
         window.restoreRoute = async function() {
             const path = window.location.pathname;
             let tab = 'main', title = 'Главная', match = null;
-            if (path === '/hall') { tab='hall'; title='Звёздный Зал'; }
+            if (path === '/hall') { tab='hall'; title='Звёздный Зал'; } else if (path === '/sites') { tab='site-launcher'; title='Сайты'; }
             else if (path === '/protostars') { tab='proto'; title='Протозвездие'; }
             else if (path === '/news') { tab='telescope'; title='Телескоп Новостей'; }
             else if (path === '/moderation') { tab='reports'; title='Ящик жалований'; }
