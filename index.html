@@ -4628,11 +4628,17 @@
         function toggleProtoSort(sortBy) {
             if (sortBy !== 'date' && sortBy !== 'name') return;
 
-            const criterion = protoSortCriteria.find(item => item.key === sortBy);
-            if (criterion) {
+            const criterionIndex = protoSortCriteria.findIndex(item => item.key === sortBy);
+            if (criterionIndex >= 0) {
+                // The criterion clicked most recently becomes primary, while
+                // its previous direction and all other criteria are preserved.
+                const [criterion] = protoSortCriteria.splice(criterionIndex, 1);
                 criterion.direction *= -1;
+                protoSortCriteria.unshift(criterion);
             } else {
-                protoSortCriteria.push({
+                // A new criterion becomes primary; existing choices remain as
+                // secondary tie-breakers in their current priority order.
+                protoSortCriteria.unshift({
                     key: sortBy,
                     direction: sortBy === 'date' ? -1 : 1
                 });
