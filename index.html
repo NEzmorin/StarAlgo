@@ -811,8 +811,7 @@
             transition: background 0.2s, color 0.2s, border-color 0.2s;
         }
 
-        .proto-btn-pill:hover,
-        .proto-btn-pill.active {
+        .proto-btn-pill:hover {
             background: rgba(212, 178, 54, 0.18);
             border-color: var(--gold-bright);
             color: var(--gold-bright);
@@ -4600,17 +4599,43 @@
         }
 
         let activeProtoCategory = 'all';
-        // Date descending (newest first) is the default. Clicking the same sort reverses it.
-        let protoSortMode = 'date-desc';
+        // Multi-column sorting: the default primary criterion is newest-first.
+        // Newly selected criteria are appended as secondary/tertiary tie-breakers.
+        let protoSortCriteria = [{ key: 'date', direction: -1 }];
+
+        function getProtoSortDirection(sortBy) {
+            const criterion = protoSortCriteria.find(item => item.key === sortBy);
+            if (criterion) return criterion.direction;
+            return sortBy === 'date' ? -1 : 1;
+        }
+
+        function getProtoSortLabel(sortBy) {
+            const direction = getProtoSortDirection(sortBy);
+            if (sortBy === 'date') return direction < 0 ? '↓ Новые' : '↑ Старые';
+            return direction < 0 ? 'Я–А / Z–A' : 'А–Я / A–Z';
+        }
+
+        function compareProtoProjects(a, b) {
+            for (const criterion of protoSortCriteria) {
+                const comparison = criterion.key === 'date'
+                    ? getProtoProjectDate(a) - getProtoProjectDate(b)
+                    : protoNameCollator.compare(String(a.name || ''), String(b.name || ''));
+                if (comparison !== 0) return comparison * criterion.direction;
+            }
+            return 0;
+        }
 
         function toggleProtoSort(sortBy) {
             if (sortBy !== 'date' && sortBy !== 'name') return;
 
-            const isSameSort = protoSortMode.startsWith(sortBy + '-');
-            if (sortBy === 'date') {
-                protoSortMode = isSameSort && protoSortMode === 'date-desc' ? 'date-asc' : 'date-desc';
+            const criterion = protoSortCriteria.find(item => item.key === sortBy);
+            if (criterion) {
+                criterion.direction *= -1;
             } else {
-                protoSortMode = isSameSort && protoSortMode === 'name-asc' ? 'name-desc' : 'name-asc';
+                protoSortCriteria.push({
+                    key: sortBy,
+                    direction: sortBy === 'date' ? -1 : 1
+                });
             }
 
             const area = document.getElementById('proto-main-content-area');
@@ -4618,21 +4643,6 @@
                 console.error('[StarAlgo] Protostars sort container was not found.');
                 return;
             }
-
-            // Update the controls immediately, even if a later rendering error occurs.
-            area.querySelectorAll('[data-proto-sort]').forEach(button => {
-                const type = button.dataset.protoSort;
-                const active = type === 'date'
-                    ? protoSortMode.startsWith('date-')
-                    : protoSortMode.startsWith('name-');
-                button.classList.toggle('active', active);
-                button.setAttribute('aria-pressed', String(active));
-                if (type === 'date') {
-                    button.textContent = protoSortMode === 'date-asc' ? '↑ Старые' : '↓ Новые';
-                } else if (type === 'name') {
-                    button.textContent = protoSortMode === 'name-desc' ? 'Я–А / Z–A' : 'А–Я / A–Z';
-                }
-            });
 
             try {
                 renderProtoProjectsView(area);
@@ -4642,7 +4652,6 @@
         }
 
         // The rendered controls call this global function directly via onclick.
-        // This avoids depending on document-level event bubbling.
         window.toggleProtoSort = toggleProtoSort;
 
         function getProtoProjectDate(project) {
@@ -4701,15 +4710,7 @@
 
             const filtered = activeProtoCategory === 'all' ? projects : projects.filter(p => p.category === activeProtoCategory);
             // Sort a copy: never mutate the order persisted in the user's account.
-            const sortedFiltered = [...filtered].sort((a, b) => {
-                if (protoSortMode.startsWith('name-')) {
-                    const direction = protoSortMode === 'name-asc' ? 1 : -1;
-                    return protoNameCollator.compare(String(a.name || ''), String(b.name || '')) * direction;
-                }
-
-                const direction = protoSortMode === 'date-desc' ? -1 : 1;
-                return (getProtoProjectDate(a) - getProtoProjectDate(b)) * direction;
-            });
+            const sortedFiltered = [...filtered].sort(compareProtoProjects);
 
             let gridHtml = '';
             if (filtered.length === 0) {
@@ -4733,21 +4734,19 @@
                     <div class="proto-controls">
                         <span class="proto-sort-label">Сортировать</span>
                         <button
-                            class="proto-btn-pill ${protoSortMode.startsWith('date-') ? 'active' : ''}"
+                            class="proto-btn-pill"
                             type="button"
-                            aria-pressed="${protoSortMode.startsWith('date-')}"
                             data-proto-sort="date"
                             onclick="window.toggleProtoSort('date')"
                             aria-label="Изменить порядок сортировки по дате"
-                        >${protoSortMode === 'date-asc' ? '↑ Старые' : '↓ Новые'}</button>
+                        >${getProtoSortLabel('date')}</button>
                         <button
-                            class="proto-btn-pill ${protoSortMode.startsWith('name-') ? 'active' : ''}"
+                            class="proto-btn-pill"
                             type="button"
-                            aria-pressed="${protoSortMode.startsWith('name-')}"
                             data-proto-sort="name"
                             onclick="window.toggleProtoSort('name')"
                             aria-label="Изменить алфавитный порядок сортировки"
-                        >${protoSortMode === 'name-desc' ? 'Я–А / Z–A' : 'А–Я / A–Z'}</button>
+                        >${getProtoSortLabel('name')}</button>
                         <button class="proto-create-btn" onclick="openCreateProjectModal()">+ Создать</button>
                     </div>
                 </div>
