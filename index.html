@@ -2454,6 +2454,11 @@
         .project-site-consent-card h3 { margin:0 0 10px; color:var(--gold-bright); font-size:1.25rem; font-weight:normal; }
         .project-site-consent-card p { margin:0; line-height:1.5; overflow-wrap:anywhere; }
         .project-site-consent-card strong { color:var(--gold-bright); }
+        .project-site-same-origin-note {
+            margin-top:12px !important; padding:10px 12px; border:1px solid rgba(212,178,54,.55);
+            border-radius:8px; background:rgba(212,178,54,.09); color:var(--gold-bright);
+            font-size:.88rem; line-height:1.45;
+        }
         .project-site-consent-actions { display:flex; justify-content:center; flex-wrap:wrap; gap:9px; margin-top:17px; }
         .project-site-cancelled, .project-site-empty {
             position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
@@ -5412,6 +5417,7 @@
                                             <div class="project-site-consent-icon">⚠</div>
                                             <h3>Переход на внешний сайт</h3>
                                             <p>Ты переходишь на <strong>${safeSiteUrlHtml}</strong>. Ты уверен, что хочешь открыть этот сайт внутри StarAlgo?</p>
+                                            <p id="project-site-same-origin-note" class="project-site-same-origin-note" hidden>Это тот же домен StarAlgo. Вложенная копия получит доступ к текущей сессии и данным сайта в этом домене, поэтому открывай здесь только официальный StarAlgo. Каждый дополнительный уровень вложенности расходует память устройства.</p>
                                             <div class="project-site-consent-actions">
                                                 <button class="auth-btn" type="button" onclick="confirmProjectSitePreview()">Да, открыть</button>
                                                 <button class="auth-btn" type="button" onclick="cancelProjectSitePreview()">Отмена</button>
@@ -5627,6 +5633,17 @@
                 alert(error.message || 'Не удалось проверить адрес сайта.');
                 return;
             }
+            const isSameOrigin = parsed.origin === window.location.origin;
+            if (isSameOrigin) {
+                // Доверенное исключение только для точного origin StarAlgo:
+                // вложенная копия должна видеть ту же сессию и иметь возможность открывать себя дальше.
+                frame.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-popups allow-presentation');
+            } else {
+                // Любой сторонний сайт остаётся в sandbox без доступа к origin StarAlgo.
+                frame.setAttribute('sandbox', 'allow-scripts allow-forms allow-popups allow-presentation');
+            }
+            const sameOriginNote = document.getElementById('project-site-same-origin-note');
+            if (sameOriginNote) sameOriginNote.hidden = !isSameOrigin;
             frame.src = parsed.href;
             if (consent) consent.hidden = true;
         };
