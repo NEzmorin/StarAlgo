@@ -1,0 +1,195 @@
+/* StarAlgo responsive layout: keep desktop navigation readable in narrow windows. */
+@media (max-width: 1200px) and (hover: hover) {
+  body {
+    padding: 146px clamp(14px, 2.4vw, 30px) 32px;
+  }
+
+  header {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto auto;
+    align-items: center;
+    gap: 8px 16px;
+    padding: 10px clamp(14px, 2.4vw, 28px);
+  }
+
+  .logo-container {
+    gap: 3px;
+    min-width: 0;
+  }
+
+  .logo {
+    font-size: clamp(1.9rem, 3.2vw, 2.7rem);
+    letter-spacing: clamp(1px, .25vw, 3px);
+  }
+
+  .breadcrumb {
+    font-size: clamp(.78rem, 1vw, .95rem);
+  }
+
+  .timer-display {
+    font-size: clamp(1.7rem, 2.6vw, 2.45rem);
+  }
+
+  .header-right {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-self: stretch;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px 12px;
+    width: 100%;
+    min-width: 0;
+  }
+
+  #main-nav {
+    flex: 1 1 460px;
+    min-width: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 6px clamp(8px, 1vw, 14px);
+  }
+
+  #main-nav .nav-item {
+    flex: 0 0 auto;
+    font-size: clamp(.86rem, 1.15vw, 1.1rem);
+    line-height: 1.25;
+    white-space: nowrap;
+  }
+
+  .header-right > .auth-btn {
+    flex: 0 0 auto;
+    font-size: clamp(.85rem, 1vw, 1rem);
+    padding: 6px 10px;
+    white-space: nowrap;
+  }
+
+  .user-header-profile {
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: 100%;
+    gap: 6px;
+  }
+
+  .user-header-text {
+    min-width: 0;
+  }
+
+  .user-header-text .name {
+    font-size: clamp(.95rem, 1.3vw, 1.25rem);
+    overflow-wrap: anywhere;
+  }
+
+  .user-header-text .role {
+    font-size: clamp(.78rem, .95vw, .95rem);
+  }
+
+  .star-avatar-small {
+    width: 34px;
+    height: 34px;
+  }
+
+  .bell-icon-btn {
+    padding: 4px 8px;
+    font-size: .95rem;
+  }
+
+  main {
+    gap: 20px;
+  }
+
+  main.layout-sidebar-content-admin,
+  main.layout-content-admin {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  main > *,
+  .content-section,
+  .tab-page,
+  .search-container {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .upload-guide-card {
+    float: none;
+    width: 100%;
+    max-width: 100% !important;
+    margin: 16px 0;
+  }
+}
+
+@media (max-width: 900px) and (hover: hover) {
+  body {
+    padding-top: 154px;
+  }
+
+  header {
+    padding: 9px 12px;
+    gap: 7px 10px;
+  }
+
+  .header-right {
+    justify-content: flex-start;
+  }
+
+  #main-nav {
+    flex-basis: 100%;
+    width: 100%;
+    gap: 5px 10px;
+  }
+}
+
+@media (max-width: 560px) and (hover: hover) {
+  body {
+    padding-top: 170px;
+  }
+
+  header {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .timer-display {
+    display: none;
+  }
+
+  #main-nav {
+    flex-basis: 100%;
+    gap: 6px 9px;
+  }
+
+  #main-nav .nav-item {
+    font-size: .82rem;
+  }
+}
+
+@media (max-width: 900px) and (hover: hover) {
+  .star-editor-top,
+  .modal-actions,
+  .tester-controls,
+  .search-input-row,
+  .comment-input-row {
+    flex-wrap: wrap;
+  }
+
+  .star-editor-top > *,
+  .tester-controls > *,
+  .modal-actions > * {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .search-input,
+  .comment-input {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .modal-actions .auth-btn {
+    flex: 1 1 130px;
+  }
+}
