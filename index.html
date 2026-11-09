@@ -4604,17 +4604,60 @@
         let protoSortMode = 'date-desc';
 
         function toggleProtoSort(sortBy) {
-            const isDateSort = sortBy === 'date';
-            const isSameSort = protoSortMode.startsWith(sortBy + '-');
+            if (sortBy !== 'date' && sortBy !== 'name') return;
 
-            if (isDateSort) {
+            const isSameSort = protoSortMode.startsWith(sortBy + '-');
+            if (sortBy === 'date') {
                 protoSortMode = isSameSort && protoSortMode === 'date-desc' ? 'date-asc' : 'date-desc';
             } else {
                 protoSortMode = isSameSort && protoSortMode === 'name-asc' ? 'name-desc' : 'name-asc';
             }
 
             const area = document.getElementById('proto-main-content-area');
-            if (area) renderProtoProjectsView(area);
+            if (!area) {
+                console.error('[StarAlgo] Protostars sort container was not found.');
+                return;
+            }
+
+            // Update the controls immediately, even if a later rendering error occurs.
+            area.querySelectorAll('[data-proto-sort]').forEach(button => {
+                const type = button.dataset.protoSort;
+                const active = type === 'date'
+                    ? protoSortMode.startsWith('date-')
+                    : protoSortMode.startsWith('name-');
+                button.classList.toggle('active', active);
+                button.setAttribute('aria-pressed', String(active));
+                if (type === 'date') {
+                    button.textContent = protoSortMode === 'date-asc' ? '↑ Старые' : '↓ Новые';
+                } else if (type === 'name') {
+                    button.textContent = protoSortMode === 'name-desc' ? 'Я–А / Z–A' : 'А–Я / A–Z';
+                }
+            });
+
+            try {
+                renderProtoProjectsView(area);
+            } catch (error) {
+                console.error('[StarAlgo] Protostars sorting failed:', error);
+            }
+        }
+
+        // Keep the sort handler above the rendered buttons. Event delegation survives
+        // every innerHTML replacement in the Protostars view.
+        window.toggleProtoSort = toggleProtoSort;
+        if (!window.__starAlgoProtoSortDelegationBound) {
+            document.addEventListener('click', event => {
+                const target = event.target instanceof Element ? event.target : event.target?.parentElement;
+                const button = target?.closest('button[data-proto-sort]');
+                if (!button) return;
+
+                const sortBy = button.getAttribute('data-proto-sort');
+                if (sortBy !== 'date' && sortBy !== 'name') return;
+
+                event.preventDefault();
+                // Do not stop propagation: the global click-sound handler must receive it.
+                toggleProtoSort(sortBy);
+            });
+            window.__starAlgoProtoSortDelegationBound = true;
         }
 
         function getProtoProjectDate(project) {
@@ -4725,15 +4768,8 @@
                 <div class="proto-projects-grid" id="proto-projects-grid">${gridHtml}</div>
             `;
 
-            // Bind directly after each render, instead of relying on inline onclick
-            // attributes injected via innerHTML.
-            container.querySelectorAll('[data-proto-sort]').forEach(button => {
-                button.addEventListener('click', event => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    toggleProtoSort(button.dataset.protoSort);
-                });
-            });
+            // Clicks are handled by one document-level delegated listener above.
+            // This remains active if the view's innerHTML is replaced.
         }
 
         function renderProtoVacuumView(container) {
