@@ -5397,16 +5397,14 @@
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
                             <div style="color: var(--gold-bright);">Python Редактор · изолированная среда</div>
                             <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                                <button class="auth-btn" type="button" onclick="runPythonWithTurtle()">▶ Запустить Brython (Ctrl + Enter)</button>
-                                <button class="auth-btn" type="button" onclick="stopPythonSandbox()">■ Стоп Brython</button>
-                                <button class="auth-btn" type="button" onclick="runPythonWithPyodide()">▶ Pyodide (тест)</button>
-                                <button class="auth-btn" type="button" onclick="stopPythonPyodideSandbox()">■ Стоп Pyodide</button>
+                                <button class="auth-btn" type="button" onclick="runPythonUnified()">▶ Запустить (Ctrl + Enter)</button>
+                                <button class="auth-btn" type="button" onclick="stopPythonUnified()">■ Стоп</button>
                             </div>
                         </div>
                         <div style="display: grid; grid-template-columns: 1fr; gap: 12px;">
                             <textarea id="python-code-textarea">${window.saEscapeHTML(project.data || '')}</textarea>
                             <div style="color: var(--gold-bright);">Окно результата и вывод консоли · Pyodide загружает runtime и поддерживаемые пакеты из CDN</div>
-                            <div style="font-size:.9rem;opacity:.75;line-height:1.45;">Старый режим: Brython + Turtle. Новый экспериментальный режим: Pyodide 314.0.7 (CPython 3.14) с поддержкой пакетов из сборки Pyodide. Первый запуск загружает runtime; вычисления выполняются в отдельном изолированном iframe браузера. Пока это тестовый запуск: опубликованные проекты по-прежнему открываются через Brython.</div>
+                            <div style="font-size:.9rem;opacity:.75;line-height:1.45;">Единый запуск автоматически выбирает совместимую среду: Pyodide для Python и библиотек, Brython для старых Turtle-проектов. Код выполняется в отдельном изолированном iframe. Игровой режим Pygame экспериментальный; Pygame Zero пока ожидает отдельную сборку Pygbag.</div>
                             <div id="turtle-graphics-canvas-container" style="width: 100%; height: 320px; background: #ffffff; border: 2px solid var(--gold-main); border-radius: 6px; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center;">
                                 <span style="color: #000; font-size: 1rem;" id="turtle-placeholder">Графика turtle...</span>
                             </div>
@@ -5430,7 +5428,7 @@
                             saveActiveStarChanges();
                         });
                         codeMirrorEditor.setOption('extraKeys', {
-                            'Ctrl-Enter': runPythonWithTurtle, 'Cmd-Enter': runPythonWithTurtle,
+                            'Ctrl-Enter': runPythonUnified, 'Cmd-Enter': runPythonUnified,
                             'Ctrl-S': () => saveActiveStarChanges(), 'Cmd-S': () => saveActiveStarChanges()
                         });
                         codeMirrorEditor.focus();
@@ -5989,34 +5987,18 @@
             if (status) status.textContent = 'Изолированный предпросмотр: внешние сайты, запросы, фреймы и формы заблокированы.';
         }
 
-        function runPythonWithTurtle() {
+        function runPythonUnified() {
             const code = codeMirrorEditor ? codeMirrorEditor.getValue() : '';
-            if (code.length > 200000) {
+            if (typeof window.runPythonAutoSandbox !== 'function') {
                 const output = document.getElementById('python-console-output');
-                if (output) output.textContent = 'Код слишком большой для запуска (лимит 200 КБ).';
+                if (output) output.textContent = 'Единая среда Python не загрузилась. Обновите страницу.';
                 return;
             }
-            if (typeof window.runPythonSandbox !== 'function') {
-                const output = document.getElementById('python-console-output');
-                if (output) output.textContent = 'Изолированная среда Python не загрузилась. Обновите страницу.';
-                return;
-            }
-            window.runPythonSandbox(code);
+            window.runPythonAutoSandbox(code);
         }
 
-        function runPythonWithPyodide() {
-            const code = codeMirrorEditor ? codeMirrorEditor.getValue() : '';
-            if (code.length > 200000) {
-                const output = document.getElementById('python-console-output');
-                if (output) output.textContent = 'Код слишком большой для запуска (лимит 200 КБ).';
-                return;
-            }
-            if (typeof window.runPythonPyodideSandbox !== 'function') {
-                const output = document.getElementById('python-console-output');
-                if (output) output.textContent = 'Тестовая среда Pyodide не загрузилась. Обновите страницу.';
-                return;
-            }
-            window.runPythonPyodideSandbox(code);
+        function stopPythonUnified() {
+            if (typeof window.stopPythonAutoSandbox === 'function') window.stopPythonAutoSandbox();
         }
 
         function saveRobloxLink(val) {
