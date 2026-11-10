@@ -479,7 +479,7 @@ async function handle(request, env) {
     const body = await readBody(request, 4000);
     const projectId = text(String(body.projectId || ''), 32, 'Проект');
     const channel = text(body.channel, 64, 'Канал');
-    if (!/^\\d{1,32}$/.test(projectId)) fail(400, 'Некорректный ID проекта');
+    if (!/^[0-9]{1,32}$/.test(projectId)) fail(400, 'Некорректный ID проекта');
     if (!/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/.test(channel)) fail(400, 'Канал может содержать только латинские буквы, цифры, дефис и подчёркивание');
     const project = await env.DB.prepare('SELECT id,category,published,deleted_at,payload_json FROM projects WHERE id=?').bind(projectId).first();
     if (!project || project.deleted_at || !project.published) fail(404, 'Опубликованный проект не найден');
