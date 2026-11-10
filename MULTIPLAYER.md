@@ -41,7 +41,7 @@ async def start_multiplayer():
 asyncio.ensure_future(start_multiplayer())
 ```
 
-Messages arrive as JSON text. The sender receives a local echo through the same `onMessage` callback (the optional third argument is `{ local: true }`); messages received from other players have `{ local: false }`. Use `json.loads(raw)` in Python or `JSON.parse(raw)` in JavaScript to decode them. A channel name is an isolated game session: your game can create a private channel per match and share its name with invited players.
+Messages arrive as JSON text. Use `json.loads(raw)` in Python or `JSON.parse(raw)` in JavaScript to decode them. A channel name is an isolated game session: your game can create a private channel per match and share its name with invited players.
 
 ## Limits and security
 
