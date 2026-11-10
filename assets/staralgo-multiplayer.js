@@ -1,7 +1,7 @@
 /* StarAlgo Multiplayer bridge for sandboxed HTML and Pyodide projects. */
 (() => {
   'use strict';
-  const API_ROOT = String(window.STARALGO_API_BASE || '').replace(/\\/+$/, '');
+  const API_ROOT = String(window.STARALGO_API_BASE || '').replace(/\/+$/, '');
   const MESSAGE_TYPE = 'staralgo-multiplayer';
 
   function randomToken() {
