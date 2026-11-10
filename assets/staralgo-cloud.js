@@ -53,7 +53,8 @@
       coverUrl: p.coverUrl || '',
       data: p.data || '',
       sb3Data: p.sb3Data || '',
-      sb3Url: p.sb3Url || ''
+      sb3Url: p.sb3Url || '',
+      multiplayerEnabled: p.multiplayerEnabled === true
     };
   }
   function normalizeUser(u) {
@@ -199,7 +200,8 @@
       projectUrl: snapshot.projectUrl || '',
       data: snapshot.data || '',
       sb3Data: snapshot.sb3Data || '',
-      sb3Url: snapshot.sb3Url || ''
+      sb3Url: snapshot.sb3Url || '',
+      multiplayerEnabled: snapshot.multiplayerEnabled === true
     };
     const previous = pendingProjectSave;
     const task = (async () => {
@@ -661,6 +663,8 @@
     if (!activeStarObject || !currentUser || activeStarObject.author.toLowerCase() !== currentUser.username.toLowerCase()) return;
     activeStarObject.name = document.getElementById('modal-proj-name').value.trim();
     activeStarObject.description = document.getElementById('modal-proj-desc').value;
+    const multiplayerToggle = document.getElementById('multiplayer-enabled-toggle');
+    if (multiplayerToggle && ['HTML','Python'].includes(activeStarObject.category)) activeStarObject.multiplayerEnabled = multiplayerToggle.checked;
     activeStarObject.published = !activeStarObject.published;
     try {
       const saved = await saveProjectNow();
@@ -672,6 +676,34 @@
       renderZvezdnyFeed();
     } catch (e) { alert(e.message); }
   };
+
+  window.saveMultiplayerSetting = async function() {
+    if (!activeStarObject || !currentUser ||
+        activeStarObject.author.toLowerCase() !== currentUser.username.toLowerCase()) return;
+    if (!['HTML','Python'].includes(activeStarObject.category)) {
+      alert('Мультиплеер доступен только для HTML и Python.');
+      return;
+    }
+    const toggle = document.getElementById('multiplayer-enabled-toggle');
+    const status = document.getElementById('multiplayer-setting-status');
+    if (!toggle) return;
+    activeStarObject.multiplayerEnabled = toggle.checked;
+    const button = document.getElementById('multiplayer-save-btn');
+    if (button) { button.disabled = true; button.textContent = 'Сохраняем…'; }
+    try {
+      const saved = await saveProjectNow();
+      if (saved && status) {
+        status.textContent = activeStarObject.multiplayerEnabled
+          ? (activeStarObject.published
+              ? 'Мультиплеер включён. Игроки смогут подключаться к каналам, которые создаёт ваш код.'
+              : 'Разрешение сохранено. Опубликуйте звезду, чтобы игроки могли подключаться.')
+          : 'Мультиплеер выключен для этого проекта.';
+      }
+    } finally {
+      if (button) { button.disabled = false; button.textContent = 'Сохранить настройку мультиплеера'; }
+    }
+  };
+
   window.handleSb3Upload = function() {
     alert('Чтобы не занимать место StarAlgo, сначала загрузи .sb3 на Catbox.moe, затем вставь прямую HTTPS-ссылку в поле «Ссылка на .sb3» ниже.');
   };

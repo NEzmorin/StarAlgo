@@ -32,11 +32,14 @@
     return btoa(binary);
   }
 
-  function buildSandboxDocument(token, encodedCode, mode) {
+  function buildSandboxDocument(token, encodedCode, mode, multiplayer) {
+    const multiplayerEnabled = !!(multiplayer && multiplayer.enabled && multiplayer.published && multiplayer.projectId && window.StarAlgoMultiplayerHost);
+    const multiplayerScript = multiplayerEnabled ? window.StarAlgoMultiplayerHost.buildFrameScript(token) : '';
+    const multiplayerConnectOrigin = multiplayerEnabled ? window.StarAlgoMultiplayerHost.websocketOrigin() : '';
     const policy = [
       "default-src 'none'",
       "script-src 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' https://cdn.jsdelivr.net",
-      'connect-src https://cdn.jsdelivr.net https://pypi.org https://files.pythonhosted.org',
+      'connect-src https://cdn.jsdelivr.net https://pypi.org https://files.pythonhosted.org' + (multiplayerConnectOrigin ? ' ' + multiplayerConnectOrigin : ''),
       "style-src 'unsafe-inline'",
       'img-src data: blob:',
       'font-src data:',
@@ -193,6 +196,7 @@
       '<meta http-equiv="Content-Security-Policy" content="' + policy + '">',
       '<meta name="viewport" content="width=device-width,initial-scale=1">',
       '<style>html,body{margin:0;min-height:100%;font:14px monospace;background:#fff;color:#222}body{padding:12px;box-sizing:border-box}#status{color:#765f16;margin-bottom:8px}small{color:#666}#visual-output{display:flex;flex-direction:column;align-items:center;gap:10px;margin-top:8px}#visual-output img{display:block;max-width:100%;max-height:65vh;object-fit:contain;border:1px solid #ddd}#canvas{display:block;width:100%;height:auto;max-height:70vh;min-height:200px;background:#111;border:1px solid #bbb;touch-action:none}</style>',
+      multiplayerScript,
       '<script src="' + PYODIDE_BASE + 'pyodide.js"><' + '/script>',
       '</head><body><div id="status">Загрузка изолированной среды Pyodide…</div>',
       (mode === 'pygame' || mode === 'pgzero') ? '<canvas id="canvas" width="640" height="360" tabindex="0" aria-label="Окно Pygame"></canvas>' : '',
@@ -327,6 +331,11 @@
     canvasBox.appendChild(frame);
 
     const token = createToken();
+    const multiplayer = options && options.multiplayer ? options.multiplayer : null;
+    let multiplayerBridgeCleanup = null;
+    if (multiplayer && multiplayer.enabled && multiplayer.published && window.StarAlgoMultiplayerHost) {
+      multiplayerBridgeCleanup = window.StarAlgoMultiplayerHost.attach(frame, multiplayer, token);
+    }
     let timeoutId = 0;
     let observer = null;
     let finished = false;
@@ -340,6 +349,7 @@
       finished = true;
       if (timeoutId) window.clearTimeout(timeoutId);
       window.removeEventListener('message', onMessage);
+      if (multiplayerBridgeCleanup) { multiplayerBridgeCleanup(); multiplayerBridgeCleanup = null; }
       if (observer) observer.disconnect();
       if (removeFrame && frame.parentNode) frame.remove();
       if (activeRunCleanup === cleanup && removeFrame) activeRunCleanup = null;
@@ -389,12 +399,17 @@
 
     outputBox.textContent = 'Загрузка Pyodide ' + PYODIDE_VERSION + '… Первый запуск может занять больше времени.';
     outputBox.style.color = '#d4b236';
-    frame.srcdoc = buildSandboxDocument(token, encodeUtf8Base64(source), mode);
+    frame.srcdoc = buildSandboxDocument(token, encodeUtf8Base64(source), mode, multiplayer);
   };
 
-  window.runPythonAutoSandbox = function(code) {
+  window.runPythonAutoSandbox = function(code, options) {
     const source = String(code || '');
     const importsTurtle = /^\s*(?:import\s+turtle\b|from\s+turtle\s+import\b)/m.test(source) || /\bTurtle\s*\(/.test(source);
+    const multiplayer = options && options.multiplayer ? options.multiplayer : null;
+    if (importsTurtle && multiplayer && multiplayer.enabled) {
+      showNotice('StarAlgo Network пока доступен в Pyodide (обычный Python, Pygame и Pygame Zero). В Turtle/Brython сетевой API не подключён.');
+      return;
+    }
     const importsPygame = /^\s*(?:import\s+pygame\b|from\s+pygame\s+import\b)/m.test(source);
     const importsPygameZero = /^\s*#!\s*pgzrun\b/m.test(source) || /^\s*(?:import\s+pgzrun\b|(?:import|from)\s+pgzero\b)/m.test(source);
     const importsPyodideOnly = /^\s*(?:import|from)\s+(?:numpy|pandas|scipy|sympy|sklearn|matplotlib|PIL|pygame|pgzero|pgzrun|pydantic|bs4)\b/m.test(source);
@@ -408,7 +423,7 @@
       return;
     }
     if (importsPygameZero) {
-      window.runPythonPyodideSandbox(source, {mode:'pgzero'});
+      window.runPythonPyodideSandbox(source, {mode:'pgzero', multiplayer});
       return;
     }
     if (importsTurtle) {
@@ -425,7 +440,7 @@
       return;
     }
 
-    window.runPythonPyodideSandbox(source, {mode:importsPygame ? 'pygame' : 'python'});
+    window.runPythonPyodideSandbox(source, {mode:importsPygame ? 'pygame' : 'python', multiplayer});
   };
 
   window.stopPythonAutoSandbox = function() {

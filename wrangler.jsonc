@@ -4,6 +4,14 @@
   "main": "worker.js",
   "compatibility_date": "2026-11-06",
   "workers_dev": true,
+  "durable_objects": {
+    "bindings": [
+      { "name": "MULTIPLAYER", "class_name": "MultiplayerRoom" }
+    ]
+  },
+  "migrations": [
+    { "tag": "v1-multiplayer", "new_sqlite_classes": ["MultiplayerRoom"] }
+  ],
   "d1_databases": [
     {
       "binding": "DB",

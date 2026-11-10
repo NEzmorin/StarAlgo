@@ -3256,6 +3256,18 @@
                 <label>ОПИСАНИЕ</label>
                 <textarea class="form-textarea" id="modal-proj-desc" placeholder="Расскажите о вашей звезде..."></textarea>
             </div>
+            <div class="form-group" id="multiplayer-setting-group" style="display:none; margin-top:14px; padding-top:12px; border-top:1px dashed var(--gold-main);">
+                <label style="color:var(--gold-bright);">СЕТЬ / МУЛЬТИПЛЕЕР</label>
+                <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+                    <input type="checkbox" id="multiplayer-enabled-toggle">
+                    Разрешить другим игрокам подключаться к этой игре
+                </label>
+                <div style="font-size:.88rem;opacity:.8;margin-top:7px;line-height:1.45;">
+                    StarAlgo передаёт сообщения между игроками. Поиск соперников, названия каналов, комнаты и правила матча задаёт ваш код. Доступно для HTML и Python.
+                </div>
+                <button class="auth-btn" id="multiplayer-save-btn" type="button" style="margin-top:9px;" onclick="saveMultiplayerSetting()">Сохранить настройку мультиплеера</button>
+                <div id="multiplayer-setting-status" style="font-size:.85rem;opacity:.8;margin-top:7px;" aria-live="polite">Игроки смогут подключаться после публикации звезды.</div>
+            </div>
 
             <div class="form-group" style="margin-top:10px;">
                 <label>ПАНОРАМА ЗВЕЗДЫ</label>
@@ -5506,7 +5518,7 @@
                         <div id="html-preview-status" style="font-size:.9rem;opacity:.75;">Загрузка безопасного предпросмотра…</div>
                         <iframe sandbox="allow-scripts" referrerpolicy="no-referrer" id="html-preview-frame" style="width: 100%; height: 320px; background: #fff; border: 2px solid var(--gold-main); border-radius: 8px;"></iframe>
                     `;
-                    setTimeout(() => runHtmlSandbox(project.data || ''), 50);
+                    setTimeout(() => runHtmlSandbox(project.data || '', project), 50);
                 } else {
                     container.innerHTML = `
                         <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:5px;">
@@ -5555,7 +5567,7 @@
                     `;
                     setTimeout(() => {
                         if (typeof window.runPythonAutoSandbox === 'function') {
-                            window.runPythonAutoSandbox(project.data || '');
+                            window.runPythonAutoSandbox(project.data || '', {multiplayer:{enabled:!!project.multiplayerEnabled,published:!!project.published,projectId:project.id,category:project.category}});
                         } else {
                             runPythonReadonlyResult(project.data);
                         }
@@ -6190,7 +6202,7 @@
             reader.readAsDataURL(file);
         }
 
-        function runHtmlSandbox(sourceCode) {
+        function runHtmlSandbox(sourceCode, runtimeProject) {
             const code = sourceCode !== undefined ? String(sourceCode || '') : (codeMirrorEditor ? codeMirrorEditor.getValue() : '');
             const previewFrame = document.getElementById('html-preview-frame');
             if (!previewFrame) return;
@@ -6199,15 +6211,28 @@
                 if (output) output.textContent = 'Код слишком большой для предпросмотра (лимит 200 КБ).';
                 return;
             }
-            const policy = "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; media-src data: blob:; connect-src 'none'; frame-src 'none'; child-src 'none'; worker-src 'none'; object-src 'none'; form-action 'none'; base-uri 'none'; navigate-to 'none'";
+            const project = runtimeProject || activeStarObject;
+            const multiplayerEnabled = !!(project && project.multiplayerEnabled && project.published &&
+                ['HTML','Python'].includes(project.category) && window.StarAlgoMultiplayerHost);
+            const multiplayerToken = multiplayerEnabled ? window.StarAlgoMultiplayerHost.randomToken() : '';
+            const multiplayerScript = multiplayerEnabled ? window.StarAlgoMultiplayerHost.buildFrameScript(multiplayerToken) : '';
+            const connectOrigin = multiplayerEnabled ? window.StarAlgoMultiplayerHost.websocketOrigin() : '';
+            const policy = "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; media-src data: blob:; connect-src " +
+                (connectOrigin || "'none'") + "; frame-src 'none'; child-src 'none'; worker-src 'none'; object-src 'none'; form-action 'none'; base-uri 'none'; navigate-to 'none'";
             const csp = '<meta http-equiv="Content-Security-Policy" content="' + policy + '">';
             // Additional CSP is prepended so project markup cannot relax the sandbox policy.
             previewFrame.setAttribute('sandbox', 'allow-scripts');
             previewFrame.setAttribute('referrerpolicy', 'no-referrer');
+            if (previewFrame.__starAlgoMultiplayerCleanup) previewFrame.__starAlgoMultiplayerCleanup();
+            previewFrame.__starAlgoMultiplayerCleanup = multiplayerEnabled
+                ? window.StarAlgoMultiplayerHost.attach(previewFrame, project, multiplayerToken)
+                : null;
             previewFrame.srcdoc = '<!doctype html><html><head><meta charset="utf-8">' + csp +
-                '<style>html,body{max-width:100%;overflow:auto}img,video,canvas{max-width:100%}</style></head><body>' + code + '</body></html>';
+                multiplayerScript + '<style>html,body{max-width:100%;overflow:auto}img,video,canvas{max-width:100%}</style></head><body>' + code + '</body></html>';
             const status = document.getElementById('html-preview-status');
-            if (status) status.textContent = 'Изолированный предпросмотр: внешние сайты, запросы, фреймы и формы заблокированы.';
+            if (status) status.textContent = multiplayerEnabled
+                ? 'Изолированный предпросмотр. StarAlgo Network разрешён; остальные сетевые запросы заблокированы.'
+                : 'Изолированный предпросмотр: внешние сайты, запросы, фреймы и формы заблокированы.';
         }
 
         function runPythonUnified() {
@@ -6217,7 +6242,8 @@
                 if (output) output.textContent = 'Единая среда Python не загрузилась. Обновите страницу.';
                 return;
             }
-            window.runPythonAutoSandbox(code);
+            const project = activeStarObject;
+            window.runPythonAutoSandbox(code, {multiplayer:project ? {enabled:!!project.multiplayerEnabled,published:!!project.published,projectId:project.id,category:project.category} : null});
         }
 
         function stopPythonUnified() {
@@ -6257,6 +6283,15 @@
             }
             document.getElementById('modal-proj-name').value = activeStarObject.name;
             document.getElementById('modal-proj-desc').value = activeStarObject.description || '';
+            const multiplayerGroup = document.getElementById('multiplayer-setting-group');
+            const multiplayerToggle = document.getElementById('multiplayer-enabled-toggle');
+            const supportsMultiplayer = ['HTML','Python'].includes(activeStarObject.category);
+            if (multiplayerGroup) multiplayerGroup.style.display = supportsMultiplayer ? 'block' : 'none';
+            if (multiplayerToggle) multiplayerToggle.checked = activeStarObject.multiplayerEnabled === true;
+            const multiplayerStatus = document.getElementById('multiplayer-setting-status');
+            if (multiplayerStatus) multiplayerStatus.textContent = activeStarObject.multiplayerEnabled
+                ? (activeStarObject.published ? 'Мультиплеер включён для опубликованной звезды.' : 'Разрешение сохранено. Опубликуйте звезду, чтобы игроки могли подключаться.')
+                : 'Игроки смогут подключаться после публикации звезды.';
             const coverInput = document.getElementById('cover-url-input');
             if (coverInput) coverInput.value = activeStarObject.coverUrl || '';
             updatePublishButtonState(activeStarObject.published);
@@ -6348,6 +6383,7 @@
     <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?onload=starAlgoTurnstileReady&render=explicit" async defer></script>
     <script src="/assets/api-config.js"></script>
     <script src="/assets/staralgo-cloud.js"></script>
+    <script src="/assets/staralgo-multiplayer.js"></script>
     <script src="/assets/staralgo-python-pyodide.js"></script>
 </body>
 </html>

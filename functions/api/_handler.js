@@ -73,7 +73,7 @@ function mapProject(row, includePayload = false) {
     likedBy: row.liked_by || [], date: Number(row.created_at),
     deletedAt: row.deleted_at ? Number(row.deleted_at) : null,
     data: payload.data ?? row.source_text ?? '', sb3Data: payload.sb3Data || '', sb3Url: payload.sb3Url || '',
-    isDummy: !!payload.isDummy
+    isDummy: !!payload.isDummy, multiplayerEnabled: !!payload.multiplayerEnabled
   };
 }
 const PROJECT_RESOURCE_HOSTS = [
@@ -348,6 +348,17 @@ async function ensureIdentityColumns(env) {
     await env.DB.prepare("UPDATE users SET original_username=username WHERE original_username IS NULL OR original_username=''").run();
   }
 }
+
+async function ensureMultiplayerSchema(env) {
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS multiplayer_tickets (
+    token_hash TEXT PRIMARY KEY, project_id TEXT NOT NULL, channel TEXT NOT NULL,
+    player_id TEXT NOT NULL, expires_at INTEGER NOT NULL, created_at INTEGER NOT NULL
+  )`).run();
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS multiplayer_ticket_limits (
+    bucket_key TEXT PRIMARY KEY, window_start INTEGER NOT NULL, hits INTEGER NOT NULL
+  )`).run();
+}
+
 async function handle(request, env) {
   const url = new URL(request.url), path = url.pathname.replace(/\/+$/, '') || '/', method = request.method;
   if (path.startsWith('/api/scratch/drive/') && method === 'OPTIONS') return new Response(null, { status: 204, headers: { 'access-control-allow-methods': 'GET,HEAD,OPTIONS', 'access-control-allow-headers': 'Content-Type', 'access-control-max-age': '86400' } });
@@ -462,6 +473,40 @@ async function handle(request, env) {
   }
 
   const user = await authUser(request, env);
+
+  if (path === '/api/multiplayer/ticket' && method === 'POST') {
+    await ensureMultiplayerSchema(env);
+    const body = await readBody(request, 4000);
+    const projectId = text(String(body.projectId || ''), 32, 'Проект');
+    const channel = text(body.channel, 64, 'Канал');
+    if (!/^\\d{1,32}$/.test(projectId)) fail(400, 'Некорректный ID проекта');
+    if (!/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/.test(channel)) fail(400, 'Канал может содержать только латинские буквы, цифры, дефис и подчёркивание');
+    const project = await env.DB.prepare('SELECT id,category,published,deleted_at,payload_json FROM projects WHERE id=?').bind(projectId).first();
+    if (!project || project.deleted_at || !project.published) fail(404, 'Опубликованный проект не найден');
+    if (!['HTML','Python'].includes(project.category)) fail(403, 'Мультиплеер доступен только для HTML и Python');
+    const projectSettings = parseJson(project.payload_json, {});
+    if (projectSettings.multiplayerEnabled !== true) fail(403, 'Автор проекта не включил мультиплеер');
+
+    const stamp = now();
+    const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+    const bucketKey = await digest(ip + ':' + projectId);
+    const windowStart = Math.floor(stamp / 60000) * 60000;
+    const limit = await env.DB.prepare(`INSERT INTO multiplayer_ticket_limits(bucket_key,window_start,hits)
+      VALUES(?,?,1)
+      ON CONFLICT(bucket_key) DO UPDATE SET
+        hits=CASE WHEN multiplayer_ticket_limits.window_start=excluded.window_start THEN multiplayer_ticket_limits.hits+1 ELSE 1 END,
+        window_start=excluded.window_start
+      WHERE multiplayer_ticket_limits.window_start<>excluded.window_start OR multiplayer_ticket_limits.hits<30
+      RETURNING hits`).bind(bucketKey, windowStart).first();
+    if (!limit) fail(429, 'Слишком много попыток подключения. Подождите минуту и повторите.');
+
+    await env.DB.prepare('DELETE FROM multiplayer_tickets WHERE expires_at<=?').bind(stamp).run();
+    const ticket = hex(crypto.getRandomValues(new Uint8Array(32)));
+    const playerId = hex(crypto.getRandomValues(new Uint8Array(12)));
+    await env.DB.prepare('INSERT INTO multiplayer_tickets(token_hash,project_id,channel,player_id,expires_at,created_at) VALUES(?,?,?,?,?,?)')
+      .bind(await digest(ticket), projectId, channel, playerId, stamp + 60000, stamp).run();
+    return json({ ticket, expiresAt: stamp + 60000 });
+  }
 
   // Account recovery through a guest support ticket. Staff must verify ownership
   // independently before triggering this action; the secret is delivered once
@@ -787,7 +832,9 @@ async function handle(request, env) {
     const description = typeof body.description === 'string' ? body.description.slice(0,4000) : '';
     const coverUrl = validateProjectResourceUrl(body.coverUrl || '', 'Обложка');
     const projectUrl = validateProjectResourceUrl(body.projectUrl || '', 'Ссылка проекта');
-    const payload = { data: typeof body.data === 'string' ? body.data.slice(0,200000) : '', sb3Data: typeof body.sb3Data === 'string' ? body.sb3Data.slice(0,400000) : '', sb3Url: validateProjectResourceUrl(body.sb3Url || '', 'Scratch-файл'), isDummy: false };
+    const multiplayerEnabled = body.multiplayerEnabled === true;
+    if (multiplayerEnabled && !['HTML','Python'].includes(category)) fail(400, 'Мультиплеер доступен только для HTML и Python');
+    const payload = { data: typeof body.data === 'string' ? body.data.slice(0,200000) : '', sb3Data: typeof body.sb3Data === 'string' ? body.sb3Data.slice(0,400000) : '', sb3Url: validateProjectResourceUrl(body.sb3Url || '', 'Scratch-файл'), isDummy: false, multiplayerEnabled };
     const pid = makeId(), stamp = now();
     await env.DB.prepare(`INSERT INTO projects(id,user_id,name,category,description,published,cover_url,project_url,source_text,payload_json,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`)
       .bind(pid,user.id,name,category,description,body.published ? 1 : 0,coverUrl,projectUrl,payload.data,JSON.stringify(payload),stamp,stamp).run();
@@ -821,6 +868,11 @@ async function handle(request, env) {
     if (body.data !== undefined) payload.data = String(body.data).slice(0,200000);
     if (body.sb3Data !== undefined) payload.sb3Data = String(body.sb3Data).slice(0,400000);
     if (body.sb3Url !== undefined) payload.sb3Url = validateProjectResourceUrl(body.sb3Url, 'Scratch-файл');
+    if (body.multiplayerEnabled !== undefined) {
+      const enabled = body.multiplayerEnabled === true;
+      if (enabled && !['HTML','Python'].includes(category)) fail(400, 'Мультиплеер доступен только для HTML и Python');
+      payload.multiplayerEnabled = enabled;
+    }
     await env.DB.prepare(`UPDATE projects SET name=?,category=?,description=?,published=?,cover_url=?,project_url=?,source_text=?,payload_json=?,updated_at=? WHERE id=?`)
       .bind(name,category,description,body.published === undefined ? row.published : (body.published ? 1 : 0),cover,pUrl,payload.data || '',JSON.stringify(payload),now(),row.id).run();
     await refreshRank(env,user.id);
