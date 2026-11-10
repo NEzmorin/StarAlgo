@@ -56,8 +56,7 @@
     '})();<' + '/script>';
   }
   function attach(frame, project, token) {
-    if (!frame || !project || !token || !project.multiplayerEnabled || !project.published ||
-        !['HTML','Python'].includes(project.category)) return () => {};
+    if (!frame || !project || !token || !['HTML','Python'].includes(project.category)) return () => {};
     const handler = async event => {
       if (event.source !== frame.contentWindow) return;
       const packet = event.data;

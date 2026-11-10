@@ -6212,11 +6212,11 @@
                 return;
             }
             const project = runtimeProject || activeStarObject;
-            const multiplayerEnabled = !!(project && project.multiplayerEnabled && project.published &&
-                ['HTML','Python'].includes(project.category) && window.StarAlgoMultiplayerHost);
-            const multiplayerToken = multiplayerEnabled ? window.StarAlgoMultiplayerHost.randomToken() : '';
-            const multiplayerScript = multiplayerEnabled ? window.StarAlgoMultiplayerHost.buildFrameScript(multiplayerToken) : '';
-            const connectOrigin = multiplayerEnabled ? window.StarAlgoMultiplayerHost.websocketOrigin() : '';
+            const supportsMultiplayer = !!(project && ['HTML','Python'].includes(project.category) && window.StarAlgoMultiplayerHost);
+            const multiplayerEnabled = !!(supportsMultiplayer && project.multiplayerEnabled && project.published);
+            const multiplayerToken = supportsMultiplayer ? window.StarAlgoMultiplayerHost.randomToken() : '';
+            const multiplayerScript = supportsMultiplayer ? window.StarAlgoMultiplayerHost.buildFrameScript(multiplayerToken) : '';
+            const connectOrigin = supportsMultiplayer ? window.StarAlgoMultiplayerHost.websocketOrigin() : '';
             const policy = "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; media-src data: blob:; connect-src " +
                 (connectOrigin || "'none'") + "; frame-src 'none'; child-src 'none'; worker-src 'none'; object-src 'none'; form-action 'none'; base-uri 'none'; navigate-to 'none'";
             const csp = '<meta http-equiv="Content-Security-Policy" content="' + policy + '">';
@@ -6224,15 +6224,15 @@
             previewFrame.setAttribute('sandbox', 'allow-scripts');
             previewFrame.setAttribute('referrerpolicy', 'no-referrer');
             if (previewFrame.__starAlgoMultiplayerCleanup) previewFrame.__starAlgoMultiplayerCleanup();
-            previewFrame.__starAlgoMultiplayerCleanup = multiplayerEnabled
+            previewFrame.__starAlgoMultiplayerCleanup = supportsMultiplayer
                 ? window.StarAlgoMultiplayerHost.attach(previewFrame, project, multiplayerToken)
                 : null;
             previewFrame.srcdoc = '<!doctype html><html><head><meta charset="utf-8">' + csp +
                 multiplayerScript + '<style>html,body{max-width:100%;overflow:auto}img,video,canvas{max-width:100%}</style></head><body>' + code + '</body></html>';
             const status = document.getElementById('html-preview-status');
             if (status) status.textContent = multiplayerEnabled
-                ? 'Изолированный предпросмотр. StarAlgo Network разрешён; остальные сетевые запросы заблокированы.'
-                : 'Изолированный предпросмотр: внешние сайты, запросы, фреймы и формы заблокированы.';
+                ? 'Изолированный предпросмотр. StarAlgo Network доступен; остальные сетевые запросы заблокированы.'
+                : 'Изолированный предпросмотр. StarAlgo Network доступен в коде, но подключение требует включённого разрешения и публикации проекта. Остальные сетевые запросы заблокированы.';
         }
 
         function runPythonUnified() {

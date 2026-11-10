@@ -33,9 +33,9 @@
   }
 
   function buildSandboxDocument(token, encodedCode, mode, multiplayer) {
-    const multiplayerEnabled = !!(multiplayer && multiplayer.enabled && multiplayer.published && multiplayer.projectId && window.StarAlgoMultiplayerHost);
-    const multiplayerScript = multiplayerEnabled ? window.StarAlgoMultiplayerHost.buildFrameScript(token) : '';
-    const multiplayerConnectOrigin = multiplayerEnabled ? window.StarAlgoMultiplayerHost.websocketOrigin() : '';
+    const multiplayerAvailable = !!window.StarAlgoMultiplayerHost;
+    const multiplayerScript = multiplayerAvailable ? window.StarAlgoMultiplayerHost.buildFrameScript(token) : '';
+    const multiplayerConnectOrigin = multiplayerAvailable ? window.StarAlgoMultiplayerHost.websocketOrigin() : '';
     const policy = [
       "default-src 'none'",
       "script-src 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' https://cdn.jsdelivr.net",
@@ -333,8 +333,8 @@
     const token = createToken();
     const multiplayer = options && options.multiplayer ? options.multiplayer : null;
     let multiplayerBridgeCleanup = null;
-    if (multiplayer && multiplayer.enabled && multiplayer.published && window.StarAlgoMultiplayerHost) {
-      multiplayerBridgeCleanup = window.StarAlgoMultiplayerHost.attach(frame, multiplayer, token);
+    if (window.StarAlgoMultiplayerHost) {
+      multiplayerBridgeCleanup = window.StarAlgoMultiplayerHost.attach(frame, multiplayer || {}, token);
     }
     let timeoutId = 0;
     let observer = null;
@@ -397,7 +397,9 @@
       canvasBox.appendChild(note);
     }, timeout);
 
-    outputBox.textContent = 'Загрузка Pyodide ' + PYODIDE_VERSION + '… Первый запуск может занять больше времени.';
+    outputBox.textContent = multiplayer && multiplayer.enabled && multiplayer.published
+      ? 'Загрузка Pyodide ' + PYODIDE_VERSION + '… StarAlgo Network готов. Первый запуск может занять больше времени.'
+      : 'Загрузка Pyodide ' + PYODIDE_VERSION + '… StarAlgo Network API доступен; подключение проверит разрешение проекта.';
     outputBox.style.color = '#d4b236';
     frame.srcdoc = buildSandboxDocument(token, encodeUtf8Base64(source), mode, multiplayer);
   };
