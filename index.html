@@ -3256,6 +3256,10 @@
                 <label>ОПИСАНИЕ</label>
                 <textarea class="form-textarea" id="modal-proj-desc" placeholder="Расскажите о вашей звезде..."></textarea>
             </div>
+            <div class="form-group" style="margin: 8px 0 14px;">
+                <button class="auth-btn" id="publish-save-btn" type="button" style="width:100%;" onclick="savePublishChanges()">💾 Сохранить изменения</button>
+                <small id="publish-save-status" style="display:block; margin-top:7px; opacity:.8;" aria-live="polite">Название, описание и настройки сохраняются этой кнопкой.</small>
+            </div>
             <div class="form-group" id="multiplayer-setting-group" style="display:none; margin-top:14px; padding-top:12px; border-top:1px dashed var(--gold-main);">
                 <label style="color:var(--gold-bright);">СЕТЬ / МУЛЬТИПЛЕЕР</label>
                 <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
@@ -3265,8 +3269,7 @@
                 <div style="font-size:.88rem;opacity:.8;margin-top:7px;line-height:1.45;">
                     StarAlgo передаёт сообщения между игроками. Поиск соперников, названия каналов, комнаты и правила матча задаёт ваш код. Доступно для HTML и Python.
                 </div>
-                <button class="auth-btn" id="multiplayer-save-btn" type="button" style="margin-top:9px;" onclick="saveMultiplayerSetting()">Сохранить настройку мультиплеера</button>
-                <div id="multiplayer-setting-status" style="font-size:.85rem;opacity:.8;margin-top:7px;" aria-live="polite">Игроки смогут подключаться после публикации звезды.</div>
+                <div id="multiplayer-setting-status" style="font-size:.85rem;opacity:.8;margin-top:7px;" aria-live="polite">Настройка сохранится вместе с остальными изменениями по кнопке «Сохранить изменения».</div>
             </div>
 
             <div class="form-group" style="margin-top:10px;">
@@ -6289,9 +6292,9 @@
             if (multiplayerGroup) multiplayerGroup.style.display = supportsMultiplayer ? 'block' : 'none';
             if (multiplayerToggle) multiplayerToggle.checked = activeStarObject.multiplayerEnabled === true;
             const multiplayerStatus = document.getElementById('multiplayer-setting-status');
-            if (multiplayerStatus) multiplayerStatus.textContent = activeStarObject.multiplayerEnabled
-                ? (activeStarObject.published ? 'Мультиплеер включён для опубликованной звезды.' : 'Разрешение сохранено. Опубликуйте звезду, чтобы игроки могли подключаться.')
-                : 'Игроки смогут подключаться после публикации звезды.';
+            if (multiplayerStatus) multiplayerStatus.textContent = 'Состояние переключателя сохранится по кнопке «Сохранить изменения».';
+            const saveStatus = document.getElementById('publish-save-status');
+            if (saveStatus) saveStatus.textContent = 'Название, описание и настройки сохраняются этой кнопкой.';
             const coverInput = document.getElementById('cover-url-input');
             if (coverInput) coverInput.value = activeStarObject.coverUrl || '';
             updatePublishButtonState(activeStarObject.published);

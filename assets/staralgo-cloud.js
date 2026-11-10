@@ -677,6 +677,56 @@
     } catch (e) { alert(e.message); }
   };
 
+  window.savePublishChanges = async function() {
+    if (!activeStarObject || !currentUser || activeStarObject.author.toLowerCase() !== currentUser.username.toLowerCase()) return false;
+    const nameInput = document.getElementById('modal-proj-name');
+    const descInput = document.getElementById('modal-proj-desc');
+    const name = String(nameInput?.value || '').trim();
+    if (!name) {
+      alert('Укажи название звезды перед сохранением.');
+      nameInput?.focus();
+      return false;
+    }
+
+    const supportsMultiplayer = ['HTML','Python'].includes(activeStarObject.category);
+    const multiplayerToggle = document.getElementById('multiplayer-enabled-toggle');
+    activeStarObject.name = name;
+    activeStarObject.description = String(descInput?.value || '');
+    if (supportsMultiplayer && multiplayerToggle) activeStarObject.multiplayerEnabled = multiplayerToggle.checked;
+
+    const button = document.getElementById('publish-save-btn');
+    const status = document.getElementById('publish-save-status');
+    const multiplayerStatus = document.getElementById('multiplayer-setting-status');
+    if (button) { button.disabled = true; button.textContent = 'Сохраняем…'; }
+    if (status) status.textContent = 'Сохраняем изменения на сервере…';
+
+    try {
+      const saved = await saveProjectNow({ ...activeStarObject });
+      if (!saved) {
+        if (status) status.textContent = 'Не удалось сохранить изменения. Проверь соединение и повтори попытку.';
+        return false;
+      }
+
+      const project = activeStarObject;
+      const header = document.getElementById('editor-project-title-header');
+      const detailName = document.getElementById('star-detail-name');
+      const detailDesc = document.getElementById('star-detail-desc');
+      if (header) header.textContent = project.name;
+      if (detailName) detailName.textContent = project.name;
+      if (detailDesc) detailDesc.textContent = project.description || 'Без описания...';
+      if (multiplayerStatus && supportsMultiplayer) {
+        multiplayerStatus.textContent = project.multiplayerEnabled
+          ? (project.published ? 'Мультиплеер включён. Игроки смогут подключаться к каналам, которые создаёт ваш код.' : 'Разрешение сохранено. Опубликуйте звезду, чтобы игроки могли подключаться.')
+          : 'Мультиплеер выключен для этого проекта.';
+      }
+      if (status) status.textContent = 'Изменения успешно сохранены.';
+      if (typeof renderZvezdnyFeed === 'function') renderZvezdnyFeed();
+      return true;
+    } finally {
+      if (button) { button.disabled = false; button.textContent = '💾 Сохранить изменения'; }
+    }
+  };
+
   window.saveMultiplayerSetting = async function() {
     if (!activeStarObject || !currentUser ||
         activeStarObject.author.toLowerCase() !== currentUser.username.toLowerCase()) return;
