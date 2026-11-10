@@ -23,9 +23,21 @@ export class MultiplayerRoom extends DurableObject {
     if (!protocols.includes("staralgo.v1")) {
       return json({ error: "Не поддерживается протокол StarAlgo Network" }, 400);
     }
-    const existing = this.ctx.getWebSockets();
+    const requestedPeerId = request.headers.get("X-StarAlgo-Peer-ID") || "";
+    const peerId = /^[a-f0-9]{24}$/.test(requestedPeerId) ? requestedPeerId : randomHex(12);
+    const connections = this.ctx.getWebSockets();
+    const duplicateSockets = connections.filter(socket => {
+      try { return socket.deserializeAttachment()?.peerId === peerId; } catch (_) { return false; }
+    });
+    for (const socket of duplicateSockets) {
+      try {
+        const attachment = socket.deserializeAttachment() || {};
+        socket.serializeAttachment({ ...attachment, replaced: true });
+        socket.close(4001, "Replaced by a newer connection");
+      } catch (_) {}
+    }
+    const existing = connections.filter(socket => !duplicateSockets.includes(socket));
     if (existing.length >= 32) return json({ error: "В этом канале уже 32 игрока" }, 503);
-    const peerId = randomHex(12);
     const peers = existing.map(socket => {
       try { return socket.deserializeAttachment()?.peerId || ""; } catch (_) { return ""; }
     }).filter(Boolean);
@@ -85,7 +97,7 @@ export class MultiplayerRoom extends DurableObject {
   async webSocketClose(socket, code, reason) {
     const attachment = socket.deserializeAttachment() || {};
     const peerId = String(attachment.peerId || "");
-    if (peerId) {
+    if (peerId && !attachment.replaced) {
       const outgoing = JSON.stringify({ type: "peer_left", peerId });
       for (const recipient of this.ctx.getWebSockets()) {
         if (recipient === socket) continue;
