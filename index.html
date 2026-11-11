@@ -1125,18 +1125,25 @@
             height: 32vh !important;
             min-height: 180px;
         }
-        /* Fullscreen is limited to the live game/output surface, never the editor or URL controls. */
+        /* Game-only fullscreen: make the actual output fill the viewport on desktop and mobile. */
         .runtime-game-stage {
             position: relative;
             overflow: hidden;
             background: #080808;
+            box-sizing: border-box;
         }
         .runtime-game-stage:fullscreen,
         .runtime-game-stage:-webkit-full-screen,
         .runtime-game-stage.project-stage-expanded {
+            display: block !important;
             position: fixed !important;
+            top: 0 !important;
+            right: 0 !important;
+            bottom: 0 !important;
+            left: 0 !important;
             inset: 0 !important;
             z-index: 2147483647 !important;
+            box-sizing: border-box !important;
             width: 100vw !important;
             height: 100vh !important;
             min-width: 100vw !important;
@@ -1150,22 +1157,64 @@
             overflow: hidden !important;
             background: #000 !important;
         }
+        @supports (height: 100dvh) {
+            .runtime-game-stage:fullscreen,
+            .runtime-game-stage:-webkit-full-screen,
+            .runtime-game-stage.project-stage-expanded {
+                height: 100dvh !important;
+                min-height: 100dvh !important;
+            }
+        }
         .runtime-game-stage:fullscreen::backdrop { background: #000; }
-        #html-preview-stage iframe,
-        #turtle-graphics-canvas-container.runtime-game-stage iframe {
-            display: block;
+
+        #html-preview-stage > iframe,
+        #turtle-graphics-canvas-container.runtime-game-stage > iframe {
+            display: block !important;
             width: 100% !important;
             height: 100% !important;
             min-height: 0 !important;
+            max-width: none !important;
+            max-height: none !important;
             border: 0 !important;
         }
-        .runtime-game-stage:fullscreen iframe,
-        .runtime-game-stage:-webkit-full-screen iframe,
-        .runtime-game-stage.project-stage-expanded iframe {
-            width: 100vw !important;
-            height: 100vh !important;
+        .runtime-game-stage:fullscreen > iframe,
+        .runtime-game-stage:-webkit-full-screen > iframe,
+        .runtime-game-stage.project-stage-expanded > iframe {
+            position: absolute !important;
+            top: 0 !important;
+            right: 0 !important;
+            bottom: 0 !important;
+            left: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+            min-width: 100% !important;
             min-height: 0 !important;
+            max-width: none !important;
             max-height: none !important;
+            border: 0 !important;
+        }
+
+        .runtime-stage-exit {
+            display: none;
+            position: absolute;
+            top: max(10px, env(safe-area-inset-top));
+            right: max(10px, env(safe-area-inset-right));
+            z-index: 2147483647;
+            padding: 9px 14px;
+            border: 1px solid var(--gold-main);
+            border-radius: 8px;
+            background: rgba(12, 11, 8, .94);
+            color: var(--gold-bright);
+            font: inherit;
+            font-size: 14px;
+            line-height: 1.2;
+            cursor: pointer;
+            box-shadow: 0 3px 18px rgba(0,0,0,.55);
+        }
+        .runtime-game-stage:fullscreen > .runtime-stage-exit,
+        .runtime-game-stage:-webkit-full-screen > .runtime-stage-exit,
+        .runtime-game-stage.project-stage-expanded > .runtime-stage-exit {
+            display: block !important;
         }
         @media (max-width: 700px) {
             #editor-runtime-container .CodeMirror { height: 420px; }
@@ -5748,6 +5797,26 @@
             const target = document.getElementById(targetId);
             if (!target) return;
 
+            const getExitButton = () => {
+                let button = target.querySelector('.runtime-stage-exit');
+                if (!button) {
+                    button = document.createElement('button');
+                    button.type = 'button';
+                    button.className = 'runtime-stage-exit';
+                    button.textContent = '↙ Свернуть';
+                    button.title = 'Вернуться к редактору';
+                    button.setAttribute('aria-label', 'Свернуть полноэкранный режим');
+                    button.addEventListener('click', event => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        window.toggleProjectFullscreen();
+                    });
+                    target.appendChild(button);
+                }
+                return button;
+            };
+            getExitButton();
+
             const isTargetFullscreen = document.fullscreenElement === target ||
                 document.webkitFullscreenElement === target;
             if (isTargetFullscreen) {
@@ -5760,31 +5829,55 @@
 
             if (target.classList.contains('project-stage-expanded')) {
                 target.classList.remove('project-stage-expanded');
+                const marker = target.__starAlgoFullscreenPlaceholder;
+                if (marker && marker.parentNode) {
+                    marker.parentNode.insertBefore(target, marker);
+                    marker.remove();
+                }
+                target.__starAlgoFullscreenPlaceholder = null;
+                if (target.__starAlgoFullscreenEscapeHandler) {
+                    document.removeEventListener('keydown', target.__starAlgoFullscreenEscapeHandler);
+                    target.__starAlgoFullscreenEscapeHandler = null;
+                }
                 return;
             }
 
-            try {
-                if (target.requestFullscreen) {
-                    await target.requestFullscreen({ navigationUI: 'hide' });
-                } else if (target.webkitRequestFullscreen) {
-                    target.webkitRequestFullscreen();
-                } else {
-                    target.classList.add('project-stage-expanded');
-                    const exitFallback = event => {
-                        if (event.key !== 'Escape') return;
-                        target.classList.remove('project-stage-expanded');
-                        document.removeEventListener('keydown', exitFallback);
-                    };
-                    document.addEventListener('keydown', exitFallback);
+            const enterFallback = () => {
+                if (target.parentNode && target.parentNode !== document.body) {
+                    const marker = document.createComment('StarAlgo fullscreen return point');
+                    target.parentNode.insertBefore(marker, target);
+                    target.__starAlgoFullscreenPlaceholder = marker;
+                    document.body.appendChild(target);
                 }
-            } catch (_) {
                 target.classList.add('project-stage-expanded');
                 const exitFallback = event => {
                     if (event.key !== 'Escape') return;
                     target.classList.remove('project-stage-expanded');
+                    const marker = target.__starAlgoFullscreenPlaceholder;
+                    if (marker && marker.parentNode) {
+                        marker.parentNode.insertBefore(target, marker);
+                        marker.remove();
+                    }
+                    target.__starAlgoFullscreenPlaceholder = null;
                     document.removeEventListener('keydown', exitFallback);
+                    target.__starAlgoFullscreenEscapeHandler = null;
                 };
+                target.__starAlgoFullscreenEscapeHandler = exitFallback;
                 document.addEventListener('keydown', exitFallback);
+            };
+
+            try {
+                if (target.requestFullscreen) {
+                    await target.requestFullscreen({ navigationUI: 'hide' });
+                    return;
+                }
+                if (target.webkitRequestFullscreen) {
+                    target.webkitRequestFullscreen();
+                    return;
+                }
+                enterFallback();
+            } catch (_) {
+                enterFallback();
             }
         };
 
