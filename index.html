@@ -1125,6 +1125,48 @@
             height: 32vh !important;
             min-height: 180px;
         }
+        /* Fullscreen is limited to the live game/output surface, never the editor or URL controls. */
+        .runtime-game-stage {
+            position: relative;
+            overflow: hidden;
+            background: #080808;
+        }
+        .runtime-game-stage:fullscreen,
+        .runtime-game-stage:-webkit-full-screen,
+        .runtime-game-stage.project-stage-expanded {
+            position: fixed !important;
+            inset: 0 !important;
+            z-index: 2147483647 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            min-width: 100vw !important;
+            min-height: 100vh !important;
+            max-width: none !important;
+            max-height: none !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            border: 0 !important;
+            border-radius: 0 !important;
+            overflow: hidden !important;
+            background: #000 !important;
+        }
+        .runtime-game-stage:fullscreen::backdrop { background: #000; }
+        #html-preview-stage iframe,
+        #turtle-graphics-canvas-container.runtime-game-stage iframe {
+            display: block;
+            width: 100% !important;
+            height: 100% !important;
+            min-height: 0 !important;
+            border: 0 !important;
+        }
+        .runtime-game-stage:fullscreen iframe,
+        .runtime-game-stage:-webkit-full-screen iframe,
+        .runtime-game-stage.project-stage-expanded iframe {
+            width: 100vw !important;
+            height: 100vh !important;
+            min-height: 0 !important;
+            max-height: none !important;
+        }
         @media (max-width: 700px) {
             #editor-runtime-container .CodeMirror { height: 420px; }
             #editor-runtime-container .editor-preview-media { height: 360px; min-height: 360px; }
@@ -5519,7 +5561,7 @@
                     container.innerHTML = `
                         <div style="color: var(--gold-bright); margin-bottom: 5px;">Результат HTML · изолированный просмотр</div>
                         <div id="html-preview-status" style="font-size:.9rem;opacity:.75;">Загрузка безопасного предпросмотра…</div>
-                        <iframe sandbox="allow-scripts allow-pointer-lock" referrerpolicy="no-referrer" id="html-preview-frame" style="width: 100%; height: 320px; background: #fff; border: 2px solid var(--gold-main); border-radius: 8px;"></iframe>
+                        <div id="html-preview-stage" class="runtime-game-stage" style="width:100%;height:320px;border:2px solid var(--gold-main);border-radius:8px;"><iframe sandbox="allow-scripts allow-pointer-lock" referrerpolicy="no-referrer" id="html-preview-frame" style="width:100%;height:100%;min-height:0;background:#fff;border:0;"></iframe></div>
                     `;
                     setTimeout(() => runHtmlSandbox(project.data || '', project), 50);
                 } else {
@@ -5532,7 +5574,7 @@
                             <textarea id="html-code-textarea">${window.saEscapeHTML(project.data || '')}</textarea>
                             <div style="color: var(--gold-bright); margin-top: 5px;">Живое превью</div>
                             <div id="html-preview-status" style="font-size:.9rem;opacity:.75;">Автосохранение включено. Внешние сайты, запросы, фреймы и формы отключены.</div>
-                            <iframe sandbox="allow-scripts allow-pointer-lock" id="html-preview-frame" style="width: 100%; height: 420px; background: #fff; border: 2px solid var(--gold-main); border-radius: 8px;"></iframe>
+                            <div id="html-preview-stage" class="runtime-game-stage" style="width:100%;height:420px;border:2px solid var(--gold-main);border-radius:8px;"><iframe sandbox="allow-scripts allow-pointer-lock" id="html-preview-frame" style="width:100%;height:100%;min-height:0;background:#fff;border:0;"></iframe></div>
                         </div>
                     `;
                     setTimeout(() => {
@@ -5563,7 +5605,7 @@
                     container.innerHTML = `
                         <div style="color: var(--gold-bright);">Результат Python · изолированная среда</div>
                         <div style="font-size:.9rem;opacity:.75;">Python исполняется в отдельном изолированном iframe без доступа к сети и странице.</div>
-                        <div id="turtle-graphics-canvas-container" style="width: 100%; height: 200px; background: #ffffff; border: 2px solid var(--gold-main); border-radius: 6px; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center;">
+                        <div id="turtle-graphics-canvas-container" class="runtime-game-stage" style="width: 100%; height: 280px; background: #ffffff; border: 2px solid var(--gold-main); border-radius: 6px; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center;">
                             <span style="color: #000; font-size: 1rem;" id="turtle-placeholder">Запуск результата...</span>
                         </div>
                         <div class="console-box" id="python-console-output" style="display:none;">Выполнение...</div>
@@ -5588,7 +5630,7 @@
                             <textarea id="python-code-textarea">${window.saEscapeHTML(project.data || '')}</textarea>
                             <div style="color: var(--gold-bright);">Окно результата и вывод консоли · Pyodide загружает runtime и поддерживаемые пакеты из CDN</div>
                             <div style="font-size:.9rem;opacity:.75;line-height:1.45;">Единый запуск автоматически выбирает совместимую среду: Pyodide для Python и библиотек, Brython для старых Turtle-проектов. Код выполняется в отдельном изолированном iframe. Игровой режим Pygame экспериментальный; Pygame Zero пока ожидает отдельную сборку Pygbag.</div>
-                            <div id="turtle-graphics-canvas-container" style="width: 100%; height: 320px; background: #ffffff; border: 2px solid var(--gold-main); border-radius: 6px; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center;">
+                            <div id="turtle-graphics-canvas-container" class="runtime-game-stage" style="width: 100%; height: 320px; background: #ffffff; border: 2px solid var(--gold-main); border-radius: 6px; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center;">
                                 <span style="color: #000; font-size: 1rem;" id="turtle-placeholder">Графика turtle...</span>
                             </div>
                             <div class="console-box" id="python-console-output" style="min-height:56px;height:64px;max-height:96px;overflow:auto;padding:8px;font-size:.9rem;">Готов к выполнению Python...</div>
@@ -5622,7 +5664,7 @@
             if (['HTML','Python'].includes(project.category) && !isReadOnly) {
                 const driveAttachment = document.createElement('div');
                 driveAttachment.style.cssText = 'display:flex;flex-direction:column;gap:8px;margin-top:14px;padding:12px;border:1px solid var(--gold-main);border-radius:8px;';
-                driveAttachment.innerHTML = '<label for="project-resource-url">Дополнительный файл с файлообменника (необязательно):</label><input class="form-input" id="project-resource-url" type="url" placeholder="Прямая HTTPS-ссылка на файл" value="' + window.saEscapeHTML(project.projectUrl || '') + '"><div style="opacity:.8;">Сохрани здесь ссылку на файл с разрешённого файлообменника. Песочница HTML/Python не загружает и не исполняет этот файл автоматически.</div><button class="auth-btn" type="button" onclick="saveProjectResourceUrl()">Сохранить ссылку на файл</button>';
+                driveAttachment.innerHTML = '<label for="project-resource-url">Ссылка на дополнительный файл или исходный код (.html / .py):</label><input class="form-input" id="project-resource-url" type="url" placeholder="Публичная HTTPS-ссылка на HTML-страницу или файл .py" value="' + window.saEscapeHTML(project.projectUrl || '') + '"><div style="opacity:.8;line-height:1.45;">Для импорта нужен открытый файл .html/.htm или .py, либо опубликованная HTML-страница. Импорт загружает текст в редактор, но не запускает его автоматически.</div><div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="auth-btn" type="button" onclick="saveProjectResourceUrl()">Сохранить ссылку</button><button class="auth-btn" type="button" id="project-source-import-btn" onclick="importProjectSourceFromUrl()">⬇ Загрузить код в редактор</button></div><small id="project-source-import-status" style="display:block;opacity:.8;" aria-live="polite"></small>';
                 container.appendChild(driveAttachment);
             }
 
@@ -5701,16 +5743,48 @@
         };
 
         window.toggleProjectFullscreen = async function() {
-            const target = document.getElementById('editor-runtime-container');
+            const category = activeStarObject && activeStarObject.category;
+            const targetId = category === 'HTML' ? 'html-preview-stage' : 'turtle-graphics-canvas-container';
+            const target = document.getElementById(targetId);
             if (!target) return;
+
+            const isTargetFullscreen = document.fullscreenElement === target ||
+                document.webkitFullscreenElement === target;
+            if (isTargetFullscreen) {
+                try {
+                    if (document.exitFullscreen) await document.exitFullscreen();
+                    else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+                } catch (_) {}
+                return;
+            }
+
+            if (target.classList.contains('project-stage-expanded')) {
+                target.classList.remove('project-stage-expanded');
+                return;
+            }
+
             try {
-                if (document.fullscreenElement === target) await document.exitFullscreen();
-                else if (!document.fullscreenElement && target.requestFullscreen) await target.requestFullscreen();
-                else target.classList.toggle('project-workspace-expanded');
-                if (window.codeMirrorEditor?.refresh) window.codeMirrorEditor.refresh();
-                if (typeof codeMirrorEditor !== 'undefined' && codeMirrorEditor?.refresh) codeMirrorEditor.refresh();
-            } catch (error) {
-                target.classList.toggle('project-workspace-expanded');
+                if (target.requestFullscreen) {
+                    await target.requestFullscreen({ navigationUI: 'hide' });
+                } else if (target.webkitRequestFullscreen) {
+                    target.webkitRequestFullscreen();
+                } else {
+                    target.classList.add('project-stage-expanded');
+                    const exitFallback = event => {
+                        if (event.key !== 'Escape') return;
+                        target.classList.remove('project-stage-expanded');
+                        document.removeEventListener('keydown', exitFallback);
+                    };
+                    document.addEventListener('keydown', exitFallback);
+                }
+            } catch (_) {
+                target.classList.add('project-stage-expanded');
+                const exitFallback = event => {
+                    if (event.key !== 'Escape') return;
+                    target.classList.remove('project-stage-expanded');
+                    document.removeEventListener('keydown', exitFallback);
+                };
+                document.addEventListener('keydown', exitFallback);
             }
         };
 
@@ -6203,6 +6277,71 @@
                 renderZvezdnyFeed();
             };
             reader.readAsDataURL(file);
+        }
+
+        async function importProjectSourceFromUrl() {
+            const project = activeStarObject;
+            const input = document.getElementById('project-resource-url');
+            const status = document.getElementById('project-source-import-status');
+            const button = document.getElementById('project-source-import-btn');
+            const sourceUrl = String(input?.value || '').trim();
+
+            if (!project || !['HTML', 'Python'].includes(project.category)) {
+                if (status) status.textContent = 'Импорт доступен только для проектов HTML и Python.';
+                return;
+            }
+            if (!currentUser || String(project.author || '').toLowerCase() !== String(currentUser.username || '').toLowerCase()) {
+                if (status) status.textContent = 'Импортировать исходный код может только автор проекта.';
+                return;
+            }
+            if (!sourceUrl) {
+                if (status) status.textContent = 'Сначала вставь публичную HTTPS-ссылку.';
+                return;
+            }
+
+            const apiRoot = String(window.STARALGO_API_BASE || '').replace(/\/+$/, '');
+            const token = localStorage.getItem('staralgo_auth_token') || '';
+            if (!apiRoot || !token) {
+                if (status) status.textContent = 'Не удалось определить API или сессию. Войди в аккаунт и обнови страницу.';
+                return;
+            }
+
+            const previousLabel = button ? button.textContent : '';
+            if (button) {
+                button.disabled = true;
+                button.textContent = 'Загрузка исходника…';
+            }
+            if (status) status.textContent = 'Получаем файл с хостинга…';
+
+            try {
+                const query = new URLSearchParams({ category: project.category, url: sourceUrl });
+                const response = await fetch(apiRoot + '/api/source/import?' + query.toString(), {
+                    method: 'GET',
+                    headers: { 'Authorization': 'Bearer ' + token },
+                    cache: 'no-store',
+                    credentials: 'omit'
+                });
+                const payload = await response.json().catch(() => ({}));
+                if (!response.ok) throw new Error(payload.error || 'Не удалось импортировать исходный код (' + response.status + ')');
+                if (typeof payload.source !== 'string' || !payload.source.trim()) {
+                    throw new Error('Хостинг не вернул текст исходного файла.');
+                }
+                if (!codeMirrorEditor) throw new Error('Редактор ещё загружается. Повтори импорт через секунду.');
+
+                codeMirrorEditor.setValue(payload.source);
+                project.data = payload.source;
+                saveActiveStarChanges();
+
+                const importedBytes = Number(payload.bytes || new TextEncoder().encode(payload.source).byteLength);
+                if (status) status.textContent = 'Исходный код загружен в редактор (' + importedBytes.toLocaleString('ru-RU') + ' байт). Нажми «Запустить», когда будешь готов.';
+            } catch (error) {
+                if (status) status.textContent = error && error.message ? error.message : 'Ошибка импорта исходного кода.';
+            } finally {
+                if (button) {
+                    button.disabled = false;
+                    button.textContent = previousLabel || '⬇ Загрузить код в редактор';
+                }
+            }
         }
 
         function runHtmlSandbox(sourceCode, runtimeProject) {

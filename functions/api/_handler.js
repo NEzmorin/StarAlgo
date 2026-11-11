@@ -77,7 +77,7 @@ function mapProject(row, includePayload = false) {
   };
 }
 const PROJECT_RESOURCE_HOSTS = [
-  'image2url.com','catbox.moe','imgbb.com','ibb.co','posty5.com','github.io',
+  'image2url.com','catbox.moe','imgbb.com','ibb.co','posty5.com','pst5.com','github.io',
   'raw.githubusercontent.com','vercel.app','lh3.googleusercontent.com','drive.google.com','docs.google.com','scratch.mit.edu',
   'pagedrop.io','boomurl.com','iimg.live','x02.me','roblox.com','res.cloudinary.com'
 ];
@@ -315,6 +315,108 @@ async function fetchDriveScratchProject(fileId) {
   return json({ error: 'Google Drive не отдал открытый .sb3-файл. Проверьте доступ «Все, у кого есть ссылка» и что ссылка ведёт на файл .sb3.' }, 502);
 }
 
+async function fetchProjectSource(rawUrl, category) {
+  let current;
+  try { current = new URL(String(rawUrl || '').trim()); }
+  catch (_) { fail(400, 'Укажите корректную HTTPS-ссылку на исходный код'); }
+  if (!isAllowedProjectResourceUrl(current.href)) {
+    fail(400, 'Разрешены только HTTPS-ссылки на поддерживаемые публичные хостинги StarAlgo');
+  }
+
+  const redirects = new Set([301, 302, 303, 307, 308]);
+  for (let hop = 0; hop <= 5; hop++) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+    let response;
+    try {
+      response = await fetch(current.href, {
+        method: 'GET',
+        redirect: 'manual',
+        headers: { 'Accept': 'text/html, application/xhtml+xml, text/plain, text/x-python, application/x-python, application/octet-stream;q=0.7' },
+        signal: controller.signal
+      });
+
+      if (redirects.has(response.status)) {
+        const location = response.headers.get('location');
+        try { await response.body?.cancel(); } catch (_) {}
+        if (!location) fail(502, 'Хостинг вернул перенаправление без адреса');
+        let next;
+        try { next = new URL(location, current); }
+        catch (_) { fail(502, 'Хостинг вернул некорректное перенаправление'); }
+        if (!isAllowedProjectResourceUrl(next.href)) {
+          fail(400, 'Ссылка перенаправляет на неподдерживаемый домен. Используйте прямую ссылку на файл.');
+        }
+        current = next;
+        continue;
+      }
+
+      if (!response.ok) {
+        try { await response.body?.cancel(); } catch (_) {}
+        fail(502, 'Хостинг вернул ошибку загрузки (' + response.status + ')');
+      }
+      if (!response.body) fail(502, 'Хостинг не вернул содержимое файла');
+
+      const contentType = String(response.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
+      const pathname = current.pathname.toLowerCase();
+      const htmlExtension = /\.(?:html?|xhtml|txt)$/.test(pathname);
+      const pythonExtension = /\.(?:py|pyw|txt)$/.test(pathname);
+      const htmlType = contentType === 'text/html' || contentType === 'application/xhtml+xml' || contentType === 'text/plain';
+      const pythonType = contentType === 'text/plain' || contentType === 'text/x-python' || contentType === 'application/x-python';
+      if (category === 'HTML' && !(htmlType || htmlExtension)) {
+        try { await response.body.cancel(); } catch (_) {}
+        fail(415, 'По этой ссылке не найден HTML или текстовый файл. Нужна публичная ссылка на .html/.htm либо HTML-страницу.');
+      }
+      if (category === 'Python' && !(pythonType || pythonExtension)) {
+        try { await response.body.cancel(); } catch (_) {}
+        fail(415, 'По этой ссылке не найден Python-код. Нужна публичная ссылка на .py или текстовый файл.');
+      }
+
+      const maxBytes = 600000;
+      const declaredLength = Number(response.headers.get('content-length') || 0);
+      if (declaredLength > maxBytes) {
+        try { await response.body.cancel(); } catch (_) {}
+        fail(413, 'Исходный файл слишком велик для безопасного импорта');
+      }
+      const reader = response.body.getReader();
+      const chunks = [];
+      let total = 0;
+      while (true) {
+        const part = await reader.read();
+        if (part.done) break;
+        total += part.value.byteLength;
+        if (total > maxBytes) {
+          try { await reader.cancel(); } catch (_) {}
+          fail(413, 'Исходный файл слишком велик для безопасного импорта');
+        }
+        chunks.push(part.value);
+      }
+      const bytes = new Uint8Array(total);
+      let offset = 0;
+      for (const chunk of chunks) {
+        bytes.set(chunk, offset);
+        offset += chunk.byteLength;
+      }
+
+      let source;
+      try { source = new TextDecoder('utf-8', { fatal: true }).decode(bytes); }
+      catch (_) { fail(415, 'Файл не является корректным текстом UTF-8'); }
+      if (source.charCodeAt(0) === 0xFEFF) source = source.slice(1);
+      if (!source.trim()) fail(422, 'Файл пустой');
+      if (source.length > 200000) {
+        fail(413, 'Исходный код превышает текущий размер, поддерживаемый редактором (200 КБ).');
+      }
+      return { source, finalUrl: current.href, contentType, bytes: total };
+    } catch (error) {
+      if (error instanceof HttpError) throw error;
+      console.error('[StarAlgo source import]', error?.stack || error);
+      fail(502, 'Не удалось получить файл с хостинга. Проверьте публичный доступ и попробуйте прямую ссылку.');
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
+  fail(502, 'Слишком много перенаправлений при загрузке исходного кода');
+}
+
 async function ensureSupportSchema(env) {
   await env.DB.prepare(`CREATE TABLE IF NOT EXISTS support_tickets (
     id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -473,6 +575,14 @@ async function handle(request, env) {
   }
 
   const user = await authUser(request, env);
+
+  if (path === '/api/source/import' && method === 'GET') {
+    if (!user) fail(401, 'Войдите в аккаунт, чтобы импортировать исходный код');
+    const category = text(url.searchParams.get('category') || '', 10, 'Категория');
+    if (!['HTML', 'Python'].includes(category)) fail(400, 'Импорт доступен только для HTML и Python');
+    const sourceUrl = text(url.searchParams.get('url') || '', 2048, 'Ссылка');
+    return json(await fetchProjectSource(sourceUrl, category));
+  }
 
   if (path === '/api/multiplayer/ticket' && method === 'POST') {
     await ensureMultiplayerSchema(env);
