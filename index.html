@@ -5817,13 +5817,97 @@
             };
             getExitButton();
 
-            const isTargetFullscreen = document.fullscreenElement === target ||
+            const getFrame = () => target.querySelector(':scope > iframe');
+            const saveOriginalSizing = () => {
+                if (target.__starAlgoFullscreenOriginalSizing) return;
+                const frame = getFrame();
+                target.__starAlgoFullscreenOriginalSizing = {
+                    stageStyle: target.getAttribute('style'),
+                    frameStyle: frame ? frame.getAttribute('style') : null,
+                    hadFrame: !!frame
+                };
+            };
+            const restoreOriginalSizing = () => {
+                const saved = target.__starAlgoFullscreenOriginalSizing;
+                if (!saved) return;
+                if (saved.stageStyle === null) target.removeAttribute('style');
+                else target.setAttribute('style', saved.stageStyle);
+                const frame = getFrame();
+                if (frame && saved.hadFrame) {
+                    if (saved.frameStyle === null) frame.removeAttribute('style');
+                    else frame.setAttribute('style', saved.frameStyle);
+                }
+                target.__starAlgoFullscreenOriginalSizing = null;
+            };
+            const applyViewportSizing = () => {
+                target.style.setProperty('position', 'fixed', 'important');
+                target.style.setProperty('inset', '0', 'important');
+                target.style.setProperty('top', '0', 'important');
+                target.style.setProperty('right', '0', 'important');
+                target.style.setProperty('bottom', '0', 'important');
+                target.style.setProperty('left', '0', 'important');
+                target.style.setProperty('width', '100vw', 'important');
+                target.style.setProperty('height', '100vh', 'important');
+                target.style.setProperty('min-width', '100vw', 'important');
+                target.style.setProperty('min-height', '100vh', 'important');
+                target.style.setProperty('max-width', 'none', 'important');
+                target.style.setProperty('max-height', 'none', 'important');
+                target.style.setProperty('box-sizing', 'border-box', 'important');
+                target.style.setProperty('margin', '0', 'important');
+                target.style.setProperty('padding', '0', 'important');
+                target.style.setProperty('border', '0', 'important');
+                target.style.setProperty('border-radius', '0', 'important');
+                target.style.setProperty('overflow', 'hidden', 'important');
+                const frame = getFrame();
+                if (frame) {
+                    frame.style.setProperty('display', 'block', 'important');
+                    frame.style.setProperty('position', 'absolute', 'important');
+                    frame.style.setProperty('inset', '0', 'important');
+                    frame.style.setProperty('top', '0', 'important');
+                    frame.style.setProperty('right', '0', 'important');
+                    frame.style.setProperty('bottom', '0', 'important');
+                    frame.style.setProperty('left', '0', 'important');
+                    frame.style.setProperty('width', '100%', 'important');
+                    frame.style.setProperty('height', '100%', 'important');
+                    frame.style.setProperty('min-width', '100%', 'important');
+                    frame.style.setProperty('min-height', '100%', 'important');
+                    frame.style.setProperty('max-width', 'none', 'important');
+                    frame.style.setProperty('max-height', 'none', 'important');
+                    frame.style.setProperty('box-sizing', 'border-box', 'important');
+                    frame.style.setProperty('border', '0', 'important');
+                    frame.style.setProperty('margin', '0', 'important');
+                }
+            };
+
+            const isTargetFullscreen = () => document.fullscreenElement === target ||
                 document.webkitFullscreenElement === target;
-            if (isTargetFullscreen) {
+            const removeFullscreenListeners = () => {
+                if (target.__starAlgoFullscreenChangeHandler) {
+                    document.removeEventListener('fullscreenchange', target.__starAlgoFullscreenChangeHandler);
+                    document.removeEventListener('webkitfullscreenchange', target.__starAlgoFullscreenChangeHandler);
+                    target.__starAlgoFullscreenChangeHandler = null;
+                }
+            };
+            const watchNativeFullscreenExit = () => {
+                if (target.__starAlgoFullscreenChangeHandler) return;
+                const onChange = () => {
+                    if (!isTargetFullscreen() && !target.classList.contains('project-stage-expanded')) {
+                        restoreOriginalSizing();
+                        removeFullscreenListeners();
+                    }
+                };
+                target.__starAlgoFullscreenChangeHandler = onChange;
+                document.addEventListener('fullscreenchange', onChange);
+                document.addEventListener('webkitfullscreenchange', onChange);
+            };
+
+            if (isTargetFullscreen()) {
                 try {
                     if (document.exitFullscreen) await document.exitFullscreen();
                     else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
                 } catch (_) {}
+                restoreOriginalSizing();
+                removeFullscreenListeners();
                 return;
             }
 
@@ -5839,8 +5923,13 @@
                     document.removeEventListener('keydown', target.__starAlgoFullscreenEscapeHandler);
                     target.__starAlgoFullscreenEscapeHandler = null;
                 }
+                restoreOriginalSizing();
+                removeFullscreenListeners();
                 return;
             }
+
+            saveOriginalSizing();
+            watchNativeFullscreenExit();
 
             const enterFallback = () => {
                 if (target.parentNode && target.parentNode !== document.body) {
@@ -5850,6 +5939,7 @@
                     document.body.appendChild(target);
                 }
                 target.classList.add('project-stage-expanded');
+                applyViewportSizing();
                 const exitFallback = event => {
                     if (event.key !== 'Escape') return;
                     target.classList.remove('project-stage-expanded');
@@ -5861,6 +5951,8 @@
                     target.__starAlgoFullscreenPlaceholder = null;
                     document.removeEventListener('keydown', exitFallback);
                     target.__starAlgoFullscreenEscapeHandler = null;
+                    restoreOriginalSizing();
+                    removeFullscreenListeners();
                 };
                 target.__starAlgoFullscreenEscapeHandler = exitFallback;
                 document.addEventListener('keydown', exitFallback);
@@ -5869,10 +5961,12 @@
             try {
                 if (target.requestFullscreen) {
                     await target.requestFullscreen({ navigationUI: 'hide' });
+                    applyViewportSizing();
                     return;
                 }
                 if (target.webkitRequestFullscreen) {
                     target.webkitRequestFullscreen();
+                    applyViewportSizing();
                     return;
                 }
                 enterFallback();
@@ -6462,8 +6556,8 @@
             previewFrame.__starAlgoMultiplayerCleanup = supportsMultiplayer
                 ? window.StarAlgoMultiplayerHost.attach(previewFrame, project, multiplayerToken)
                 : null;
-            previewFrame.srcdoc = '<!doctype html><html><head><meta charset="utf-8">' + csp +
-                multiplayerScript + '<style>html,body{max-width:100%;overflow:auto}img,video,canvas{max-width:100%}</style></head><body>' + code + '</body></html>';
+            previewFrame.srcdoc = '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">' + csp +
+                multiplayerScript + '<style>html,body{box-sizing:border-box;width:100%;min-width:0;min-height:100%;max-width:none;margin:0;overflow:auto}body{min-height:100vh}body > #app,body > #root,body > #game,body > #game-root,body > #game-container,body > main{box-sizing:border-box;width:100% !important;max-width:none !important;min-height:100vh}canvas{display:block;width:100% !important;height:auto !important;max-width:none !important}img,video,svg{max-width:100%}</style></head><body>' + code + '</body></html>';
             const status = document.getElementById('html-preview-status');
             if (status) status.textContent = multiplayerEnabled
                 ? 'Изолированный предпросмотр. StarAlgo Network доступен; остальные сетевые запросы заблокированы.'
