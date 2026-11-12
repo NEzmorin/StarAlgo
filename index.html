@@ -6641,7 +6641,6 @@
             // Additional CSP is prepended so project markup cannot relax the sandbox policy.
             previewFrame.setAttribute('sandbox', 'allow-scripts allow-pointer-lock');
             previewFrame.setAttribute('referrerpolicy', 'no-referrer');
-            if (previewFrame.__starAlgoMultiplayerCleanup) previewFrame.__starAlgoMultiplayerCleanup();
             if (previewFrame.__starAlgoMultiplayerCleanup) {
                 previewFrame.__starAlgoMultiplayerCleanup();
                 previewFrame.__starAlgoMultiplayerCleanup = null;
