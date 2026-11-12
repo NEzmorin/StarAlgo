@@ -6609,6 +6609,10 @@
                     clearTimeout(frame.__starAlgoRunTimeout);
                     frame.__starAlgoRunTimeout = null;
                 }
+                if (frame.__starAlgoMultiplayerCleanup) {
+                    frame.__starAlgoMultiplayerCleanup();
+                    frame.__starAlgoMultiplayerCleanup = null;
+                }
                 frame.srcdoc = '<!doctype html><html><body style="margin:0;padding:18px;font:14px sans-serif;color:#222;background:#fff;">' +
                     window.saEscapeHTML(message || 'Выполнение HTML-проекта остановлено.') + '</body></html>';
             }
@@ -6638,6 +6642,10 @@
             previewFrame.setAttribute('sandbox', 'allow-scripts allow-pointer-lock');
             previewFrame.setAttribute('referrerpolicy', 'no-referrer');
             if (previewFrame.__starAlgoMultiplayerCleanup) previewFrame.__starAlgoMultiplayerCleanup();
+            if (previewFrame.__starAlgoMultiplayerCleanup) {
+                previewFrame.__starAlgoMultiplayerCleanup();
+                previewFrame.__starAlgoMultiplayerCleanup = null;
+            }
             previewFrame.__starAlgoMultiplayerCleanup = supportsMultiplayer
                 ? window.StarAlgoMultiplayerHost.attach(previewFrame, project, multiplayerToken)
                 : null;
