@@ -821,8 +821,15 @@
     const value = String(input?.value || '').trim();
     if (!value) { alert('Вставь HTTPS-ссылку на внешний ресурс.'); return; }
     activeStarObject.projectUrl = value;
-    try { if (await saveProjectNow()) renderStarRuntime(activeStarObject, false); }
-    catch (error) { alert(error.message); }
+    try {
+      if (await saveProjectNow()) {
+        renderStarRuntime(activeStarObject, false);
+        if (['HTML', 'Python'].includes(activeStarObject.category)) {
+          const status = document.getElementById('project-source-import-status');
+          if (status) status.textContent = 'Адрес источника сохранён. GitHub /blob/-ссылка при сохранении превращается в прямой raw-адрес. Чтобы загрузить текст, нажми «Импортировать код».';
+        }
+      }
+    } catch (error) { alert(error.message); }
   };
   window.saveProjectMediaUrl = async function() {
     if (!activeStarObject || !currentUser || activeStarObject.author.toLowerCase() !== currentUser.username.toLowerCase()) return;

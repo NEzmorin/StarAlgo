@@ -5431,6 +5431,13 @@
         }
 
         function renderStarRuntime(project, isReadOnly) {
+            const projectSourceHost = (() => {
+                try {
+                    const source = new URL(String(project.projectUrl || ''));
+                    return source.protocol === 'https:' ? source.hostname : '';
+                } catch (_) { return ''; }
+            })();
+            const projectSourceHostLabel = projectSourceHost ? window.saEscapeHTML(projectSourceHost) : '';
             const panoramaImg = document.getElementById('star-panorama-img');
             const coverUrl = project.coverUrl || generateRandomPanorama(project.name + project.id);
             panoramaImg.src = coverUrl;
@@ -5608,16 +5615,25 @@
             } else if (project.category === 'HTML') {
                 if (isReadOnly) {
                     container.innerHTML = `
-                        <div style="color: var(--gold-bright); margin-bottom: 5px;">Результат HTML · изолированный просмотр</div>
-                        <div id="html-preview-status" style="font-size:.9rem;opacity:.75;">Загрузка безопасного предпросмотра…</div>
+                        <div style="color: var(--gold-bright); margin-bottom: 8px;">Результат HTML · изолированный просмотр</div>
+                        <div id="project-code-run-warning" style="display:flex;flex-direction:column;gap:9px;padding:16px;border:1px solid #d4b236;border-radius:10px;background:rgba(45,35,8,.48);margin-bottom:12px;">
+                            <strong style="color:#f5d65c;">⚠ Непроверенный пользовательский код</strong>
+                            <span>StarAlgo не проверяет проекты на вирусы. Код будет запущен только внутри ограниченной песочницы после твоего подтверждения.</span>
+                            ${projectSourceHostLabel ? `<span>Указанный источник: <strong>${projectSourceHostLabel}</strong>. В StarAlgo запускается сохранённая копия кода, а не живая страница по ссылке.</span>` : ''}
+                            <span style="font-size:.9rem;opacity:.85;">Не запускай проект, если не доверяешь автору. Вредоносный код всё ещё может нагружать браузер.</span>
+                            <div><button class="auth-btn" type="button" onclick="confirmPublishedProjectRun()">▶ Я понимаю, запустить в песочнице</button></div>
+                        </div>
+                        <div id="html-preview-status" style="font-size:.9rem;opacity:.75;">Ожидает подтверждения запуска.</div>
                         <div id="html-preview-stage" class="runtime-game-stage" style="width:100%;height:320px;border:2px solid var(--gold-main);border-radius:8px;"><iframe sandbox="allow-scripts allow-pointer-lock" referrerpolicy="no-referrer" id="html-preview-frame" style="width:100%;height:100%;min-height:0;background:#fff;border:0;"></iframe></div>
                     `;
-                    setTimeout(() => runHtmlSandbox(project.data || '', project), 50);
                 } else {
                     container.innerHTML = `
                         <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:5px;">
                             <div style="color:var(--gold-bright);">Редактор HTML / CSS / JS · изолированная среда</div>
-                            <button class="auth-btn" type="button" onclick="runHtmlSandbox()">▶ Запустить (Ctrl + Enter)</button>
+                            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                                <button class="auth-btn" type="button" onclick="runHtmlSandbox()">▶ Запустить (Ctrl + Enter)</button>
+                                <button class="auth-btn" type="button" onclick="stopHtmlSandbox()">■ Стоп</button>
+                            </div>
                         </div>
                         <div style="display: grid; grid-template-columns: 1fr; gap: 12px;">
                             <textarea id="html-code-textarea">${window.saEscapeHTML(project.data || '')}</textarea>
@@ -5652,20 +5668,19 @@
             } else if (project.category === 'Python') {
                 if (isReadOnly) {
                     container.innerHTML = `
-                        <div style="color: var(--gold-bright);">Результат Python · изолированная среда</div>
-                        <div style="font-size:.9rem;opacity:.75;">Python исполняется в отдельном изолированном iframe без доступа к сети и странице.</div>
-                        <div id="turtle-graphics-canvas-container" class="runtime-game-stage" style="width: 100%; height: 280px; background: #ffffff; border: 2px solid var(--gold-main); border-radius: 6px; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center;">
-                            <span style="color: #000; font-size: 1rem;" id="turtle-placeholder">Запуск результата...</span>
+                        <div style="color: var(--gold-bright);margin-bottom:8px;">Результат Python · изолированная среда</div>
+                        <div id="project-code-run-warning" style="display:flex;flex-direction:column;gap:9px;padding:16px;border:1px solid #d4b236;border-radius:10px;background:rgba(45,35,8,.48);margin-bottom:12px;">
+                            <strong style="color:#f5d65c;">⚠ Непроверенный пользовательский код</strong>
+                            <span>StarAlgo не проверяет проекты на вирусы. Python будет запущен только внутри ограниченной песочницы после твоего подтверждения.</span>
+                            ${projectSourceHostLabel ? `<span>Указанный источник: <strong>${projectSourceHostLabel}</strong>. В StarAlgo запускается сохранённая копия кода, а не живая страница по ссылке.</span>` : ''}
+                            <span style="font-size:.9rem;opacity:.85;">Доступ к сети ограничен загрузкой Python-среды и пакетов, но вредоносный код всё ещё может нагружать браузер.</span>
+                            <div><button class="auth-btn" type="button" onclick="confirmPublishedProjectRun()">▶ Я понимаю, запустить в песочнице</button></div>
                         </div>
-                        <div class="console-box" id="python-console-output" style="display:none;">Выполнение...</div>
+                        <div id="turtle-graphics-canvas-container" class="runtime-game-stage" style="width: 100%; height: 280px; background: #ffffff; border: 2px solid var(--gold-main); border-radius: 6px; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center;">
+                            <span style="color: #000; font-size: 1rem;" id="turtle-placeholder">Ожидает подтверждения запуска...</span>
+                        </div>
+                        <div class="console-box" id="python-console-output" style="display:none;">Ожидает запуска...</div>
                     `;
-                    setTimeout(() => {
-                        if (typeof window.runPythonAutoSandbox === 'function') {
-                            window.runPythonAutoSandbox(project.data || '', {multiplayer:{enabled:!!project.multiplayerEnabled,published:!!project.published,projectId:project.id,category:project.category}});
-                        } else {
-                            runPythonReadonlyResult(project.data);
-                        }
-                    }, 100);
                 } else {
                     container.innerHTML = `
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
@@ -5713,7 +5728,7 @@
             if (['HTML','Python'].includes(project.category) && !isReadOnly) {
                 const driveAttachment = document.createElement('div');
                 driveAttachment.style.cssText = 'display:flex;flex-direction:column;gap:8px;margin-top:14px;padding:12px;border:1px solid var(--gold-main);border-radius:8px;';
-                driveAttachment.innerHTML = '<label for="project-resource-url">Ссылка на дополнительный файл или исходный код (.html / .py):</label><input class="form-input" id="project-resource-url" type="url" placeholder="Публичная HTTPS-ссылка на HTML-страницу или файл .py" value="' + window.saEscapeHTML(project.projectUrl || '') + '"><div style="opacity:.8;line-height:1.45;">Для импорта нужен открытый файл .html/.htm или .py, либо опубликованная HTML-страница. Импорт загружает текст в редактор, но не запускает его автоматически.</div><div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="auth-btn" type="button" onclick="saveProjectResourceUrl()">Сохранить ссылку</button><button class="auth-btn" type="button" id="project-source-import-btn" onclick="importProjectSourceFromUrl()">⬇ Загрузить код в редактор</button></div><small id="project-source-import-status" style="display:block;opacity:.8;" aria-live="polite"></small>';
+                driveAttachment.innerHTML = '<label for="project-resource-url">Ссылка на внешний исходник (.html / .py):</label><input class="form-input" id="project-resource-url" type="url" placeholder="GitHub /blob/ или прямая HTTPS-ссылка на .html / .py" value="' + window.saEscapeHTML(project.projectUrl || '') + '"><div style="opacity:.85;line-height:1.45;">Публичные GitHub-ссылки на файл (/blob/) автоматически преобразуются в прямые raw-ссылки. «Сохранить адрес» сохраняет источник в проекте; «Импортировать код» скачивает текст в редактор.</div><div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="auth-btn" type="button" onclick="saveProjectResourceUrl()">Сохранить адрес источника</button><button class="auth-btn" type="button" id="project-source-import-btn" onclick="importProjectSourceFromUrl()">⬇ Импортировать код</button></div><div id="project-source-import-warning" hidden style="padding:12px;border:1px solid #c58d32;border-radius:8px;background:rgba(76,48,8,.28);line-height:1.45;"><strong style="color:#f5d65c;">⚠ Внешний исходник не проверен</strong><div style="margin:6px 0;">StarAlgo скачает исходный текст в редактор. Это не антивирусная проверка: запускай код только если доверяешь источнику. Сам импорт ничего не запускает.</div><div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="auth-btn" type="button" onclick="importProjectSourceFromUrl(true)">Продолжить импорт</button><button class="auth-btn" type="button" onclick="cancelProjectSourceImport()">Отмена</button></div></div><small id="project-source-import-status" style="display:block;opacity:.8;" aria-live="polite"></small>';
                 container.appendChild(driveAttachment);
             }
 
@@ -5778,6 +5793,53 @@
             button.title = expanded ? 'Свернуть предпросмотр' : 'Развернуть предпросмотр';
             button.setAttribute('aria-label', button.title);
             button.setAttribute('aria-expanded', String(expanded));
+        };
+
+        window.showProjectSourceImportWarning = function() {
+            const input = document.getElementById('project-resource-url');
+            const panel = document.getElementById('project-source-import-warning');
+            const status = document.getElementById('project-source-import-status');
+            const value = String(input?.value || '').trim();
+            let parsed;
+            try {
+                parsed = new URL(value);
+                if (parsed.protocol !== 'https:' || !parsed.hostname || parsed.username || parsed.password) {
+                    throw new Error('Нужна публичная HTTPS-ссылка без логина и пароля.');
+                }
+            } catch (error) {
+                if (status) status.textContent = error.message || 'Укажи корректную HTTPS-ссылку.';
+                return;
+            }
+            if (panel) panel.hidden = false;
+            if (status) status.textContent = 'Проверь источник перед импортом: ' + parsed.hostname;
+        };
+
+        window.cancelProjectSourceImport = function() {
+            const panel = document.getElementById('project-source-import-warning');
+            if (panel) panel.hidden = true;
+        };
+
+        window.confirmPublishedProjectRun = function() {
+            const project = activeStarObject;
+            if (!project || !['HTML', 'Python'].includes(project.category)) return;
+            const warning = document.getElementById('project-code-run-warning');
+            if (warning) warning.remove();
+            if (project.category === 'HTML') {
+                runHtmlSandbox(project.data || '', project);
+                return;
+            }
+            if (typeof window.runPythonAutoSandbox === 'function') {
+                window.runPythonAutoSandbox(project.data || '', {
+                    multiplayer: {
+                        enabled: !!project.multiplayerEnabled,
+                        published: !!project.published,
+                        projectId: project.id,
+                        category: project.category
+                    }
+                });
+            } else {
+                runPythonReadonlyResult(project.data || '');
+            }
         };
 
         window.toggleScratchFullscreen = async function() {
@@ -6466,8 +6528,13 @@
             reader.readAsDataURL(file);
         }
 
-        async function importProjectSourceFromUrl() {
+        async function importProjectSourceFromUrl(confirmed) {
             const project = activeStarObject;
+            if (confirmed !== true) {
+                window.showProjectSourceImportWarning();
+                return;
+            }
+            window.cancelProjectSourceImport();
             const input = document.getElementById('project-resource-url');
             const status = document.getElementById('project-source-import-status');
             const button = document.getElementById('project-source-import-btn');
@@ -6517,10 +6584,11 @@
 
                 codeMirrorEditor.setValue(payload.source);
                 project.data = payload.source;
+                project.projectUrl = String(payload.finalUrl || sourceUrl);
                 saveActiveStarChanges();
 
                 const importedBytes = Number(payload.bytes || new TextEncoder().encode(payload.source).byteLength);
-                if (status) status.textContent = 'Исходный код загружен в редактор (' + importedBytes.toLocaleString('ru-RU') + ' байт). Нажми «Запустить», когда будешь готов.';
+                if (status) status.textContent = 'Исходный код загружен (' + importedBytes.toLocaleString('ru-RU') + ' байт) и сохранён в проекте. Код НЕ запускался. Нажми «Запустить» только если доверяешь источнику.';
             } catch (error) {
                 if (status) status.textContent = error && error.message ? error.message : 'Ошибка импорта исходного кода.';
             } finally {
@@ -6530,6 +6598,20 @@
                 }
             }
         }
+
+        window.stopHtmlSandbox = function(message) {
+            const frame = document.getElementById('html-preview-frame');
+            if (frame) {
+                if (frame.__starAlgoRunTimeout) {
+                    clearTimeout(frame.__starAlgoRunTimeout);
+                    frame.__starAlgoRunTimeout = null;
+                }
+                frame.srcdoc = '<!doctype html><html><body style="margin:0;padding:18px;font:14px sans-serif;color:#222;background:#fff;">' +
+                    window.saEscapeHTML(message || 'Выполнение HTML-проекта остановлено.') + '</body></html>';
+            }
+            const status = document.getElementById('html-preview-status');
+            if (status) status.textContent = message || 'Выполнение HTML-проекта остановлено.';
+        };
 
         function runHtmlSandbox(sourceCode, runtimeProject) {
             const code = sourceCode !== undefined ? String(sourceCode || '') : (codeMirrorEditor ? codeMirrorEditor.getValue() : '');
@@ -6556,9 +6638,13 @@
             previewFrame.__starAlgoMultiplayerCleanup = supportsMultiplayer
                 ? window.StarAlgoMultiplayerHost.attach(previewFrame, project, multiplayerToken)
                 : null;
+            if (previewFrame.__starAlgoRunTimeout) clearTimeout(previewFrame.__starAlgoRunTimeout);
             previewFrame.srcdoc = '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">' + csp +
                 multiplayerScript + '</head><body>' + code +
                 '<style id="staralgo-viewport-override">html,body{box-sizing:border-box!important;width:100vw!important;height:100vh!important;min-width:100vw!important;min-height:100vh!important;max-width:none!important;max-height:none!important;margin:0!important}body{overflow:auto!important}body > div:first-of-type,body > main:first-of-type,body > section:first-of-type,body > canvas:first-of-type{box-sizing:border-box!important;width:100vw!important;min-width:100vw!important;height:100vh!important;min-height:100vh!important;max-width:none!important;max-height:none!important}body > #app,body > #root,body > #game,body > #game-root,body > #game-container{width:100vw!important;height:100vh!important;min-width:100vw!important;min-height:100vh!important;max-width:none!important;max-height:none!important}canvas{display:block;max-width:100vw!important}img,video,svg{max-width:100%}</style></body></html>';
+            previewFrame.__starAlgoRunTimeout = window.setTimeout(() => {
+                window.stopHtmlSandbox('HTML-проект остановлен после 10 минут выполнения.');
+            }, 600000);
             const status = document.getElementById('html-preview-status');
             if (status) status.textContent = multiplayerEnabled
                 ? 'Изолированный предпросмотр. StarAlgo Network доступен; остальные сетевые запросы заблокированы.'

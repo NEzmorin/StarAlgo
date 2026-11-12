@@ -78,7 +78,7 @@ function mapProject(row, includePayload = false) {
 }
 const PROJECT_RESOURCE_HOSTS = [
   'image2url.com','catbox.moe','imgbb.com','ibb.co','posty5.com','pst5.com','github.io',
-  'raw.githubusercontent.com','vercel.app','lh3.googleusercontent.com','drive.google.com','docs.google.com','scratch.mit.edu',
+  'raw.githubusercontent.com','gist.githubusercontent.com','vercel.app','lh3.googleusercontent.com','drive.google.com','docs.google.com','scratch.mit.edu',
   'pagedrop.io','boomurl.com','iimg.live','x02.me','roblox.com','res.cloudinary.com'
 ];
 function isAllowedProjectResourceUrl(value) {
@@ -91,8 +91,39 @@ function isAllowedProjectResourceUrl(value) {
   const host = parsed.hostname.toLowerCase();
   return PROJECT_RESOURCE_HOSTS.some(domain => host === domain || host.endsWith('.' + domain));
 }
+function normalizeGitHubSourceUrl(value) {
+  const raw = String(value || '').trim();
+  let parsed;
+  try { parsed = new URL(raw); } catch (_) { return raw; }
+  const host = parsed.hostname.toLowerCase();
+  if (!['github.com', 'www.github.com'].includes(host)) return raw;
+  if (parsed.protocol !== 'https:' || parsed.username || parsed.password || parsed.port) return raw;
+
+  const parts = parsed.pathname.split('/').filter(Boolean);
+  if (parts.length < 5 || !['blob', 'raw'].includes(parts[2])) return raw;
+  const owner = parts[0];
+  const repository = parts[1].replace(/\.git$/i, '');
+  if (!/^[A-Za-z0-9_.-]{1,100}$/.test(owner) || !/^[A-Za-z0-9_.-]{1,100}$/.test(repository)) return raw;
+
+  let refIndex = 3;
+  if (parts[refIndex] === 'refs' && ['heads', 'tags'].includes(parts[refIndex + 1])) refIndex += 2;
+  let ref;
+  try { ref = decodeURIComponent(parts[refIndex] || ''); } catch (_) { return raw; }
+  const fileParts = parts.slice(refIndex + 1);
+  if (!ref || !fileParts.length) {
+    fail(400, 'Ссылка GitHub должна вести на конкретный файл: откройте файл в репозитории и скопируйте его ссылку.');
+  }
+  let decodedFiles;
+  try { decodedFiles = fileParts.map(part => decodeURIComponent(part)); } catch (_) { return raw; }
+
+  const encodedRef = ref.split('/').map(part => encodeURIComponent(part)).join('/');
+  const encodedPath = decodedFiles.map(part => encodeURIComponent(part)).join('/');
+  return 'https://raw.githubusercontent.com/' + encodeURIComponent(owner) + '/' +
+    encodeURIComponent(repository) + '/' + encodedRef + '/' + encodedPath;
+}
 function validateProjectResourceUrl(value, label) {
-  const raw = typeof value === 'string' ? value.trim() : '';
+  const candidate = typeof value === 'string' ? value.trim() : '';
+  const raw = candidate ? normalizeGitHubSourceUrl(candidate) : '';
   if (raw && !isAllowedProjectResourceUrl(raw)) {
     fail(400, label + ': разрешены только HTTPS-ссылки на утверждённые файлообменники и встроенные файлы StarAlgo.');
   }
@@ -317,7 +348,7 @@ async function fetchDriveScratchProject(fileId) {
 
 async function fetchProjectSource(rawUrl, category) {
   let current;
-  try { current = new URL(String(rawUrl || '').trim()); }
+  try { current = new URL(normalizeGitHubSourceUrl(rawUrl)); }
   catch (_) { fail(400, 'Укажите корректную HTTPS-ссылку на исходный код'); }
   if (!isAllowedProjectResourceUrl(current.href)) {
     fail(400, 'Разрешены только HTTPS-ссылки на поддерживаемые публичные хостинги StarAlgo');
