@@ -815,10 +815,39 @@
       }
     } catch (error) { alert(error.message); }
   };
+  function normalizeGitHubProjectSourceUrl(value) {
+    const raw = String(value || '').trim();
+    let parsed;
+    try { parsed = new URL(raw); } catch (_) { return raw; }
+    if (!['github.com', 'www.github.com'].includes(parsed.hostname.toLowerCase()) ||
+        parsed.protocol !== 'https:' || parsed.username || parsed.password || parsed.port) return raw;
+
+    const parts = parsed.pathname.split('/').filter(Boolean);
+    if (parts.length < 5 || parts[2] !== 'blob') return raw;
+    const owner = parts[0], repository = parts[1].replace(/\.git$/i, '');
+    if (!/^[A-Za-z0-9_.-]{1,100}$/.test(owner) || !/^[A-Za-z0-9_.-]{1,100}$/.test(repository)) return raw;
+
+    let refIndex = 3;
+    if (parts[refIndex] === 'refs' && ['heads', 'tags'].includes(parts[refIndex + 1])) refIndex += 2;
+    let ref, fileParts;
+    try {
+      ref = decodeURIComponent(parts[refIndex] || '');
+      fileParts = parts.slice(refIndex + 1).map(part => decodeURIComponent(part));
+    } catch (_) { return raw; }
+    if (!ref || !fileParts.length) return raw;
+
+    const encodedRef = ref.split('/').map(part => encodeURIComponent(part)).join('/');
+    const encodedPath = fileParts.map(part => encodeURIComponent(part)).join('/');
+    return 'https://raw.githubusercontent.com/' + encodeURIComponent(owner) + '/' +
+      encodeURIComponent(repository) + '/' + encodedRef + '/' + encodedPath;
+  }
+  window.normalizeProjectSourceUrl = normalizeGitHubProjectSourceUrl;
+
   window.saveProjectResourceUrl = async function() {
     if (!activeStarObject || !currentUser || activeStarObject.author.toLowerCase() !== currentUser.username.toLowerCase()) return;
     const input = document.getElementById('project-resource-url');
-    const value = String(input?.value || '').trim();
+    const enteredValue = String(input?.value || '').trim();
+    const value = normalizeGitHubProjectSourceUrl(enteredValue);
     if (!value) { alert('Вставь HTTPS-ссылку на внешний ресурс.'); return; }
     activeStarObject.projectUrl = value;
     try {

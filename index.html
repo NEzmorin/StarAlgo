@@ -6538,7 +6538,10 @@
             const input = document.getElementById('project-resource-url');
             const status = document.getElementById('project-source-import-status');
             const button = document.getElementById('project-source-import-btn');
-            const sourceUrl = String(input?.value || '').trim();
+            const enteredSourceUrl = String(input?.value || '').trim();
+            const sourceUrl = window.normalizeProjectSourceUrl
+                ? window.normalizeProjectSourceUrl(enteredSourceUrl)
+                : enteredSourceUrl;
 
             if (!project || !['HTML', 'Python'].includes(project.category)) {
                 if (status) status.textContent = 'Импорт доступен только для проектов HTML и Python.';
