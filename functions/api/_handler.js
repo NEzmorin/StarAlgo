@@ -4,6 +4,27 @@ const json = (data, status = 200, headers = {}) => new Response(JSON.stringify(d
   status, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', ...headers }
 });
 const makeId = () => String(Date.now() * 1000 + Math.floor(Math.random() * 1000));
+const PROJECT_HTML_REVIEW_THRESHOLD_BYTES = 500000;
+const PROJECT_HTML_HARD_LIMIT_BYTES = 2000000;
+const PROJECT_PYTHON_HARD_LIMIT_BYTES = 200000;
+const PROJECT_OTHER_SOURCE_HARD_LIMIT_BYTES = 200000;
+const PROJECT_REQUEST_MAX_BYTES = 4200000;
+function projectSourceByteLength(value) {
+  return encoder.encode(String(value || '')).byteLength;
+}
+function validateProjectSource(source, category) {
+  const bytes = projectSourceByteLength(source);
+  const limit = category === 'HTML'
+    ? PROJECT_HTML_HARD_LIMIT_BYTES
+    : category === 'Python'
+      ? PROJECT_PYTHON_HARD_LIMIT_BYTES
+      : PROJECT_OTHER_SOURCE_HARD_LIMIT_BYTES;
+  if (bytes > limit) {
+    const label = category === 'HTML' ? '2 МБ' : '200 КБ';
+    fail(413, 'Исходный код превышает технический предел ' + label + '.');
+  }
+  return bytes;
+}
 const b64 = bytes => btoa(String.fromCharCode(...new Uint8Array(bytes)));
 const unb64 = value => Uint8Array.from(atob(value), c => c.charCodeAt(0));
 const hex = bytes => [...new Uint8Array(bytes)].map(x => x.toString(16).padStart(2, '0')).join('');
@@ -62,8 +83,11 @@ function publicUser(row) {
     avatarUrl: row.avatar_url || '', bio: row.bio || '', createdAt: row.created_at
   };
 }
-function mapProject(row, includePayload = false) {
+function mapProject(row, includePayload = false, includeModeration = false) {
   const payload = includePayload ? parseJson(row.payload_json, {}) : {};
+  const moderation = includeModeration && payload.moderation && typeof payload.moderation === 'object'
+    ? payload.moderation
+    : null;
   return {
     id: Number(row.id), author: row.author || row.username || '', name: row.name,
     category: row.category, description: row.description || '', published: !!row.published,
@@ -73,7 +97,14 @@ function mapProject(row, includePayload = false) {
     likedBy: row.liked_by || [], date: Number(row.created_at),
     deletedAt: row.deleted_at ? Number(row.deleted_at) : null,
     data: payload.data ?? row.source_text ?? '', sb3Data: payload.sb3Data || '', sb3Url: payload.sb3Url || '',
-    isDummy: !!payload.isDummy, multiplayerEnabled: !!payload.multiplayerEnabled
+    isDummy: !!payload.isDummy, multiplayerEnabled: !!payload.multiplayerEnabled,
+    moderation: moderation ? {
+      status: String(moderation.status || ''),
+      sourceBytes: Number(moderation.sourceBytes || 0),
+      submittedAt: moderation.submittedAt ? Number(moderation.submittedAt) : null,
+      reviewedAt: moderation.reviewedAt ? Number(moderation.reviewedAt) : null,
+      reviewNote: String(moderation.reviewNote || '')
+    } : null
   };
 }
 const PROJECT_RESOURCE_HOSTS = [
@@ -168,7 +199,7 @@ async function projectRow(env, projectId) {
     FROM projects p JOIN users u ON u.id=p.user_id WHERE p.id=?`).bind(String(projectId)).first();
 }
 async function projectDetail(env, row, user) {
-  const mapped = mapProject({ ...row, comments_data: [], liked_by: [] }, true);
+  const mapped = mapProject({ ...row, comments_data: [], liked_by: [] }, true, !!user && (String(user.id) === String(row.user_id) || isStaff(user)));
   mapped.commentsCount = Number(row.comments_count || 0);
   mapped.isLiked = !!user && !!(await env.DB.prepare('SELECT 1 AS liked FROM project_likes WHERE project_id=? AND user_id=?').bind(row.id,user.id).first());
   return mapped;
@@ -214,8 +245,8 @@ async function getProfile(env, profile, viewer, options = {}) {
   const base = publicUser({ ...profile, likes_received: stats.likes_received, projects_count: stats.projects });
   return {
     ...base,
-    projectsList: projectRows.results.filter(p => !p.deleted_at).map(p => mapProject(p, includeProjectPayload)),
-    vacuumList: projectRows.results.filter(p => !!p.deleted_at).map(p => mapProject(p, includeProjectPayload)),
+    projectsList: projectRows.results.filter(p => !p.deleted_at).map(p => mapProject(p, includeProjectPayload, own && includeProjectPayload)),
+    vacuumList: projectRows.results.filter(p => !!p.deleted_at).map(p => mapProject(p, includeProjectPayload, own && includeProjectPayload)),
     followersList: followerRows.results.map(x => x.username.toLowerCase()),
     followingList: followingRows.results.map(x => x.username.toLowerCase()),
     notifications: notifs.results.map(mapNotification)
@@ -402,7 +433,7 @@ async function fetchProjectSource(rawUrl, category) {
         fail(415, 'По этой ссылке не найден Python-код. Нужна публичная ссылка на .py или текстовый файл.');
       }
 
-      const maxBytes = 600000;
+      const maxBytes = category === 'HTML' ? PROJECT_HTML_HARD_LIMIT_BYTES : PROJECT_PYTHON_HARD_LIMIT_BYTES;
       const declaredLength = Number(response.headers.get('content-length') || 0);
       if (declaredLength > maxBytes) {
         try { await response.body.cancel(); } catch (_) {}
@@ -433,8 +464,11 @@ async function fetchProjectSource(rawUrl, category) {
       catch (_) { fail(415, 'Файл не является корректным текстом UTF-8'); }
       if (source.charCodeAt(0) === 0xFEFF) source = source.slice(1);
       if (!source.trim()) fail(422, 'Файл пустой');
-      if (source.length > 200000) {
-        fail(413, 'Исходный код превышает текущий размер, поддерживаемый редактором (200 КБ).');
+      const sourceBytes = encoder.encode(source).byteLength;
+      if (sourceBytes > maxBytes) {
+        fail(413, category === 'HTML'
+          ? 'HTML-файл превышает технический предел 2 МБ.'
+          : 'Python-файл превышает лимит 200 КБ.');
       }
       return { source, finalUrl: current.href, contentType, bytes: total };
     } catch (error) {
@@ -959,6 +993,76 @@ async function handle(request, env) {
     const rows = await env.DB.prepare('SELECT id,username,role,is_supernova,avatar_url,bio FROM users WHERE username_norm LIKE ? ORDER BY username_norm LIMIT 20').bind(`%${q}%`).all();
     return json({ users: rows.results });
   }
+
+  if (path === '/api/moderation/projects' && method === 'GET') {
+    if (!isStaff(user)) fail(403, 'Очередь проверки доступна только модераторам и администраторам');
+    const rows = await env.DB.prepare(
+      "SELECT p.id,p.name,p.category,p.description,p.created_at,u.username author," +
+      "json_extract(p.payload_json,'$.moderation.sourceBytes') AS source_bytes," +
+      "json_extract(p.payload_json,'$.moderation.submittedAt') AS submitted_at " +
+      "FROM projects p JOIN users u ON u.id=p.user_id " +
+      "WHERE p.deleted_at IS NULL AND json_extract(p.payload_json,'$.moderation.status')='pending' " +
+      "ORDER BY CAST(json_extract(p.payload_json,'$.moderation.submittedAt') AS INTEGER) ASC LIMIT 50"
+    ).all();
+    return json({ projects: rows.results.map(row => ({
+      id: Number(row.id), name: row.name, category: row.category,
+      description: row.description || '', author: row.author,
+      sourceBytes: Number(row.source_bytes || 0),
+      submittedAt: Number(row.submitted_at || 0)
+    })) });
+  }
+  const moderationProjectMatch = path.match(/^\/api\/moderation\/projects\/([\w-]+)$/);
+  if (moderationProjectMatch && method === 'GET') {
+    if (!isStaff(user)) fail(403, 'Просматривать исходники на проверке могут только модераторы и администраторы');
+    const row = await projectRow(env, moderationProjectMatch[1]);
+    if (!row || row.deleted_at) fail(404, 'Проект не найден');
+    const payload = parseJson(row.payload_json, {});
+    if (payload.moderation?.status !== 'pending') fail(404, 'Проект больше не ожидает проверки');
+    return json({ project: mapProject(row, true, true) });
+  }
+  if (moderationProjectMatch && method === 'POST') {
+    if (!isStaff(user)) fail(403, 'Решать проверку могут только модераторы и администраторы');
+    const body = await readBody(request, 4096);
+    const action = text(body.action, 16, 'Решение');
+    if (!['approve', 'reject'].includes(action)) fail(400, 'Неизвестное решение модерации');
+    const note = typeof body.note === 'string' ? body.note.trim().slice(0, 500) : '';
+    if (action === 'reject' && !note) fail(400, 'Укажите причину отклонения проекта');
+    const row = await projectRow(env, moderationProjectMatch[1]);
+    if (!row || row.deleted_at) fail(404, 'Проект не найден');
+    const payload = parseJson(row.payload_json, {});
+    const moderation = payload.moderation;
+    if (!moderation || moderation.status !== 'pending') fail(409, 'Проект уже не ожидает проверки');
+    const source = String(payload.data ?? row.source_text ?? '');
+    const sourceBytes = projectSourceByteLength(source);
+    const sourceHash = await digest(source);
+    if (sourceBytes <= PROJECT_HTML_REVIEW_THRESHOLD_BYTES ||
+        sourceBytes !== Number(moderation.sourceBytes || 0) ||
+        sourceHash !== String(moderation.sourceHash || '')) {
+      fail(409, 'Исходник изменился после отправки на проверку. Автор должен отправить актуальную версию заново.');
+    }
+    const stamp = now();
+    payload.moderation = {
+      ...moderation,
+      status: action === 'approve' ? 'approved' : 'rejected',
+      sourceBytes,
+      sourceHash,
+      reviewedAt: stamp,
+      reviewerId: String(user.id),
+      reviewerName: user.username,
+      reviewNote: note
+    };
+    const published = action === 'approve' ? 1 : 0;
+    await env.DB.prepare('UPDATE projects SET published=?,payload_json=?,source_text=?,updated_at=? WHERE id=?')
+      .bind(published, JSON.stringify(payload), source, stamp, row.id).run();
+    const message = action === 'approve'
+      ? 'Крупный HTML-проект «' + row.name + '» одобрен модерацией и опубликован.'
+      : 'Крупный HTML-проект «' + row.name + '» отклонён модерацией: ' + note;
+    await addNotification(env, row.user_id, user.id, 'project_moderation', message, {
+      linkType: 'project', targetStarId: Number(row.id), targetAuthor: row.author
+    });
+    return json({ project: mapProject(await projectRow(env, row.id), true, true) });
+  }
+
   if (path === '/api/projects' && method === 'GET') {
     const own = url.searchParams.get('own') === '1';
     if (own && !user) fail(401,'Необходима авторизация');
@@ -968,20 +1072,32 @@ async function handle(request, env) {
     return json({ projects: rows.results.map(r => mapProject(r)) });
   }
   if (path === '/api/projects' && method === 'POST') {
-    const body = await readBody(request);
+    const body = await readBody(request, PROJECT_REQUEST_MAX_BYTES);
     const name = text(body.name,100,'Название'), category = text(body.category,60,'Категория');
     const description = typeof body.description === 'string' ? body.description.slice(0,4000) : '';
     const coverUrl = validateProjectResourceUrl(body.coverUrl || '', 'Обложка');
     const projectUrl = validateProjectResourceUrl(body.projectUrl || '', 'Ссылка проекта');
     const multiplayerEnabled = body.multiplayerEnabled === true;
     if (multiplayerEnabled && !['HTML','Python'].includes(category)) fail(400, 'Мультиплеер доступен только для HTML и Python');
-    const payload = { data: typeof body.data === 'string' ? body.data.slice(0,200000) : '', sb3Data: typeof body.sb3Data === 'string' ? body.sb3Data.slice(0,400000) : '', sb3Url: validateProjectResourceUrl(body.sb3Url || '', 'Scratch-файл'), isDummy: false, multiplayerEnabled };
+    if (body.data !== undefined && typeof body.data !== 'string') fail(400, 'Исходный код должен быть текстом');
+    const source = typeof body.data === 'string' ? body.data : '';
+    const sourceBytes = validateProjectSource(source, category);
     const pid = makeId(), stamp = now();
+    const wantsPublish = body.published === true;
+    const moderation = category === 'HTML' && sourceBytes > PROJECT_HTML_REVIEW_THRESHOLD_BYTES && wantsPublish
+      ? { status: 'pending', sourceHash: await digest(source), sourceBytes, submittedAt: stamp, reviewedAt: null, reviewerId: null, reviewNote: '' }
+      : null;
+    const payload = {
+      data: source, sb3Data: typeof body.sb3Data === 'string' ? body.sb3Data.slice(0,400000) : '',
+      sb3Url: validateProjectResourceUrl(body.sb3Url || '', 'Scratch-файл'),
+      isDummy: false, multiplayerEnabled, ...(moderation ? { moderation } : {})
+    };
+    const published = wantsPublish && !moderation;
     await env.DB.prepare(`INSERT INTO projects(id,user_id,name,category,description,published,cover_url,project_url,source_text,payload_json,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`)
-      .bind(pid,user.id,name,category,description,body.published ? 1 : 0,coverUrl,projectUrl,payload.data,JSON.stringify(payload),stamp,stamp).run();
+      .bind(pid,user.id,name,category,description,published ? 1 : 0,coverUrl,projectUrl,payload.data,JSON.stringify(payload),stamp,stamp).run();
     await refreshRank(env,user.id);
     const row = await projectRow(env,pid);
-    return json({ project: mapProject(row,true) },201);
+    return json({ project: mapProject(row,true,true) },201);
   }
   const projectMatch = path.match(/^\/api\/projects\/([\w-]+)$/);
   if (projectMatch && method === 'GET') {
@@ -995,7 +1111,7 @@ async function handle(request, env) {
     return json({ project: await projectDetail(env,row,user) });
   }
   if (projectMatch && method === 'PATCH') {
-    const body = await readBody(request), row = await projectRow(env,projectMatch[1]);
+    const body = await readBody(request, PROJECT_REQUEST_MAX_BYTES), row = await projectRow(env,projectMatch[1]);
     if (!row || row.user_id !== user.id) fail(403,'Нет доступа к проекту');
     const name = body.name === undefined ? row.name : text(body.name,100,'Название');
     const category = body.category === undefined ? row.category : text(body.category,60,'Категория');
@@ -1006,7 +1122,10 @@ async function handle(request, env) {
     const cover = coverCandidate === row.cover_url ? row.cover_url : validateProjectResourceUrl(coverCandidate, 'Обложка');
     const pUrl = pUrlCandidate === row.project_url ? row.project_url : validateProjectResourceUrl(pUrlCandidate, 'Ссылка проекта');
     const payload = parseJson(row.payload_json,{});
-    if (body.data !== undefined) payload.data = String(body.data).slice(0,200000);
+    if (body.data !== undefined) {
+      if (typeof body.data !== 'string') fail(400, 'Исходный код должен быть текстом');
+      payload.data = body.data;
+    }
     if (body.sb3Data !== undefined) payload.sb3Data = String(body.sb3Data).slice(0,400000);
     if (body.sb3Url !== undefined) payload.sb3Url = validateProjectResourceUrl(body.sb3Url, 'Scratch-файл');
     if (body.multiplayerEnabled !== undefined) {
@@ -1014,10 +1133,39 @@ async function handle(request, env) {
       if (enabled && !['HTML','Python'].includes(category)) fail(400, 'Мультиплеер доступен только для HTML и Python');
       payload.multiplayerEnabled = enabled;
     }
+    const source = String(payload.data ?? row.source_text ?? '');
+    const sourceBytes = validateProjectSource(source, category);
+    const wantsPublish = body.published === undefined ? !!row.published : body.published === true;
+    let published = wantsPublish;
+    const previousModeration = payload.moderation && typeof payload.moderation === 'object'
+      ? payload.moderation
+      : null;
+    if (category === 'HTML' && sourceBytes > PROJECT_HTML_REVIEW_THRESHOLD_BYTES) {
+      const sourceHash = await digest(source);
+      if (previousModeration?.status === 'approved' && previousModeration.sourceHash === sourceHash) {
+        published = wantsPublish;
+      } else if (wantsPublish || previousModeration?.status === 'pending') {
+        const samePendingSource = previousModeration?.status === 'pending' && previousModeration.sourceHash === sourceHash;
+        payload.moderation = {
+          status: 'pending', sourceHash, sourceBytes,
+          submittedAt: samePendingSource ? Number(previousModeration.submittedAt || now()) : now(),
+          reviewedAt: null, reviewerId: null, reviewNote: ''
+        };
+        published = false;
+      } else if (previousModeration && previousModeration.sourceHash !== sourceHash) {
+        payload.moderation = {
+          status: 'draft', sourceHash, sourceBytes, submittedAt: null,
+          reviewedAt: null, reviewerId: null,
+          reviewNote: 'Исходник изменён после проверки. При публикации отправьте актуальную версию на проверку.'
+        };
+      }
+    } else {
+      delete payload.moderation;
+    }
     await env.DB.prepare(`UPDATE projects SET name=?,category=?,description=?,published=?,cover_url=?,project_url=?,source_text=?,payload_json=?,updated_at=? WHERE id=?`)
-      .bind(name,category,description,body.published === undefined ? row.published : (body.published ? 1 : 0),cover,pUrl,payload.data || '',JSON.stringify(payload),now(),row.id).run();
+      .bind(name,category,description,published ? 1 : 0,cover,pUrl,source,JSON.stringify(payload),now(),row.id).run();
     await refreshRank(env,user.id);
-    return json({ project: mapProject(await projectRow(env,row.id),true) });
+    return json({ project: mapProject(await projectRow(env,row.id),true,true) });
   }
   if (projectMatch && method === 'DELETE') {
     const row = await projectRow(env,projectMatch[1]);

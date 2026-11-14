@@ -216,6 +216,7 @@
       next.likedBy = snapshot.likedBy || [];
       if (activeStarObject && Number(activeStarObject.id) === Number(snapshot.id)) activeStarObject = next;
       updateLocalProject(next);
+      if (typeof window.renderProjectModerationStatus === 'function') window.renderProjectModerationStatus(next);
       return true;
     } catch (error) {
       console.error(error); alert(error.message); return false;
@@ -1174,12 +1175,107 @@
     }catch(e){alert('Не удалось отправить ответ: '+e.message);}
     finally{if(button)button.disabled=false;}
   };
+
+  window.renderProjectModerationStatus = function(project) {
+    const status = document.getElementById('project-moderation-status');
+    if (!status) return;
+    const moderation = project && project.moderation;
+    status.style.display = moderation && ['pending','rejected','approved'].includes(moderation.status) ? 'block' : 'none';
+    status.style.color = moderation && moderation.status === 'rejected' ? '#ff7777' : 'var(--gold-bright)';
+    if (!moderation || !['pending','rejected','approved'].includes(moderation.status)) {
+      status.textContent = '';
+      return;
+    }
+    const sizeKb = (Number(moderation.sourceBytes || 0) / 1024).toFixed(1);
+    if (moderation.status === 'pending') {
+      status.textContent = '🕓 Крупный HTML-проект (' + sizeKb + ' КБ) отправлен модераторам. До решения он не публикуется.';
+    } else if (moderation.status === 'approved') {
+      status.textContent = '✓ Крупный HTML-проект одобрен модерацией. Эту версию можно публиковать.';
+    } else {
+      status.textContent = '✕ Последняя проверка отклонила проект: ' + (moderation.reviewNote || 'измените исходник и отправьте его повторно.');
+    }
+  };
+
+  window.renderProjectModerationInbox = async function() {
+    const grid = document.getElementById('project-moderation-grid-container');
+    if (!grid) return;
+    if (!currentUser || !['[Сингулярность]','[Администратор]','[Модератор]'].includes(currentUser.role)) {
+      grid.innerHTML = '<div class="empty-placeholder">Нет доступа.</div>';
+      return;
+    }
+    try {
+      const result = await api('/api/moderation/projects');
+      const projects = result.projects || [];
+      if (!projects.length) {
+        grid.innerHTML = '<div class="empty-placeholder">Крупных HTML-проектов на проверке нет.</div>';
+        return;
+      }
+      grid.innerHTML = projects.map(project => {
+        const sizeKb = (Number(project.sourceBytes || 0) / 1024).toFixed(1);
+        const submitted = project.submittedAt ? new Date(project.submittedAt).toLocaleString('ru-RU') : 'дата неизвестна';
+        return '<div class="report-card" id="moderation-project-' + Number(project.id) + '" style="border-color:var(--gold-bright);">' +
+          '<div class="report-header"><strong>🧪 ' + esc(project.name || 'Без названия') + '</strong><span>' +
+          esc(project.author || 'Автор неизвестен') + ' · ' + esc(project.category || 'HTML') + '</span></div>' +
+          '<div style="margin:7px 0;">Размер исходника: <strong>' + sizeKb + ' КБ</strong> · Отправлено: ' + esc(submitted) + '</div>' +
+          (project.description ? '<div style="opacity:.8;margin-bottom:8px;">' + esc(project.description) + '</div>' : '') +
+          '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+          '<button class="auth-btn" type="button" onclick="loadProjectModerationSource(' + Number(project.id) + ')">Посмотреть исходник</button>' +
+          '<button class="auth-btn" type="button" onclick="reviewProjectModeration(' + Number(project.id) + ',\'approve\')">Одобрить и опубликовать</button>' +
+          '<button class="auth-btn" type="button" style="color:#ff7777;border-color:#ff7777;" onclick="reviewProjectModeration(' + Number(project.id) + ',\'reject\')">Отклонить</button>' +
+          '</div><div id="moderation-source-' + Number(project.id) + '" style="margin-top:8px;"></div></div>';
+      }).join('');
+    } catch (error) {
+      grid.innerHTML = '<div class="empty-placeholder">' + esc(error.message || 'Не удалось загрузить очередь модерации') + '</div>';
+    }
+  };
+
+  window.loadProjectModerationSource = async function(projectId) {
+    const target = document.getElementById('moderation-source-' + Number(projectId));
+    if (!target) return;
+    target.textContent = 'Загружаем исходник…';
+    try {
+      const result = await api('/api/moderation/projects/' + encodeURIComponent(String(projectId)));
+      const project = result.project || {};
+      target.innerHTML = '<details open><summary>Исходник ' + esc(project.name || '') +
+        ' · не запускайте его во время проверки</summary><pre style="white-space:pre-wrap;overflow:auto;max-height:440px;padding:10px;background:#090806;border:1px solid var(--gold-main);border-radius:7px;">' +
+        esc(project.data || '') + '</pre></details>';
+    } catch (error) {
+      target.textContent = error.message || 'Не удалось загрузить исходник';
+    }
+  };
+
+  window.reviewProjectModeration = async function(projectId, action) {
+    if (!['approve','reject'].includes(action)) return;
+    let note = '';
+    if (action === 'reject') {
+      const answer = prompt('Укажи причину отклонения (она будет показана автору):');
+      if (answer === null) return;
+      note = String(answer).trim();
+      if (!note) { alert('Нужно указать причину отклонения.'); return; }
+    } else if (!confirm('Одобрить этот крупный HTML-проект и опубликовать его?')) {
+      return;
+    }
+    try {
+      await api('/api/moderation/projects/' + encodeURIComponent(String(projectId)), {
+        method: 'POST', body: jsonBody({ action, note })
+      });
+      await window.renderProjectModerationInbox();
+      await refreshBootstrap({ render: false });
+      if (typeof renderZvezdnyFeed === 'function') renderZvezdnyFeed();
+    } catch (error) {
+      alert(error.message || 'Не удалось сохранить решение модерации');
+    }
+  };
+
   window.renderReportsInbox = async function() {
     const grid=document.getElementById('reports-grid-container');
     if(!grid)return;
     if(!currentUser||!['[Сингулярность]','[Администратор]','[Модератор]'].includes(currentUser.role)){
-      grid.innerHTML='<div class="empty-placeholder">Нет доступа.</div>';return;
+      grid.innerHTML='<div class="empty-placeholder">Нет доступа.</div>';
+      await window.renderProjectModerationInbox();
+      return;
     }
+    await window.renderProjectModerationInbox();
     try {
       const result=await api('/api/reports'); const reports=result.reports||[];
       localStorage.setItem('staralgo_reports_db',JSON.stringify(reports));

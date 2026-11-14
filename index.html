@@ -2926,7 +2926,13 @@
             <!-- Ящик жалований -->
             <div id="tab-reports" class="tab-page">
                 <h1 class="page-title">Ящик жалований</h1>
-                <p class="page-text">Здесь собраны жалобы пользователей на проекты, комментарии и профили.</p>
+                <p class="page-text">Здесь собраны жалобы пользователей на проекты, комментарии и профили, а также крупные HTML-проекты, ожидающие проверки.</p>
+                <h2 style="font-size:1.7rem;color:var(--gold-bright);margin:18px 0 8px;">🧪 Проверка крупных проектов</h2>
+                <p style="opacity:.8;line-height:1.4;margin-bottom:10px;">HTML-исходники больше 500 КБ не публикуются автоматически. Модератор должен изучить исходный код и одобрить или отклонить проект. Исходник здесь показывается как текст и не запускается.</p>
+                <div class="reports-grid" id="project-moderation-grid-container">
+                    <div class="empty-placeholder">Загрузка очереди модерации...</div>
+                </div>
+                <h2 style="font-size:1.7rem;color:var(--gold-bright);margin:24px 0 8px;">Жалобы и обращения</h2>
                 <div class="reports-grid" id="reports-grid-container">
                     <div class="empty-placeholder">Жалоб пока нет. Всё спокойно в космосе!</div>
                 </div>
@@ -5728,8 +5734,9 @@
             if (['HTML','Python'].includes(project.category) && !isReadOnly) {
                 const driveAttachment = document.createElement('div');
                 driveAttachment.style.cssText = 'display:flex;flex-direction:column;gap:8px;margin-top:14px;padding:12px;border:1px solid var(--gold-main);border-radius:8px;';
-                driveAttachment.innerHTML = '<label for="project-resource-url">Ссылка на внешний исходник (.html / .py):</label><input class="form-input" id="project-resource-url" type="url" placeholder="GitHub /blob/ или прямая HTTPS-ссылка на .html / .py" value="' + window.saEscapeHTML(project.projectUrl || '') + '"><div style="opacity:.85;line-height:1.45;">Публичные GitHub-ссылки на файл (/blob/) автоматически преобразуются в прямые raw-ссылки. «Сохранить адрес» сохраняет источник в проекте; «Импортировать код» скачивает текст в редактор.</div><div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="auth-btn" type="button" onclick="saveProjectResourceUrl()">Сохранить адрес источника</button><button class="auth-btn" type="button" id="project-source-import-btn" onclick="importProjectSourceFromUrl()">⬇ Импортировать код</button></div><div id="project-source-import-warning" hidden style="padding:12px;border:1px solid #c58d32;border-radius:8px;background:rgba(76,48,8,.28);line-height:1.45;"><strong style="color:#f5d65c;">⚠ Внешний исходник не проверен</strong><div style="margin:6px 0;">StarAlgo скачает исходный текст в редактор. Это не антивирусная проверка: запускай код только если доверяешь источнику. Сам импорт ничего не запускает.</div><div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="auth-btn" type="button" onclick="importProjectSourceFromUrl(true)">Продолжить импорт</button><button class="auth-btn" type="button" onclick="cancelProjectSourceImport()">Отмена</button></div></div><small id="project-source-import-status" style="display:block;opacity:.8;" aria-live="polite"></small>';
+                driveAttachment.innerHTML = '<label for="project-resource-url">Ссылка на внешний исходник (.html / .py):</label><input class="form-input" id="project-resource-url" type="url" placeholder="GitHub /blob/ или прямая HTTPS-ссылка на .html / .py" value="' + window.saEscapeHTML(project.projectUrl || '') + '"><div style="opacity:.85;line-height:1.45;">GitHub /blob/-ссылки автоматически преобразуются в raw-ссылки. Нажми «Импортировать код», чтобы скачать исходник в редактор. Сам импорт не запускает код.</div><div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="auth-btn" type="button" hidden aria-hidden="true" tabindex="-1" onclick="saveProjectResourceUrl()">Сохранить адрес источника</button><button class="auth-btn" type="button" id="project-source-import-btn" onclick="importProjectSourceFromUrl()">⬇ Импортировать код</button></div><div id="project-source-import-warning" hidden style="padding:12px;border:1px solid #c58d32;border-radius:8px;background:rgba(76,48,8,.28);line-height:1.45;"><strong style="color:#f5d65c;">⚠ Внешний исходник не проверен</strong><div style="margin:6px 0;">StarAlgo скачает исходный текст в редактор. Это не антивирусная проверка: запускай код только если доверяешь источнику. Сам импорт ничего не запускает.</div><div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="auth-btn" type="button" onclick="importProjectSourceFromUrl(true)">Продолжить импорт</button><button class="auth-btn" type="button" onclick="cancelProjectSourceImport()">Отмена</button></div></div><small id="project-source-import-status" style="display:block;opacity:.8;" aria-live="polite"></small><small id="project-moderation-status" style="display:none;line-height:1.45;" aria-live="polite"></small>';
                 container.appendChild(driveAttachment);
+                if (typeof window.renderProjectModerationStatus === 'function') window.renderProjectModerationStatus(project);
             }
 
             if (['HTML','Python'].includes(project.category)) {
@@ -6624,9 +6631,9 @@
             const code = sourceCode !== undefined ? String(sourceCode || '') : (codeMirrorEditor ? codeMirrorEditor.getValue() : '');
             const previewFrame = document.getElementById('html-preview-frame');
             if (!previewFrame) return;
-            if (code.length > 200000) {
+            if (new TextEncoder().encode(code).byteLength > 2000000) {
                 const output = document.getElementById('html-preview-status');
-                if (output) output.textContent = 'Код слишком большой для предпросмотра (лимит 200 КБ).';
+                if (output) output.textContent = 'HTML-код превышает технический предел предпросмотра 2 МБ.';
                 return;
             }
             const project = runtimeProject || activeStarObject;
@@ -6663,6 +6670,11 @@
 
         function runPythonUnified() {
             const code = codeMirrorEditor ? codeMirrorEditor.getValue() : '';
+            if (new TextEncoder().encode(code).byteLength > 200000) {
+                const output = document.getElementById('python-console-output');
+                if (output) output.textContent = 'Python-код превышает лимит 200 КБ.';
+                return;
+            }
             if (typeof window.runPythonAutoSandbox !== 'function') {
                 const output = document.getElementById('python-console-output');
                 if (output) output.textContent = 'Единая среда Python не загрузилась. Обновите страницу.';
