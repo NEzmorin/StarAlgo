@@ -9,18 +9,25 @@ const PROJECT_HTML_HARD_LIMIT_BYTES = 2000000;
 const PROJECT_PYTHON_HARD_LIMIT_BYTES = 200000;
 const PROJECT_OTHER_SOURCE_HARD_LIMIT_BYTES = 200000;
 const PROJECT_REQUEST_MAX_BYTES = 4200000;
+function isHtmlProjectCategory(category) {
+  return category === 'HTML' || category === 'Расширенный HTML';
+}
+function shouldReviewProject(category, sourceBytes) {
+  return category === 'Расширенный HTML' ||
+    (category === 'HTML' && sourceBytes > PROJECT_HTML_REVIEW_THRESHOLD_BYTES);
+}
 function projectSourceByteLength(value) {
   return encoder.encode(String(value || '')).byteLength;
 }
 function validateProjectSource(source, category) {
   const bytes = projectSourceByteLength(source);
-  const limit = category === 'HTML'
+  const limit = isHtmlProjectCategory(category)
     ? PROJECT_HTML_HARD_LIMIT_BYTES
     : category === 'Python'
       ? PROJECT_PYTHON_HARD_LIMIT_BYTES
       : PROJECT_OTHER_SOURCE_HARD_LIMIT_BYTES;
   if (bytes > limit) {
-    const label = category === 'HTML' ? '2 МБ' : '200 КБ';
+    const label = isHtmlProjectCategory(category) ? '2 МБ' : '200 КБ';
     fail(413, 'Исходный код превышает технический предел ' + label + '.');
   }
   return bytes;
@@ -424,7 +431,8 @@ async function fetchProjectSource(rawUrl, category) {
       const pythonExtension = /\.(?:py|pyw|txt)$/.test(pathname);
       const htmlType = contentType === 'text/html' || contentType === 'application/xhtml+xml' || contentType === 'text/plain';
       const pythonType = contentType === 'text/plain' || contentType === 'text/x-python' || contentType === 'application/x-python';
-      if (category === 'HTML' && !(htmlType || htmlExtension)) {
+      const isHtmlCategory = isHtmlProjectCategory(category);
+      if (isHtmlCategory && !(htmlType || htmlExtension)) {
         try { await response.body.cancel(); } catch (_) {}
         fail(415, 'По этой ссылке не найден HTML или текстовый файл. Нужна публичная ссылка на .html/.htm либо HTML-страницу.');
       }
@@ -433,7 +441,7 @@ async function fetchProjectSource(rawUrl, category) {
         fail(415, 'По этой ссылке не найден Python-код. Нужна публичная ссылка на .py или текстовый файл.');
       }
 
-      const maxBytes = category === 'HTML' ? PROJECT_HTML_HARD_LIMIT_BYTES : PROJECT_PYTHON_HARD_LIMIT_BYTES;
+      const maxBytes = isHtmlCategory ? PROJECT_HTML_HARD_LIMIT_BYTES : PROJECT_PYTHON_HARD_LIMIT_BYTES;
       const declaredLength = Number(response.headers.get('content-length') || 0);
       if (declaredLength > maxBytes) {
         try { await response.body.cancel(); } catch (_) {}
@@ -466,7 +474,7 @@ async function fetchProjectSource(rawUrl, category) {
       if (!source.trim()) fail(422, 'Файл пустой');
       const sourceBytes = encoder.encode(source).byteLength;
       if (sourceBytes > maxBytes) {
-        fail(413, category === 'HTML'
+        fail(413, isHtmlCategory
           ? 'HTML-файл превышает технический предел 2 МБ.'
           : 'Python-файл превышает лимит 200 КБ.');
       }
@@ -643,8 +651,8 @@ async function handle(request, env) {
 
   if (path === '/api/source/import' && method === 'GET') {
     if (!user) fail(401, 'Войдите в аккаунт, чтобы импортировать исходный код');
-    const category = text(url.searchParams.get('category') || '', 10, 'Категория');
-    if (!['HTML', 'Python'].includes(category)) fail(400, 'Импорт доступен только для HTML и Python');
+    const category = text(url.searchParams.get('category') || '', 60, 'Категория');
+    if (!['HTML', 'Расширенный HTML', 'Python'].includes(category)) fail(400, 'Импорт доступен только для HTML, расширенного HTML и Python');
     const sourceUrl = text(url.searchParams.get('url') || '', 2048, 'Ссылка');
     return json(await fetchProjectSource(sourceUrl, category));
   }
@@ -1035,7 +1043,8 @@ async function handle(request, env) {
     const source = String(payload.data ?? row.source_text ?? '');
     const sourceBytes = projectSourceByteLength(source);
     const sourceHash = await digest(source);
-    if (sourceBytes <= PROJECT_HTML_REVIEW_THRESHOLD_BYTES ||
+    if (!isHtmlProjectCategory(row.category) ||
+        (row.category === 'HTML' && sourceBytes <= PROJECT_HTML_REVIEW_THRESHOLD_BYTES) ||
         sourceBytes !== Number(moderation.sourceBytes || 0) ||
         sourceHash !== String(moderation.sourceHash || '')) {
       fail(409, 'Исходник изменился после отправки на проверку. Автор должен отправить актуальную версию заново.');
@@ -1084,7 +1093,7 @@ async function handle(request, env) {
     const sourceBytes = validateProjectSource(source, category);
     const pid = makeId(), stamp = now();
     const wantsPublish = body.published === true;
-    const moderation = category === 'HTML' && sourceBytes > PROJECT_HTML_REVIEW_THRESHOLD_BYTES && wantsPublish
+    const moderation = shouldReviewProject(category, sourceBytes) && wantsPublish
       ? { status: 'pending', sourceHash: await digest(source), sourceBytes, submittedAt: stamp, reviewedAt: null, reviewerId: null, reviewNote: '' }
       : null;
     const payload = {
@@ -1140,7 +1149,7 @@ async function handle(request, env) {
     const previousModeration = payload.moderation && typeof payload.moderation === 'object'
       ? payload.moderation
       : null;
-    if (category === 'HTML' && sourceBytes > PROJECT_HTML_REVIEW_THRESHOLD_BYTES) {
+    if (shouldReviewProject(category, sourceBytes)) {
       const sourceHash = await digest(source);
       if (previousModeration?.status === 'approved' && previousModeration.sourceHash === sourceHash) {
         published = wantsPublish;

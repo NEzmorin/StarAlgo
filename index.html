@@ -2928,7 +2928,7 @@
                 <h1 class="page-title">Ящик жалований</h1>
                 <p class="page-text">Здесь собраны жалобы пользователей на проекты, комментарии и профили, а также крупные HTML-проекты, ожидающие проверки.</p>
                 <h2 style="font-size:1.7rem;color:var(--gold-bright);margin:18px 0 8px;">🧪 Проверка крупных проектов</h2>
-                <p style="opacity:.8;line-height:1.4;margin-bottom:10px;">HTML-исходники больше 500 КБ не публикуются автоматически. Модератор должен изучить исходный код и одобрить или отклонить проект. Исходник здесь показывается как текст и не запускается.</p>
+                <p style="opacity:.8;line-height:1.4;margin-bottom:10px;">HTML-исходники больше 500 КБ и все проекты категории «Расширенный HTML» не публикуются автоматически. Модератор изучает исходный код и одобряет или отклоняет проект. Исходник здесь показывается как текст и не запускается.</p>
                 <div class="reports-grid" id="project-moderation-grid-container">
                     <div class="empty-placeholder">Загрузка очереди модерации...</div>
                 </div>
@@ -3319,6 +3319,7 @@
                     <option value="Scratch">Scratch</option>
                     <option value="Python">Python</option>
                     <option value="HTML">HTML</option>
+                    <option value="Расширенный HTML">Расширенный HTML · игры и приложения</option>
                     <option value="Картинки">Картинки</option>
                     <option value="Медиа">Медиа (фото / GIF)</option>
                     <option value="Видео">Видео</option>
@@ -4750,6 +4751,7 @@
             const hints = {
                 Scratch: 'Для Scratch проще всего вставить ссылку на опубликованный проект Scratch. Для файла .sb3 удобнее всего Catbox; также подойдут Google Drive (доступ «Все, у кого есть ссылка») или GitHub Pages. <a href="https://scratch.mit.edu/" target="_blank" rel="noopener noreferrer">Scratch</a> · <a href="https://drive.google.com/" target="_blank" rel="noopener noreferrer">Google Drive</a> · <a href="https://pages.github.com/" target="_blank" rel="noopener noreferrer">GitHub Pages</a>',
                 HTML: 'Для одной HTML-страницы подойдёт Posty5; для полноценного сайта с несколькими файлами — GitHub Pages или Vercel. <a href="https://posty5.com/" target="_blank" rel="noopener noreferrer">Posty5</a> · <a href="https://pages.github.com/" target="_blank" rel="noopener noreferrer">GitHub Pages</a> · <a href="https://vercel.com/" target="_blank" rel="noopener noreferrer">Vercel</a>',
+                'Расширенный HTML': 'Экспериментальная категория для больших HTML/JS-проектов. Публикация всегда проходит проверку модератора. Пока используется та же строгая песочница и один HTML-файл; ZIP-проекты и встроенные библиотеки подключим отдельным безопасным этапом.',
                 Сайт: 'Для сайта с несколькими файлами используйте GitHub Pages или Vercel. После публикации вставьте ссылку на сайт. <a href="https://pages.github.com/" target="_blank" rel="noopener noreferrer">GitHub Pages</a> · <a href="https://vercel.com/" target="_blank" rel="noopener noreferrer">Vercel</a>',
                 Python: 'Код Python можно написать прямо во встроенном редакторе StarAlgo. Если нужны дополнительные файлы, разместите их на GitHub или другом файловом хостинге и добавьте ссылку в описание проекта.',
                 Roblox: 'Для Roblox укажите ссылку на опубликованный опыт или страницу проекта Roblox. <a href="https://create.roblox.com/" target="_blank" rel="noopener noreferrer">Roblox Creator Hub</a>',
@@ -5618,7 +5620,7 @@
                     </div>
                 `;
                 renderLocalScratchPlayer(project.sb3Url || project.sb3Data);
-            } else if (project.category === 'HTML') {
+            } else if (['HTML', 'Расширенный HTML'].includes(project.category)) {
                 if (isReadOnly) {
                     container.innerHTML = `
                         <div style="color: var(--gold-bright); margin-bottom: 8px;">Результат HTML · изолированный просмотр</div>
@@ -5635,7 +5637,7 @@
                 } else {
                     container.innerHTML = `
                         <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:5px;">
-                            <div style="color:var(--gold-bright);">Редактор HTML / CSS / JS · изолированная среда</div>
+                            <div style="color:var(--gold-bright);">${project.category === 'Расширенный HTML' ? 'Расширенный HTML · изолированная среда · обязательная модерация' : 'Редактор HTML / CSS / JS · изолированная среда'}</div>
                             <div style="display:flex;gap:8px;flex-wrap:wrap;">
                                 <button class="auth-btn" type="button" onclick="runHtmlSandbox()">▶ Запустить (Ctrl + Enter)</button>
                                 <button class="auth-btn" type="button" onclick="stopHtmlSandbox()">■ Стоп</button>
@@ -5731,7 +5733,7 @@
                 }
             }
 
-            if (['HTML','Python'].includes(project.category) && !isReadOnly) {
+            if (['HTML','Расширенный HTML','Python'].includes(project.category) && !isReadOnly)
                 const driveAttachment = document.createElement('div');
                 driveAttachment.style.cssText = 'display:flex;flex-direction:column;gap:8px;margin-top:14px;padding:12px;border:1px solid var(--gold-main);border-radius:8px;';
                 driveAttachment.innerHTML = '<label for="project-resource-url">Ссылка на внешний исходник (.html / .py):</label><input class="form-input" id="project-resource-url" type="url" placeholder="GitHub /blob/ или прямая HTTPS-ссылка на .html / .py" value="' + window.saEscapeHTML(project.projectUrl || '') + '"><div style="opacity:.85;line-height:1.45;">GitHub /blob/-ссылки автоматически преобразуются в raw-ссылки. Нажми «Импортировать код», чтобы скачать исходник в редактор. Сам импорт не запускает код.</div><div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="auth-btn" type="button" hidden aria-hidden="true" tabindex="-1" onclick="saveProjectResourceUrl()">Сохранить адрес источника</button><button class="auth-btn" type="button" id="project-source-import-btn" onclick="importProjectSourceFromUrl()">⬇ Импортировать код</button></div><div id="project-source-import-warning" hidden style="padding:12px;border:1px solid #c58d32;border-radius:8px;background:rgba(76,48,8,.28);line-height:1.45;"><strong style="color:#f5d65c;">⚠ Внешний исходник не проверен</strong><div style="margin:6px 0;">StarAlgo скачает исходный текст в редактор. Это не антивирусная проверка: запускай код только если доверяешь источнику. Сам импорт ничего не запускает.</div><div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="auth-btn" type="button" onclick="importProjectSourceFromUrl(true)">Продолжить импорт</button><button class="auth-btn" type="button" onclick="cancelProjectSourceImport()">Отмена</button></div></div><small id="project-source-import-status" style="display:block;opacity:.8;" aria-live="polite"></small><small id="project-moderation-status" style="display:none;line-height:1.45;" aria-live="polite"></small>';
@@ -5828,10 +5830,10 @@
 
         window.confirmPublishedProjectRun = function() {
             const project = activeStarObject;
-            if (!project || !['HTML', 'Python'].includes(project.category)) return;
+            if (!project || !['HTML', 'Расширенный HTML', 'Python'].includes(project.category)) return;
             const warning = document.getElementById('project-code-run-warning');
             if (warning) warning.remove();
-            if (project.category === 'HTML') {
+            if (['HTML', 'Расширенный HTML'].includes(project.category)) {
                 runHtmlSandbox(project.data || '', project);
                 return;
             }
@@ -6550,8 +6552,8 @@
                 ? window.normalizeProjectSourceUrl(enteredSourceUrl)
                 : enteredSourceUrl;
 
-            if (!project || !['HTML', 'Python'].includes(project.category)) {
-                if (status) status.textContent = 'Импорт доступен только для проектов HTML и Python.';
+            if (!project || !['HTML', 'Расширенный HTML', 'Python'].includes(project.category)) {
+                if (status) status.textContent = 'Импорт доступен только для проектов HTML, расширенного HTML и Python.';
                 return;
             }
             if (!currentUser || String(project.author || '').toLowerCase() !== String(currentUser.username || '').toLowerCase()) {

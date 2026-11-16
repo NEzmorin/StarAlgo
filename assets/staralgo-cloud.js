@@ -1187,10 +1187,11 @@
       return;
     }
     const sizeKb = (Number(moderation.sourceBytes || 0) / 1024).toFixed(1);
+    const projectLabel = project?.category === 'Расширенный HTML' ? 'Расширенный HTML-проект' : 'Крупный HTML-проект';
     if (moderation.status === 'pending') {
-      status.textContent = '🕓 Крупный HTML-проект (' + sizeKb + ' КБ) отправлен модераторам. До решения он не публикуется.';
+      status.textContent = '🕓 ' + projectLabel + ' (' + sizeKb + ' КБ) отправлен модераторам. До решения он не публикуется.';
     } else if (moderation.status === 'approved') {
-      status.textContent = '✓ Крупный HTML-проект одобрен модерацией. Эту версию можно публиковать.';
+      status.textContent = '✓ ' + projectLabel + ' одобрен модерацией. Эту версию можно публиковать.';
     } else {
       status.textContent = '✕ Последняя проверка отклонила проект: ' + (moderation.reviewNote || 'измените исходник и отправьте его повторно.');
     }
