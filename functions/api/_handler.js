@@ -534,8 +534,220 @@ async function ensureMultiplayerSchema(env) {
   )`).run();
 }
 
+
+const RUNTIME_LIBRARY_PREFIX = '/api/runtime-libraries/';
+const RUNTIME_LIBRARY_CACHE_SECONDS = 2592000;
+
+const RUNTIME_MODULES = {
+  'react/index.js': [
+    'const R=globalThis.React;if(!R)throw new Error("React не загружен: библиотека не найдена в StarAlgo Runtime.");',
+    'export default R;',
+    ...['Children','Component','Fragment','Profiler','PureComponent','StrictMode','Suspense','act','cloneElement','createContext','createElement','createRef','forwardRef','isValidElement','lazy','memo','startTransition','use','useActionState','useCallback','useContext','useDebugValue','useDeferredValue','useEffect','useId','useImperativeHandle','useInsertionEffect','useLayoutEffect','useMemo','useOptimistic','useReducer','useRef','useState','useSyncExternalStore','useTransition','version'].map(k => 'export const '+k+'=R.'+k+';')
+  ].join('\n'),
+  'react/jsx-runtime.js': [
+    'const R=globalThis.React;if(!R)throw new Error("React не загружен.");',
+    'export const Fragment=R.Fragment;',
+    'export const jsx=(type,props,key)=>R.createElement(type,key==null?props:{...props,key});',
+    'export const jsxs=jsx;export const jsxDEV=jsx;'
+  ].join('\n'),
+  'react-dom/index.js': [
+    'const D=globalThis.ReactDOM;if(!D)throw new Error("ReactDOM не загружен.");',
+    'export default D;',
+    ...['createPortal','flushSync','version','unstable_batchedUpdates'].map(k => 'export const '+k+'=D.'+k+';')
+  ].join('\n'),
+  'react-dom/client.js': [
+    'const D=globalThis.ReactDOM;if(!D)throw new Error("ReactDOM не загружен.");',
+    'export const createRoot=(...args)=>D.createRoot(...args);',
+    'export const hydrateRoot=(...args)=>D.hydrateRoot(...args);'
+  ].join('\n'),
+  'phaser/index.js': 'const P=globalThis.Phaser;if(!P)throw new Error("Phaser не загружен.");export default P;export {P as Phaser};',
+  'matter/index.js': [
+    'const M=globalThis.Matter;if(!M)throw new Error("Matter.js не загружен.");',
+    'export default M;',
+    ...['Engine','World','Bodies','Body','Composite','Composites','Constraint','Detector','Events','Mouse','MouseConstraint','Query','Runner','Sleeping','Vertices','Vector','Bounds','Common'].map(k => 'export const '+k+'=M.'+k+';')
+  ].join('\n')
+};
+
+function safeRuntimePackagePath(value) {
+  return !!value && value.length <= 240 &&
+    !value.includes('\\') && !value.includes('..') &&
+    /^[A-Za-z0-9._/-]+$/.test(value) &&
+    !value.startsWith('/') && !value.endsWith('/');
+}
+function runtimeLibraryAsset(path) {
+  if (!path.startsWith(RUNTIME_LIBRARY_PREFIX)) return null;
+  const name = path.slice(RUNTIME_LIBRARY_PREFIX.length);
+  if (Object.prototype.hasOwnProperty.call(RUNTIME_MODULES, name)) {
+    return { inline: RUNTIME_MODULES[name], type: 'application/javascript; charset=utf-8', maxBytes: 50000 };
+  }
+  const exact = {
+    'react/react.production.min.js': {
+      urls: [
+        'https://cdn.jsdelivr.net/gh/lofcz/umd-react@v19.2.6/dist/react.production.min.js',
+        'https://raw.githubusercontent.com/lofcz/umd-react/v19.2.6/dist/react.production.min.js'
+      ], type: 'application/javascript; charset=utf-8', maxBytes: 150000
+    },
+    'react/react-dom.production.min.js': {
+      urls: [
+        'https://cdn.jsdelivr.net/gh/lofcz/umd-react@v19.2.6/dist/react-dom.production.min.js',
+        'https://raw.githubusercontent.com/lofcz/umd-react/v19.2.6/dist/react-dom.production.min.js'
+      ], type: 'application/javascript; charset=utf-8', maxBytes: 350000
+    },
+    'preact/dist/preact.umd.js': {
+      urls: ['https://cdn.jsdelivr.net/npm/preact@10.29.8/dist/preact.umd.js'],
+      type: 'application/javascript; charset=utf-8', maxBytes: 100000
+    },
+    'preact/hooks/dist/hooks.umd.js': {
+      urls: ['https://cdn.jsdelivr.net/npm/preact@10.29.8/hooks/dist/hooks.umd.js'],
+      type: 'application/javascript; charset=utf-8', maxBytes: 100000
+    },
+    'preact/compat/dist/compat.umd.js': {
+      urls: ['https://cdn.jsdelivr.net/npm/preact@10.29.8/compat/dist/compat.umd.js'],
+      type: 'application/javascript; charset=utf-8', maxBytes: 100000
+    },
+    'phaser/dist/phaser.min.js': {
+      urls: ['https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js'],
+      type: 'application/javascript; charset=utf-8', maxBytes: 5500000
+    },
+    'three/build/three.module.js': {
+      urls: ['https://cdn.jsdelivr.net/npm/three@0.187.0/build/three.module.js'],
+      type: 'application/javascript; charset=utf-8', maxBytes: 1500000
+    },
+    'pixi/dist/pixi.min.mjs': {
+      urls: ['https://cdn.jsdelivr.net/npm/pixi.js@8.23.0/dist/pixi.min.mjs'],
+      type: 'application/javascript; charset=utf-8', maxBytes: 2500000
+    },
+    'pixi/dist/pixi.min.js': {
+      urls: ['https://cdn.jsdelivr.net/npm/pixi.js@8.23.0/dist/pixi.min.js'],
+      type: 'application/javascript; charset=utf-8', maxBytes: 2500000
+    },
+    'matter/build/matter.min.js': {
+      urls: ['https://cdn.jsdelivr.net/npm/matter-js@0.20.0/build/matter.min.js'],
+      type: 'application/javascript; charset=utf-8', maxBytes: 350000
+    },
+    'clsx/dist/clsx.mjs': {
+      urls: ['https://cdn.jsdelivr.net/npm/clsx@2.1.1/dist/clsx.mjs'],
+      type: 'application/javascript; charset=utf-8', maxBytes: 50000
+    },
+    'tailwind-merge/dist/bundle-mjs.mjs': {
+      urls: ['https://cdn.jsdelivr.net/npm/tailwind-merge@3.4.0/dist/bundle-mjs.mjs'],
+      type: 'application/javascript; charset=utf-8', maxBytes: 250000
+    }
+  };
+  if (exact[name]) return exact[name];
+  if (name.startsWith('preact/') && safeRuntimePackagePath(name.slice('preact/'.length)) &&
+      /\.(?:mjs|js|json)$/.test(name)) {
+    return {
+      urls: ['https://cdn.jsdelivr.net/npm/preact@10.29.8/' + name.slice('preact/'.length)],
+      type: /\.json$/.test(name) ? 'application/json; charset=utf-8' : 'application/javascript; charset=utf-8',
+      maxBytes: 350000
+    };
+  }
+  if (name.startsWith('three/addons/') && safeRuntimePackagePath(name.slice('three/addons/'.length)) &&
+      /\.js$/.test(name)) {
+    return {
+      urls: ['https://cdn.jsdelivr.net/npm/three@0.187.0/examples/jsm/' + name.slice('three/addons/'.length)],
+      type: 'application/javascript; charset=utf-8', maxBytes: 1000000
+    };
+  }
+  if (name.startsWith('pixi/') && safeRuntimePackagePath(name.slice('pixi/'.length)) &&
+      /\.(?:mjs|js)$/.test(name)) {
+    return {
+      urls: ['https://cdn.jsdelivr.net/npm/pixi.js@8.23.0/' + name.slice('pixi/'.length)],
+      type: 'application/javascript; charset=utf-8', maxBytes: 2500000
+    };
+  }
+  if (name.startsWith('esbuild-wasm/') && safeRuntimePackagePath(name.slice('esbuild-wasm/'.length)) &&
+      /^(?:esm|lib)\/[A-Za-z0-9._/-]+\.(?:js|wasm|json)$/.test(name.slice('esbuild-wasm/'.length))) {
+    const suffix = name.slice('esbuild-wasm/'.length);
+    return {
+      urls: [
+        'https://cdn.jsdelivr.net/npm/esbuild-wasm@0.25.9/' + suffix,
+        'https://unpkg.com/esbuild-wasm@0.25.9/' + suffix
+      ],
+      type: suffix.endsWith('.wasm') ? 'application/wasm' :
+        suffix.endsWith('.json') ? 'application/json; charset=utf-8' : 'application/javascript; charset=utf-8',
+      maxBytes: suffix.endsWith('.wasm') ? 5000000 : 500000
+    };
+  }
+  return null;
+}
+async function fetchRuntimeLibrary(path, method) {
+  const asset = runtimeLibraryAsset(path);
+  const baseHeaders = {
+    'cache-control': 'public, max-age=2592000, immutable',
+    'access-control-allow-origin': '*',
+    'access-control-allow-methods': 'GET,HEAD,OPTIONS',
+    'access-control-allow-headers': 'Content-Type',
+    'cross-origin-resource-policy': 'cross-origin',
+    'x-content-type-options': 'nosniff'
+  };
+  if (!asset) return json({ error: 'Библиотека или файл отсутствует в каталоге StarAlgo.' }, 404, {
+    ...baseHeaders, 'content-type': 'application/json; charset=utf-8'
+  });
+  const headers = { ...baseHeaders, 'content-type': asset.type };
+  if (method === 'HEAD') return new Response(null, { status: 200, headers });
+  if (typeof asset.inline === 'string') return new Response(asset.inline, { status: 200, headers });
+  let lastError = null;
+  for (const url of asset.urls || []) {
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        redirect: 'error',
+        cf: { cacheEverything: true, cacheTtl: RUNTIME_LIBRARY_CACHE_SECONDS }
+      });
+      if (!response.ok) { lastError = response.status; continue; }
+      const declared = Number(response.headers.get('content-length') || 0);
+      if (declared > asset.maxBytes) {
+        return json({ error: 'Файл библиотеки превышает допустимый размер.' }, 413, {
+          ...headers, 'content-type': 'application/json; charset=utf-8'
+        });
+      }
+      const reader = response.body?.getReader();
+      if (!reader) { lastError = 'empty body'; continue; }
+      const chunks = [];
+      let total = 0;
+      let tooLarge = false;
+      while (true) {
+        const part = await reader.read();
+        if (part.done) break;
+        total += part.value.byteLength;
+        if (total > asset.maxBytes) {
+          tooLarge = true;
+          try { await reader.cancel(); } catch (_) {}
+          break;
+        }
+        chunks.push(part.value);
+      }
+      if (tooLarge) {
+        return json({ error: 'Файл библиотеки превышает допустимый размер.' }, 413, {
+          ...headers, 'content-type': 'application/json; charset=utf-8'
+        });
+      }
+      const bytes = new Uint8Array(total);
+      let offset = 0;
+      for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
+      return new Response(bytes, { status: 200, headers });
+    } catch (error) { lastError = String(error); }
+  }
+  console.error('[StarAlgo Runtime Library]', path, lastError || 'upstream unavailable');
+  return json({ error: 'Не удалось получить зафиксированную версию библиотеки из каталога StarAlgo.' }, 502, {
+    ...headers, 'content-type': 'application/json; charset=utf-8'
+  });
+}
+
+
 async function handle(request, env) {
   const url = new URL(request.url), path = url.pathname.replace(/\/+$/, '') || '/', method = request.method;
+  if (path.startsWith(RUNTIME_LIBRARY_PREFIX)) {
+    if (method === 'OPTIONS') return new Response(null, { status: 204, headers: {
+      'access-control-allow-origin': '*', 'access-control-allow-methods': 'GET,HEAD,OPTIONS',
+      'access-control-allow-headers': 'Content-Type', 'access-control-max-age': '86400',
+      'cross-origin-resource-policy': 'cross-origin'
+    } });
+    if (method !== 'GET' && method !== 'HEAD') return json({ error: 'Метод не поддерживается' }, 405);
+    return fetchRuntimeLibrary(path, method);
+  }
   if (path.startsWith('/api/scratch/drive/') && method === 'OPTIONS') return new Response(null, { status: 204, headers: { 'access-control-allow-methods': 'GET,HEAD,OPTIONS', 'access-control-allow-headers': 'Content-Type', 'access-control-max-age': '86400' } });
   if (path.startsWith('/api/scratch/drive/')) {
     if (method !== 'GET' && method !== 'HEAD') return json({ error: 'Метод не поддерживается' }, 405);
@@ -1495,10 +1707,12 @@ export default {
     const origin=request.headers.get('Origin')||'';
     const requestUrl = new URL(request.url);
     const publicScratchProxy = new RegExp("^/api/scratch/drive/[A-Za-z0-9_-]{10,100}$").test(requestUrl.pathname) && ['GET','HEAD','OPTIONS'].includes(request.method);
+    const publicRuntimeLibrary = requestUrl.pathname.startsWith('/api/runtime-libraries/') &&
+      ['GET','HEAD','OPTIONS'].includes(request.method);
     const configuredOrigin = env.APP_ORIGIN || requestUrl.origin;
-    const allowed=publicScratchProxy || (!!origin && (configuredOrigin==='*' || origin===configuredOrigin || (env.ALLOW_PAGES_PREVIEWS==='true' && /^https:\/\/[a-z0-9-]+\.pages\.dev$/i.test(origin))));
+    const allowed=publicScratchProxy || publicRuntimeLibrary || (!!origin && (configuredOrigin==='*' || origin===configuredOrigin || (env.ALLOW_PAGES_PREVIEWS==='true' && /^https:\/\/[a-z0-9-]+\.pages\.dev$/i.test(origin))));
     if (origin && !allowed) return json({error:'Origin не разрешён'},403);
-    const corsHeaders=publicScratchProxy?{'access-control-allow-origin':'*','access-control-allow-methods':'GET,HEAD,OPTIONS','access-control-allow-headers':'Content-Type','access-control-max-age':'86400'}:(allowed?{'access-control-allow-origin':origin,'vary':'Origin'}:{});
+    const corsHeaders=(publicScratchProxy || publicRuntimeLibrary)?{'access-control-allow-origin':'*','access-control-allow-methods':'GET,HEAD,OPTIONS','access-control-allow-headers':'Content-Type','access-control-max-age':'86400','cross-origin-resource-policy':'cross-origin'}:(allowed?{'access-control-allow-origin':origin,'vary':'Origin'}:{});
     try {
       const response=await handle(request,env);
       const out=new Response(response.body,response);

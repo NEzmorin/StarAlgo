@@ -5646,7 +5646,7 @@
                         <div style="display: grid; grid-template-columns: 1fr; gap: 12px;">
                             <textarea id="html-code-textarea">${window.saEscapeHTML(project.data || '')}</textarea>
                             <div style="color: var(--gold-bright); margin-top: 5px;">Живое превью</div>
-                            <div id="html-preview-status" style="font-size:.9rem;opacity:.75;">Автосохранение включено. Внешние сайты, запросы, фреймы и формы отключены.</div>
+                            <div id="html-preview-status" style="font-size:.9rem;opacity:.75;">Автосохранение включено. Внешние сайты и произвольные запросы заблокированы. Расширенный HTML получает библиотеки из фиксированного каталога StarAlgo.</div>
                             <div id="html-preview-stage" class="runtime-game-stage" style="width:100%;height:420px;border:2px solid var(--gold-main);border-radius:8px;"><iframe sandbox="allow-scripts allow-pointer-lock" id="html-preview-frame" style="width:100%;height:100%;min-height:0;background:#fff;border:0;"></iframe></div>
                         </div>
                     `;
@@ -6639,15 +6639,35 @@
                 return;
             }
             const project = runtimeProject || activeStarObject;
+            const isAdvancedRuntime = !!(project && project.category === 'Расширенный HTML');
             const supportsMultiplayer = !!(project && ['HTML','Python'].includes(project.category) && window.StarAlgoMultiplayerHost);
             const multiplayerEnabled = !!(supportsMultiplayer && project.multiplayerEnabled && project.published);
             const multiplayerToken = supportsMultiplayer ? window.StarAlgoMultiplayerHost.randomToken() : '';
             const multiplayerScript = supportsMultiplayer ? window.StarAlgoMultiplayerHost.buildFrameScript(multiplayerToken) : '';
             const connectOrigin = supportsMultiplayer ? window.StarAlgoMultiplayerHost.websocketOrigin() : '';
-            const policy = "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; media-src data: blob:; connect-src " +
-                (connectOrigin || "'none'") + "; frame-src 'none'; child-src 'none'; worker-src 'none'; object-src 'none'; form-action 'none'; base-uri 'none'; navigate-to 'none'";
+            const apiRoot = String(window.STARALGO_API_BASE || '').replace(/\/+$/, '');
+            const runtime = isAdvancedRuntime && window.StarAlgoHtmlRuntime
+                ? window.StarAlgoHtmlRuntime.buildPrelude(code, apiRoot)
+                : { head: '', source: code, libraries: [], error: '' };
+            let runtimeHost = '';
+            try { if (isAdvancedRuntime && apiRoot) runtimeHost = new URL(apiRoot).origin; } catch (_) {}
+            const scriptSources = ["'unsafe-inline'"];
+            if (isAdvancedRuntime && runtimeHost) {
+                scriptSources.push(runtimeHost + '/api/runtime-libraries/');
+                scriptSources.push("'wasm-unsafe-eval'");
+            }
+            const connectSources = [];
+            if (connectOrigin) connectSources.push(connectOrigin);
+            if (isAdvancedRuntime && runtimeHost && runtime.libraries.includes('esbuild')) {
+                connectSources.push(runtimeHost + '/api/runtime-libraries/esbuild-wasm/');
+            }
+            const policy = "default-src 'none'; script-src " + scriptSources.join(' ') +
+                "; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; media-src data: blob:; connect-src " +
+                (connectSources.length ? connectSources.join(' ') : "'none'") +
+                "; frame-src 'none'; child-src 'none'; worker-src 'none'; object-src 'none'; form-action 'none'; base-uri 'none'; navigate-to 'none'";
             const csp = '<meta http-equiv="Content-Security-Policy" content="' + policy + '">';
-            // Additional CSP is prepended so project markup cannot relax the sandbox policy.
+            // The runtime catalog is the only additional script source for Advanced HTML.
+            // The iframe stays opaque-origin; arbitrary external scripts and fetches remain blocked.
             previewFrame.setAttribute('sandbox', 'allow-scripts allow-pointer-lock');
             previewFrame.setAttribute('referrerpolicy', 'no-referrer');
             if (previewFrame.__starAlgoMultiplayerCleanup) {
@@ -6658,18 +6678,33 @@
                 ? window.StarAlgoMultiplayerHost.attach(previewFrame, project, multiplayerToken)
                 : null;
             if (previewFrame.__starAlgoRunTimeout) clearTimeout(previewFrame.__starAlgoRunTimeout);
-            previewFrame.srcdoc = '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">' + csp +
-                multiplayerScript + '</head><body>' + code +
+            previewFrame.srcdoc = '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">' +
+                csp + (runtime.head || '') + multiplayerScript + '</head><body>' + (runtime.source || code) +
                 '<style id="staralgo-viewport-override">html,body{box-sizing:border-box!important;width:100vw!important;height:100vh!important;min-width:100vw!important;min-height:100vh!important;max-width:none!important;max-height:none!important;margin:0!important}body{overflow:auto!important}body > div:first-of-type,body > main:first-of-type,body > section:first-of-type,body > canvas:first-of-type{box-sizing:border-box!important;width:100vw!important;min-width:100vw!important;height:100vh!important;min-height:100vh!important;max-width:none!important;max-height:none!important}body > #app,body > #root,body > #game,body > #game-root,body > #game-container{width:100vw!important;height:100vh!important;min-width:100vw!important;min-height:100vh!important;max-width:none!important;max-height:none!important}canvas{display:block;max-width:100vw!important}img,video,svg{max-width:100%}</style></body></html>';
             previewFrame.__starAlgoRunTimeout = window.setTimeout(() => {
                 window.stopHtmlSandbox('HTML-проект остановлен после 10 минут выполнения.');
             }, 600000);
             const status = document.getElementById('html-preview-status');
-            if (status) status.textContent = multiplayerEnabled
-                ? 'Изолированный предпросмотр. StarAlgo Network доступен; остальные сетевые запросы заблокированы.'
-                : 'Изолированный предпросмотр. StarAlgo Network доступен в коде, но подключение требует включённого разрешения и публикации проекта. Остальные сетевые запросы заблокированы.';
+            if (status) {
+                if (isAdvancedRuntime && !apiRoot) {
+                    status.textContent = 'Каталог библиотек недоступен: API StarAlgo не настроен. Обычный HTML продолжает работать в строгой песочнице.';
+                } else if (isAdvancedRuntime) {
+                    const labels = {
+                        react: 'React 19.2.6', preact: 'Preact 10.29.8', phaser: 'Phaser 3.90.0',
+                        three: 'Three.js 0.187.0', pixi: 'PixiJS 8.23.0', matter: 'Matter.js 0.20.0',
+                        esbuild: 'esbuild-wasm 0.25.9', clsx: 'clsx 2.1.1', tailwindMerge: 'tailwind-merge 3.4.0'
+                    };
+                    const names = (runtime.libraries || []).map(name => labels[name] || name);
+                    status.textContent = names.length
+                        ? 'Расширенный Runtime · подключены: ' + names.join(', ') + '. Произвольная сеть и внешние CDN заблокированы.'
+                        : 'Расширенный Runtime готов. Каталог библиотек доступен по фиксированным версиям; произвольные CDN и сеть заблокированы.';
+                } else {
+                    status.textContent = multiplayerEnabled
+                        ? 'Изолированный предпросмотр. StarAlgo Network доступен; остальные сетевые запросы заблокированы.'
+                        : 'Изолированный предпросмотр. StarAlgo Network доступен в коде, но подключение требует включённого разрешения и публикации проекта. Остальные сетевые запросы заблокированы.';
+                }
+            }
         }
-
         function runPythonUnified() {
             const code = codeMirrorEditor ? codeMirrorEditor.getValue() : '';
             if (new TextEncoder().encode(code).byteLength > 200000) {
@@ -6822,6 +6857,7 @@
     <script>window.starAlgoTurnstileReady = function(){ window.refreshStarAlgoCaptcha?.(); };</script>
     <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?onload=starAlgoTurnstileReady&render=explicit" async defer></script>
     <script src="/assets/api-config.js"></script>
+    <script src="/assets/staralgo-html-runtime.js"></script>
     <script src="/assets/staralgo-cloud.js"></script>
     <script src="/assets/staralgo-multiplayer.js"></script>
     <script src="/assets/staralgo-python-pyodide.js"></script>
