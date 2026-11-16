@@ -40,6 +40,7 @@ jobs:
         run: |
           if [[ -n "$CLOUDFLARE_API_TOKEN" && -n "$CLOUDFLARE_ACCOUNT_ID" ]]; then
             echo "available=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::Cloudflare credentials detected; Worker deployment is enabled."
           else
             echo "available=false" >> "$GITHUB_OUTPUT"
             echo "::notice::Worker build validated. Add CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID as GitHub Actions repository secrets to enable deployment."
