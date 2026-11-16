@@ -29,11 +29,20 @@
       [/https?:\/\/esm\.sh\/react(?:@[^\/'"\x60?\s]+)?(?:\?[^'"\x60\s]*)?/gi, base + 'react/index.js'],
       [/https?:\/\/esm\.sh\/react-dom(?:@[^\/'"\x60?\s]+)?\/client(?:\?[^'"\x60\s]*)?/gi, base + 'react-dom/client.js'],
       [/https?:\/\/esm\.sh\/react-dom(?:@[^\/'"\x60?\s]+)?(?:\?[^'"\x60\s]*)?/gi, base + 'react-dom/index.js'],
+      [/https?:\/\/(?:cdn\.jsdelivr\.net\/npm|unpkg\.com)\/umd-react@19\.2\.6\/dist\/react\.production\.min\.js/gi, base + 'react/react.production.min.js'],
+      [/https?:\/\/(?:cdn\.jsdelivr\.net\/npm|unpkg\.com)\/umd-react@19\.2\.6\/dist\/react-dom\.production\.min\.js/gi, base + 'react/react-dom.production.min.js'],
       [/https?:\/\/(?:cdn\.jsdelivr\.net\/npm|unpkg\.com)\/react(?:@[^\/'"\x60?\s]+)?\/(?:umd\/)?react(?:\.production)?(?:\.min)?\.js/gi, base + 'react/react.production.min.js'],
       [/https?:\/\/(?:cdn\.jsdelivr\.net\/npm|unpkg\.com)\/react-dom(?:@[^\/'"\x60?\s]+)?\/(?:umd\/)?react-dom(?:\.production)?(?:\.min)?\.js/gi, base + 'react/react-dom.production.min.js'],
       [/https?:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/react\/[^\/'"\x60?\s]+\/react(?:\.production)?(?:\.min)?\.js/gi, base + 'react/react.production.min.js'],
       [/https?:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/react-dom\/[^\/'"\x60?\s]+\/react-dom(?:\.production)?(?:\.min)?\.js/gi, base + 'react/react-dom.production.min.js'],
+      [/https?:\/\/(?:cdn\.jsdelivr\.net\/npm|unpkg\.com)\/esbuild-wasm@0\.25\.9\/esm\/browser\.js/gi, base + 'esbuild-wasm/esm/browser.js'],
+      [/https?:\/\/(?:cdn\.jsdelivr\.net\/npm|unpkg\.com)\/esbuild-wasm@0\.25\.9\/esbuild\.wasm/gi, base + 'esbuild-wasm/esbuild.wasm'],
+      [/https?:\/\/esm\.sh\/esbuild-wasm(?:@0\.25\.9)?(?:\?[^'"\x60\s]*)?/gi, base + 'esbuild-wasm/esm/browser.js'],
       [/https?:\/\/esm\.sh\/three(?:@[^\/'"\x60?\s]+)?(?:\?[^'"\x60\s]*)?/gi, base + 'three/build/three.module.js'],
+      [/https?:\/\/esm\.sh\/preact(?:@[^\/'"\x60?\s]+)?(?:\?[^'"\x60\s]*)?/gi, base + 'preact/dist/preact.mjs'],
+      [/https?:\/\/esm\.sh\/phaser(?:@[^\/'"\x60?\s]+)?(?:\?[^'"\x60\s]*)?/gi, base + 'phaser/index.js'],
+      [/https?:\/\/esm\.sh\/pixi\.js(?:@[^\/'"\x60?\s]+)?(?:\?[^'"\x60\s]*)?/gi, base + 'pixi/dist/pixi.min.mjs'],
+      [/https?:\/\/esm\.sh\/matter-js(?:@[^\/'"\x60?\s]+)?(?:\?[^'"\x60\s]*)?/gi, base + 'matter/index.js'],
       [/https?:\/\/esm\.sh\/clsx(?:@[^\/'"\x60?\s]+)?(?:\?[^'"\x60\s]*)?/gi, base + 'clsx/dist/clsx.mjs'],
       [/https?:\/\/esm\.sh\/tailwind-merge(?:@[^\/'"\x60?\s]+)?(?:\?[^'"\x60\s]*)?/gi, base + 'tailwind-merge/dist/bundle-mjs.mjs']
     ];
@@ -42,9 +51,9 @@
   }
   function buildPrelude(source, apiRoot) {
     const root = String(apiRoot || '').replace(/\/+$/, '');
-    if (!root || !/^https:\/\//i.test(root)) {
-      return { head: '', source: String(source || ''), libraries: [], error: 'API библиотек StarAlgo не настроен.' };
-    }
+    if (!root || !/^https:\/\//i.test(root)) return {
+      head: '', source: String(source || ''), libraries: [], error: 'API библиотек StarAlgo не настроен.'
+    };
     const base = root + '/api/runtime-libraries/';
     const found = detect(source);
     const imports = {
@@ -59,7 +68,7 @@
       'preact/jsx-runtime': base + 'preact/jsx-runtime/dist/jsxRuntime.mjs',
       'phaser': base + 'phaser/index.js',
       'three': base + 'three/build/three.module.js',
-      'three/addons/': base + 'three/addons/',
+      'three/addons/': base + 'three/examples/jsm/',
       'pixi.js': base + 'pixi/dist/pixi.min.mjs',
       'pixi.js/': base + 'pixi/',
       'matter-js': base + 'matter/index.js',

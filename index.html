@@ -6654,7 +6654,7 @@
             const scriptSources = ["'unsafe-inline'"];
             if (isAdvancedRuntime && runtimeHost) {
                 scriptSources.push(runtimeHost + '/api/runtime-libraries/');
-                scriptSources.push("'wasm-unsafe-eval'");
+                if (runtime.libraries.includes('esbuild')) scriptSources.push("'wasm-unsafe-eval'");
             }
             const connectSources = [];
             if (connectOrigin) connectSources.push(connectOrigin);
@@ -6664,7 +6664,9 @@
             const policy = "default-src 'none'; script-src " + scriptSources.join(' ') +
                 "; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; media-src data: blob:; connect-src " +
                 (connectSources.length ? connectSources.join(' ') : "'none'") +
-                "; frame-src 'none'; child-src 'none'; worker-src 'none'; object-src 'none'; form-action 'none'; base-uri 'none'; navigate-to 'none'";
+                "; frame-src 'none'; child-src 'none'; worker-src " +
+                (isAdvancedRuntime && runtime.libraries.includes('esbuild') ? "blob:" : "'none'") +
+                "; object-src 'none'; form-action 'none'; base-uri 'none'; navigate-to 'none'";
             const csp = '<meta http-equiv="Content-Security-Policy" content="' + policy + '">';
             // The runtime catalog is the only additional script source for Advanced HTML.
             // The iframe stays opaque-origin; arbitrary external scripts and fetches remain blocked.

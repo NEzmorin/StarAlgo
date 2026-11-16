@@ -539,6 +539,14 @@ const RUNTIME_LIBRARY_PREFIX = '/api/runtime-libraries/';
 const RUNTIME_LIBRARY_CACHE_SECONDS = 2592000;
 
 const RUNTIME_MODULES = {
+  'esbuild-wasm/esm/browser.js': [
+    'import * as api from "./browser.module.js";',
+    'const initialize = (options = {}) => { const opts = options || {}; return api.initialize({ ...opts, ...(opts.wasmURL || opts.wasmModule ? {} : { wasmURL: new URL("../esbuild.wasm", import.meta.url) }) }); };',
+    'export { initialize };',
+    'export * from "./browser.module.js";',
+    'export default { ...api, initialize };'
+  ].join('\n'),
+
   'react/index.js': [
     'const R=globalThis.React;if(!R)throw new Error("React не загружен: библиотека не найдена в StarAlgo Runtime.");',
     'export default R;',
@@ -580,17 +588,25 @@ function runtimeLibraryAsset(path) {
   if (Object.prototype.hasOwnProperty.call(RUNTIME_MODULES, name)) {
     return { inline: RUNTIME_MODULES[name], type: 'application/javascript; charset=utf-8', maxBytes: 50000 };
   }
+  if (name === 'esbuild-wasm/esm/browser.module.js') {
+    return { urls: ['https://cdn.jsdelivr.net/npm/esbuild-wasm@0.25.9/esm/browser.js'],
+      type: 'application/javascript; charset=utf-8', maxBytes: 600000 };
+  }
+  if (name === 'esbuild-wasm/esbuild.wasm') {
+    return { urls: ['https://cdn.jsdelivr.net/npm/esbuild-wasm@0.25.9/esbuild.wasm'],
+      type: 'application/wasm', maxBytes: 5000000 };
+  }
   const exact = {
     'react/react.production.min.js': {
       urls: [
-        'https://cdn.jsdelivr.net/gh/lofcz/umd-react@v19.2.6/dist/react.production.min.js',
-        'https://raw.githubusercontent.com/lofcz/umd-react/v19.2.6/dist/react.production.min.js'
+        'https://cdn.jsdelivr.net/npm/umd-react@19.2.6/dist/react.production.min.js',
+        'https://unpkg.com/umd-react@19.2.6/dist/react.production.min.js'
       ], type: 'application/javascript; charset=utf-8', maxBytes: 150000
     },
     'react/react-dom.production.min.js': {
       urls: [
-        'https://cdn.jsdelivr.net/gh/lofcz/umd-react@v19.2.6/dist/react-dom.production.min.js',
-        'https://raw.githubusercontent.com/lofcz/umd-react/v19.2.6/dist/react-dom.production.min.js'
+        'https://cdn.jsdelivr.net/npm/umd-react@19.2.6/dist/react-dom.production.min.js',
+        'https://unpkg.com/umd-react@19.2.6/dist/react-dom.production.min.js'
       ], type: 'application/javascript; charset=utf-8', maxBytes: 350000
     },
     'preact/dist/preact.umd.js': {
@@ -641,6 +657,20 @@ function runtimeLibraryAsset(path) {
       urls: ['https://cdn.jsdelivr.net/npm/preact@10.29.8/' + name.slice('preact/'.length)],
       type: /\.json$/.test(name) ? 'application/json; charset=utf-8' : 'application/javascript; charset=utf-8',
       maxBytes: 350000
+    };
+  }
+  if (name.startsWith('three/build/') && safeRuntimePackagePath(name.slice('three/build/'.length)) &&
+      /\.js$/.test(name)) {
+    return {
+      urls: ['https://cdn.jsdelivr.net/npm/three@0.187.0/build/' + name.slice('three/build/'.length)],
+      type: 'application/javascript; charset=utf-8', maxBytes: 1800000
+    };
+  }
+  if (name.startsWith('three/examples/jsm/') && safeRuntimePackagePath(name.slice('three/examples/jsm/'.length)) &&
+      /\.js$/.test(name)) {
+    return {
+      urls: ['https://cdn.jsdelivr.net/npm/three@0.187.0/examples/jsm/' + name.slice('three/examples/jsm/'.length)],
+      type: 'application/javascript; charset=utf-8', maxBytes: 1000000
     };
   }
   if (name.startsWith('three/addons/') && safeRuntimePackagePath(name.slice('three/addons/'.length)) &&
